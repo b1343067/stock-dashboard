@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tsbuildinfo
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+*.tmp
+# 個人持股資料不可進版控（第三階段會用到）
+my-portfolio*.json
+portfolio*.json

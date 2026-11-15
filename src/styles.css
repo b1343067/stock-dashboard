@@ -1,0 +1,345 @@
+/* =========================================================
+   全站樣式
+   顏色都定義成 CSS 變數，深色模式只要覆寫變數即可。
+   圖表顏色（--c-*）也會被 src/lib/theme.ts 讀去給 K 線圖用。
+   ========================================================= */
+
+:root {
+  color-scheme: light;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --border: #e2e5ea;
+  --grid: #eef0f3;
+  --text: #121826;
+  --text-2: #4a5263;
+  --text-3: #8a93a3;
+  --accent: #2f6fe4;
+  --accent-soft: #e7effd;
+
+  --red: #e5484d;
+  --green: #18a058;
+  --warn-bg: #fff6e0;
+  --warn-text: #7a5400;
+
+  --c-ma10: #f59e0b;
+  --c-ma20: #8b5cf6;
+  --c-ma50: #0ea5e9;
+  --c-ma200: #db2777;
+  --c-bb: #64748b;
+  --c-macd: #2f6fe4;
+  --c-signal: #f59e0b;
+  --c-rsi: #8b5cf6;
+
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0d1117;
+    --surface: #151b23;
+    --surface-2: #1c2430;
+    --border: #263040;
+    --grid: #1c2430;
+    --text: #e6edf3;
+    --text-2: #b1bac6;
+    --text-3: #768390;
+    --accent: #5b9bff;
+    --accent-soft: #1a2a45;
+    --red: #f2555a;
+    --green: #2fbf71;
+    --warn-bg: #3a2c0b;
+    --warn-text: #f3d38a;
+    --c-ma20: #a78bfa;
+    --c-ma200: #f472b6;
+    --c-bb: #94a3b8;
+    --c-macd: #5b9bff;
+    --c-rsi: #a78bfa;
+    --shadow: none;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --surface: #151b23;
+  --surface-2: #1c2430;
+  --border: #263040;
+  --grid: #1c2430;
+  --text: #e6edf3;
+  --text-2: #b1bac6;
+  --text-3: #768390;
+  --accent: #5b9bff;
+  --accent-soft: #1a2a45;
+  --red: #f2555a;
+  --green: #2fbf71;
+  --warn-bg: #3a2c0b;
+  --warn-text: #f3d38a;
+  --c-ma20: #a78bfa;
+  --c-ma200: #f472b6;
+  --c-bb: #94a3b8;
+  --c-macd: #5b9bff;
+  --c-rsi: #a78bfa;
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3 { margin: 0; line-height: 1.25; }
+
+.muted { color: var(--text-3); }
+.small { font-size: 12px; }
+.pad { padding: 12px; }
+.num-red { color: var(--red); }
+.num-green { color: var(--green); }
+.error { color: var(--red); }
+
+/* ---------- 版面 ---------- */
+.app {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 16px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+}
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.brand h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.02em; }
+.header-actions { display: flex; gap: 8px; }
+
+.btn-ghost {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-height: 34px;
+}
+.btn-ghost:hover { background: var(--surface-2); }
+
+.banner {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+.content { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.section-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+
+/* ---------- 觀察清單 ---------- */
+.sidebar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 8px;
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+}
+.watchlist .section-title { padding: 0 8px; }
+.watchlist ul { list-style: none; margin: 0; padding: 0; }
+.wl-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "sym price" "name chg";
+  column-gap: 8px;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.wl-item:hover { background: var(--surface-2); }
+.wl-item.active { background: var(--accent-soft); }
+.wl-sym { grid-area: sym; font-weight: 600; }
+.wl-name { grid-area: name; font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl-price { grid-area: price; text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.wl-chg { grid-area: chg; text-align: right; font-size: 12px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- 圖表 ---------- */
+.chart-card { padding: 12px 12px 6px; }
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.chart-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.chart-title h2 { font-size: 20px; }
+
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.segmented {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 3px;
+}
+.segmented button {
+  border: 0;
+  background: transparent;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.segmented button.active { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow); }
+
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.chip.on { color: var(--text); background: var(--surface-2); }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; opacity: 0.35; }
+.chip.on .dot { opacity: 1; }
+
+.chart-wrap { position: relative; }
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+  min-height: 36px;
+  margin-bottom: 4px;
+}
+.legend-date { color: var(--text); font-weight: 600; }
+.legend-break { flex-basis: 100%; height: 0; }
+.chart-canvas { height: 620px; width: 100%; }
+.chart-placeholder { height: 400px; display: grid; place-items: center; }
+
+.pane-labels { position: absolute; inset: 0; pointer-events: none; }
+.pane-label {
+  position: absolute;
+  left: 6px;
+  /* top 由程式依窗格位置設定，再往下 4px */
+  margin-top: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-3);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  padding: 0 4px;
+  border-radius: 4px;
+  z-index: 3;
+}
+.pane-label i { font-style: normal; }
+
+/* ---------- 指標摘要 ---------- */
+.signal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.signal {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  border-left-width: 3px;
+}
+.signal.tone-green { border-left-color: var(--green); }
+.signal.tone-red { border-left-color: var(--red); }
+.signal.tone-neutral { border-left-color: var(--text-3); }
+.signal-label { font-size: 12px; color: var(--text-3); }
+.signal-value { font-size: 18px; font-weight: 600; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.signal-note { font-size: 12px; color: var(--text-2); }
+.hint { font-size: 12px; color: var(--text-3); margin: 10px 0 0; }
+
+/* ---------- 頁尾 ---------- */
+.footer {
+  margin-top: 24px;
+  padding: 16px 0 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 13px;
+}
+.footer p { margin: 4px 0; }
+
+.fatal { max-width: 480px; margin: 80px auto; padding: 0 16px; text-align: center; }
+
+/* ---------- 手機版 ---------- */
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+
+  /* 觀察清單變成上方橫向捲動 */
+  .sidebar { position: static; max-height: none; padding: 8px; overflow: hidden; }
+  .watchlist .section-title { display: none; }
+  .watchlist ul {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .watchlist li { flex: 0 0 auto; scroll-snap-align: start; }
+  .wl-item { width: auto; min-width: 112px; grid-template-areas: "sym chg" "price price"; }
+  .wl-name { display: none; }
+  .wl-price { text-align: left; font-size: 13px; }
+
+  .chart-canvas { height: 520px; }
+  .chart-card { padding: 10px 6px 4px; }
+  .chart-head { padding: 0 4px; }
+}
+
+@media (max-width: 480px) {
+  .brand h1 { font-size: 18px; }
+  .chart-canvas { height: 460px; }
+  .signal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -1,0 +1,20 @@
+{
+  "_說明": "觀察清單。symbol 為 Yahoo Finance 代號；台股請加 .TW。修改後 GitHub Actions 下次執行就會抓新的股票。",
+  "fx": { "USDTWD": "TWD=X" },
+  "tickers": [
+    { "symbol": "VOO",     "name": "Vanguard S&P 500 ETF",       "currency": "USD" },
+    { "symbol": "BRK-B",   "name": "Berkshire Hathaway B",       "currency": "USD" },
+    { "symbol": "JPM",     "name": "JPMorgan Chase",             "currency": "USD" },
+    { "symbol": "MSFT",    "name": "Microsoft",                  "currency": "USD" },
+    { "symbol": "AMD",     "name": "Advanced Micro Devices",     "currency": "USD" },
+    { "symbol": "AMZN",    "name": "Amazon",                     "currency": "USD" },
+    { "symbol": "PLTR",    "name": "Palantir",                   "currency": "USD" },
+    { "symbol": "TSLA",    "name": "Tesla",                      "currency": "USD" },
+    { "symbol": "GOOGL",   "name": "Alphabet A",                 "currency": "USD" },
+    { "symbol": "NVDA",    "name": "NVIDIA",                     "currency": "USD" },
+    { "symbol": "LLY",     "name": "Eli Lilly",                  "currency": "USD" },
+    { "symbol": "COST",    "name": "Costco",                     "currency": "USD" },
+    { "symbol": "XOM",     "name": "Exxon Mobil",                "currency": "USD" },
+    { "symbol": "0050.TW", "name": "元大台灣50",                  "currency": "TWD" }
+  ]
+}

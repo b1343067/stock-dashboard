@@ -1,0 +1,4 @@
+# 資料更新腳本需要的套件（GitHub Actions 會自動安裝）
+yfinance>=0.2.54
+pandas>=2.2
+numpy>=1.26
