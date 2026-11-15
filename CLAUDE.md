@@ -30,6 +30,10 @@
 - `src/lib/route.ts`：hash 路由 `#/代號/週期`（daily|weekly|monthly）、`#/screener`；`chartHref()` 產生看圖連結
 - `src/App.tsx`：外殼（Header 分頁、banner、Footer），依 route.page 切換 `pages/ChartPage` 或 `pages/ScreenerPage`
 - `src/lib/screener.ts`：篩選條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`（讀 localStorage 時驗證）、內建範例組合；測試在 `screener.test.ts`
+- `src/lib/portfolio.ts`：`computePortfolio(holdings, quotes, fx, settings)`、`toUsd`、`stopStatus`、`sanitizeHoldings`、`parseImport`／`buildExport`、`sampleHoldings`；測試在 `portfolio.test.ts`
+- `src/pages/PortfolioPage.tsx`：持股狀態與 localStorage、範例持股流程、匯入匯出；元件在 `components/portfolio/`
+- `src/lib/format.ts`：`fmtMoney`／`fmtPct`／`pnlClass`（漲跌顏色跟著 redUp）
+- localStorage key（投資組合）：`stockdash:portfolio:holdings`、`portfolio:settings`、`portfolio:isSample`；沒有 holdings key 時顯示範例持股
 - localStorage key：`stockdash:screener:current`（目前條件＋AND/OR）、`stockdash:screener:presets`（我的組合）、`overlays`、`redUp`、`theme`
 - `src/lib/storage.ts`：`useStoredState(key, default)`，key 自動加前綴 `stockdash:`
 - `src/lib/theme.ts`：從 CSS 變數讀圖表顏色；顏色只在 `src/styles.css` 的 `:root` 定義
@@ -54,16 +58,16 @@
 
 - [x] **第一階段**：資料管線、日週月 K 線、MA10/20/50/200、RSI(14)、MACD(12,26,9)、布林(20,2)
 - [x] **第二階段 指標篩選器**：條件 = RSI 高於／低於 X、RSI 從 30 以下回升、MACD 黃金／死亡交叉（最近 N 天內）、MACD 柱狀體連續縮短、股價突破／跌破布林上中下軌、股價站上／跌破某條均線；每個條件可選日／週／月線；AND／OR 組合；常用組合存 localStorage；結果點擊 → `#/代號/週期` 看圖
-- [ ] **第三階段 投資組合**：使用者輸入持股（代號、股數、成本）存 localStorage；每檔標記「核心」或「短線」；短線自動算停利停損（預設 ±20%，每檔可自訂）；距離停利或停損 5% 以內用顏色提醒；未實現損益、報酬率、核心／短線比例，短線比例超過上限時提醒；匯出／匯入 JSON；台股先換美元
+- [x] **第三階段 投資組合**：使用者輸入持股（代號、股數、成本）存 localStorage；每檔標記「核心」或「短線」；短線自動算停利停損（預設 ±20%，每檔可自訂）；距離停利或停損 5% 以內用顏色提醒；未實現損益、報酬率、核心／短線比例，短線比例超過上限時提醒；匯出／匯入 JSON；台股先換美元
 - [ ] **第四階段 組合分析**：加權 Beta、Jensen's Alpha、最大回撤、相關係數熱力圖；CAPM 預期報酬＋夏普最佳化（權重 5%～45%），顯示目前與建議權重差異；回測與 VOO 比較累積報酬、最大回撤、夏普值
 
 ### 舊作業（reference/old_streamlit_app.py）要修正的點
 1. RSI 用 Wilder（ewm alpha=1/14）✅
 2. 新增布林通道 ✅
-3. 台股以台幣計價，算總市值前先換美元
+3. 台股以台幣計價，算總市值前先換美元 ✅
 4. 「AI 預測」改名「短期趨勢外推」，預測日期只算交易日，並顯示和「明天價格=今天價格」比較的歷史準確度
 5. 回測從使用者選的起始日，用設定權重買進持有（不可用今天的權重回推過去）
-6. 預設持倉改成範例資料
+6. 預設持倉改成範例資料 ✅
 
 ## 常用指令
 

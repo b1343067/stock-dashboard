@@ -2,12 +2,14 @@
 // 頁面由網址 hash 決定（見 src/lib/route.ts）：
 //   #/代號/週期 → 看盤頁（pages/ChartPage.tsx）
 //   #/screener  → 指標篩選器（pages/ScreenerPage.tsx）
+//   #/portfolio → 投資組合（pages/PortfolioPage.tsx）
 
 import { useCallback, useEffect, useState } from "react";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ChartPage from "./pages/ChartPage";
 import ScreenerPage from "./pages/ScreenerPage";
+import PortfolioPage from "./pages/PortfolioPage";
 import { loadIndex } from "./lib/data";
 import { chartHref, useHashRoute } from "./lib/route";
 import { useStoredState } from "./lib/storage";
@@ -63,6 +65,8 @@ export default function App() {
       <main className="main">
         {route.page === "screener" ? (
           <ScreenerPage redUp={redUp} />
+        ) : route.page === "portfolio" ? (
+          <PortfolioPage index={index} indexError={indexError} redUp={redUp} />
         ) : (
           <ChartPage index={index} indexError={indexError} route={route} navigate={navigate} redUp={redUp} />
         )}

@@ -448,6 +448,93 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
 .cond-tag.ok b { color: var(--accent); }
 .cond-tag.no { color: var(--text-3); }
 
+/* ---------- 投資組合 ---------- */
+.portfolio { display: flex; flex-direction: column; gap: 16px; }
+.portfolio .banner { margin-bottom: 0; }
+.sample-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.banner-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.flash {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 4px 4px 4px 12px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+.flash.error { background: color-mix(in srgb, var(--red) 12%, transparent); }
+.warn-text { color: var(--warn-text); }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.stat { border: 1px solid var(--border); border-radius: 9px; padding: 12px; min-width: 0; }
+.stat-wide { grid-column: span 1; }
+.stat-warn { border-color: var(--warn-text); background: var(--warn-bg); }
+.stat-label { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.stat-value { font-size: 22px; font-weight: 700; font-family: var(--font-mono); font-variant-numeric: tabular-nums; margin: 2px 0; overflow-wrap: anywhere; }
+.stat-note { font-size: 12px; }
+.warn-pill { background: var(--warn-text); color: var(--warn-bg); border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 600; }
+
+.ratio-bar { position: relative; display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--surface-2); margin: 10px 0 8px; }
+.ratio-core { background: var(--accent); }
+.ratio-short { background: var(--c-ma10); }
+.ratio-cap { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text); opacity: 0.7; }
+.ratio-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 2px; }
+.dot-core { background: var(--accent); }
+.dot-short { background: var(--c-ma10); }
+
+.holding-form .form-actions { display: flex; gap: 8px; margin-top: 12px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-2); min-width: 0; }
+.field .text-input { width: 100%; }
+.field .segmented { align-self: flex-start; }
+.text-input[aria-invalid="true"] { outline: 2px solid var(--red); outline-offset: -1px; }
+
+.table-scroll { overflow-x: auto; }
+.holdings-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.holdings-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.holdings-table td { padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.holdings-table .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.holdings-table td.num small { display: block; }
+.holdings-table tr.alert-red { background: color-mix(in srgb, var(--red) 9%, transparent); }
+.holdings-table tr.alert-green { background: color-mix(in srgb, var(--green) 10%, transparent); }
+.cell-stock { white-space: nowrap; }
+.stock-link { font-weight: 700; color: var(--text); text-decoration: none; }
+.stock-link:hover { color: var(--accent); text-decoration: underline; }
+.stock-name { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.type-tag { font-size: 11px; border-radius: 5px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; }
+.type-tag.core { background: var(--accent-soft); color: var(--accent); }
+.type-tag.short { background: color-mix(in srgb, var(--c-ma10) 18%, transparent); color: var(--warn-text); }
+.cell-stop { font-size: 13px; min-width: 190px; }
+.stop-line { display: block; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stop-line small { font-family: var(--font-sans); }
+.stop-badge { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 600; border-radius: 5px; padding: 1px 8px; background: var(--surface); border: 1px solid currentColor; }
+.alert-red .stop-badge { color: var(--red); }
+.alert-green .stop-badge { color: var(--green); }
+.stop-badge.hit { color: #fff !important; border-color: transparent; }
+.alert-red .stop-badge.hit { background: var(--red); }
+.alert-green .stop-badge.hit { background: var(--green); }
+.cell-actions { white-space: nowrap; text-align: right; }
+.btn-sm { min-height: 28px; padding: 3px 10px; font-size: 12px; }
+
+.settings-panel { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+.settings-panel summary { cursor: pointer; font-size: 14px; font-weight: 600; padding: 4px 0; }
+.settings-panel .form-grid { margin-top: 10px; }
+
 /* ---------- 手機版 ---------- */
 @media (max-width: 860px) {
   .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -459,6 +546,37 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
   /* 篩選條件：下拉選單佔滿一行 */
   .cond-kind { min-width: 0; flex: 1 1 160px; }
   .result-name { flex-basis: 100%; order: 5; }
+
+  /* 投資組合：總覽兩欄、比例那張佔整行 */
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-wide { grid-column: 1 / -1; order: 3; }
+  .stat-value { font-size: 18px; }
+
+  /* 持股表格 → 每列一張卡片 */
+  .table-scroll { overflow: visible; }
+  .holdings-table thead { display: none; }
+  .holdings-table, .holdings-table tbody { display: block; }
+  .holdings-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .holdings-table td { border: 0; padding: 0; text-align: left !important; }
+  .holdings-table td[data-label]:not(.cell-stock)::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: var(--font-sans);
+  }
+  .holdings-table .cell-stock { grid-column: 1 / 2; }
+  .holdings-table .cell-actions { grid-column: 2 / 3; grid-row: 1; text-align: right !important; }
+  .holdings-table .cell-stop { grid-column: 1 / -1; min-width: 0; }
+  .holdings-table td.num small { display: inline; }
 
   /* 觀察清單變成上方橫向捲動 */
   .sidebar { position: static; max-height: none; padding: 8px; overflow: hidden; }
