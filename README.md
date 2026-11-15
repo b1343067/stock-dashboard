@@ -189,6 +189,8 @@ python scripts/generate_sample_data.py   # 產生隨機範例資料（會覆蓋 
 3. 右邊按 **Run workflow** → 選分支（main）→ **Run workflow**
 4. 約 1～3 分鐘後完成，會多一個 `chore(data): 每日資料更新` 的 commit，Vercel 接著自動部署，網站上的「範例資料」提示就會消失
 
+> 💡 修改 `config/watchlist.json`、`scripts/` 或這個 workflow 檔並推到 `main` 時，也會自動執行一次。
+
 > ⚠️ 排程（schedule）只會在**預設分支**上執行；另外 GitHub 規定儲存庫 60 天沒有任何活動時會自動停用排程，到時候到 Actions 頁面重新啟用即可。
 
 ## 修改觀察清單

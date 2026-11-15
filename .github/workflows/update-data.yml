@@ -6,6 +6,14 @@ on:
   schedule:
     - cron: "0 22 * * *"
   workflow_dispatch: {}        # 允許手動觸發（Actions → 更新股價資料 → Run workflow）
+  # 修改觀察清單或資料腳本並推到 main 時，也自動重抓一次
+  # （Actions 自己 commit 的 public/data 不在清單內，不會無限循環）
+  push:
+    branches: [main]
+    paths:
+      - "config/watchlist.json"
+      - "scripts/**"
+      - ".github/workflows/update-data.yml"
 
 # 需要寫入權限才能把新資料 commit 回儲存庫
 permissions:
