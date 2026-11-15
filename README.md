@@ -1,9 +1,40 @@
 # 📈 投資看盤（Stock Dashboard）
 
+[![檢查程式](https://github.com/b1343067/stock-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/b1343067/stock-dashboard/actions/workflows/ci.yml)
+[![更新股價資料](https://github.com/b1343067/stock-dashboard/actions/workflows/update-data.yml/badge.svg)](https://github.com/b1343067/stock-dashboard/actions/workflows/update-data.yml)
+
+**🔗 線上展示：<https://stock-dashboard-peach-sigma.vercel.app/>**
+
 個人投資看盤網站，同時也是我的求職作品集。
 每天由 GitHub Actions 自動抓取股價、預先算好技術指標存成 JSON，網站部署在 Vercel，是純靜態網頁，不需要後端伺服器。
+功能涵蓋 K 線看盤、指標篩選器、投資組合管理、組合分析（Beta／Alpha／夏普最佳化／回測），桌機與手機都能使用。
 
 > **免責聲明：本網站僅供學習參考，非投資建議。**
+
+![看盤頁（深色模式）：K 線、均線、MACD、RSI 與短期趨勢外推虛線](docs/screenshots/chart.png)
+
+| 指標篩選器 | 投資組合（範例持股） |
+| --- | --- |
+| ![篩選器](docs/screenshots/screener.png) | ![投資組合](docs/screenshots/portfolio.png) |
+| **組合分析** | **回測 vs VOO** |
+| ![組合分析](docs/screenshots/analysis.png) | ![回測](docs/screenshots/backtest.png) |
+
+<p align="center"><img src="docs/screenshots/mobile.png" alt="手機版看盤頁" width="280"></p>
+
+## 技術亮點
+
+- **零後端、零成本**：GitHub Actions 每天抓資料並預先計算指標，前端只讀靜態 JSON；Vercel 免費方案部署。
+- **資料管線有防護**：單檔失敗保留前一天的檔案、原子寫檔不會產生半個檔案、全部失敗不覆蓋任何資料；網頁偵測資料過期會提醒。
+- **計算正確性有驗證**：
+  - 77 項單元測試（Vitest），涵蓋指標、篩選條件、損益與換匯、Beta／Alpha、最佳化、回測
+  - Python 端以參考實作比對 Wilder RSI；組合分析的 Beta、Alpha、最大回撤另外用 numpy 交叉驗證，結果一致
+  - 回測與趨勢外推的準確度測試都確認「不偷看未來資料」
+- **端對端測試**：Playwright 用真的瀏覽器跑完整使用流程（桌機＋手機），包含資料讀取失敗、匯入壞檔案等異常情況；每次推送由 CI 自動執行。
+- **金融細節處理**：台股先用「當天的歷史匯率」換成美元再計算、台美交易日對齊、預測日期跳過週末與美股休市日、價格含除權息調整。
+- **誠實呈現**：「短期趨勢外推」附上和「明天價格 = 今天價格」比較的歷史準確度，外推比較差時直接寫出來。
+- **隱私**：儲存庫公開，但個人持股只存在使用者自己的瀏覽器（localStorage），可匯出匯入備份。
+- **效能**：按頁面分割程式碼，圖表套件只在需要時載入；首頁主程式約 74KB（gzip）。
+- **可及性**：顏色依資料視覺化指引挑選並驗證色盲可辨識；數值都有文字標示，不只靠顏色；支援深色模式、紅漲綠跌／綠漲紅跌切換。
 
 ## 功能（目前進度）
 
@@ -136,6 +167,8 @@
 │   └── ci.yml               # 推送時自動跑測試與建置
 ├── config/
 │   └── watchlist.json       # 觀察清單：要追蹤哪些股票、匯率代號都在這裡改
+├── docs/screenshots/        # README 用的截圖（範例持股，不含真實資料）
+├── e2e/                     # Playwright 瀏覽器端對端測試（npm run test:e2e）
 ├── public/                  # 原封不動複製到網站上的檔案
 │   ├── data/                # ★ 股價與指標資料（由 Python 腳本產生，不要手動改）
 │   │   ├── index.json       #   總表：股票清單、最新價格、匯率、無風險利率、更新時間
@@ -146,7 +179,7 @@
 ├── reference/               # 舊的課堂作業（只供參考，不會部署）
 ├── scripts/                 # Python 資料處理
 │   ├── indicators.py        #   技術指標計算（核心邏輯）
-│   ├── data_io.py           #   讀寫 JSON、重建 index.json
+│   ├── data_io.py           #   讀寫 JSON、重建 index.json 與 screener.json
 │   ├── fetch_data.py        #   抓真實資料（GitHub Actions 執行）
 │   ├── generate_sample_data.py  # 產生隨機範例資料（不需網路）
 │   ├── test_indicators.py   #   指標計算的自我檢查
@@ -173,7 +206,7 @@
 │   └── lib/                 #   非畫面的工具程式
 │       ├── types.ts         #     JSON 資料格式定義
 │       ├── data.ts          #     讀取 JSON
-│       ├── route.ts         #     網址 #/代號/週期、#/screener
+│       ├── route.ts         #     網址：#/代號/週期、#/screener、#/portfolio、#/analysis
 │       ├── screener.ts      #     篩選條件判斷邏輯（純函式）
 │       ├── screener.test.ts #     篩選邏輯的單元測試（npm test）
 │       ├── portfolio.ts     #     投資組合計算（換匯、損益、停利停損、匯入驗證）
@@ -183,10 +216,12 @@
 │       ├── trend.ts         #     短期趨勢外推、交易日、歷史準確度
 │       ├── analytics.test.ts#     組合分析與趨勢外推的單元測試
 │       ├── format.ts        #     金額、百分比格式化
+│       ├── freshness.ts     #     資料過期檢查（落後 3 個平日以上提醒）
 │       ├── storage.ts       #     localStorage 安全讀寫
 │       └── theme.ts         #     從 CSS 讀取圖表顏色
 ├── CLAUDE.md                # 給 AI 助手看的專案規則
 ├── index.html / vite.config.ts / tsconfig.json / package.json
+├── playwright.config.ts     # E2E 測試設定（桌機＋手機）
 └── vercel.json              # Vercel 部署設定
 ```
 
@@ -245,6 +280,7 @@ npm install          # 安裝前端套件
 npm run dev          # 開發模式，打開 http://localhost:5173
 npm run build        # 正式打包到 dist/
 npm test             # 執行單元測試（vitest）
+npm run test:e2e     # 執行瀏覽器端對端測試（Playwright，要先 npm run build）
 ```
 
 Python 資料腳本：

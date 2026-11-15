@@ -5,14 +5,17 @@
 //   #/portfolio → 投資組合（pages/PortfolioPage.tsx）
 //   #/analysis  → 組合分析（pages/AnalysisPage.tsx）
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import ChartPage from "./pages/ChartPage";
-import ScreenerPage from "./pages/ScreenerPage";
-import PortfolioPage from "./pages/PortfolioPage";
-import AnalysisPage from "./pages/AnalysisPage";
+// 各頁面「用到才下載」（程式碼分割）：打開看盤頁時不會下載組合分析的程式，首次載入比較快。
+// lightweight-charts 也會被拆成獨立檔案，只有需要畫圖的頁面才載入。
+const ChartPage = lazy(() => import("./pages/ChartPage"));
+const ScreenerPage = lazy(() => import("./pages/ScreenerPage"));
+const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
+const AnalysisPage = lazy(() => import("./pages/AnalysisPage"));
 import { loadIndex } from "./lib/data";
+import { checkFreshness } from "./lib/freshness";
 import { chartHref, useHashRoute } from "./lib/route";
 import { useStoredState } from "./lib/storage";
 import type { IndexData, Timeframe } from "./lib/types";
@@ -43,6 +46,9 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [route.page]);
 
+  // 資料過期檢查（Actions 連續失敗時提醒）
+  const freshness = useMemo(() => (index ? checkFreshness(index.tickers.map((t) => t.lastDate)) : null), [index]);
+
   const navigate = useCallback(
     (symbol: string, timeframe: Timeframe) => setRoute({ symbol, timeframe }),
     [setRoute],
@@ -58,6 +64,13 @@ export default function App() {
         chartHref={lastChart}
       />
 
+      {freshness?.stale && !index?.sample && (
+        <div className="banner" role="alert">
+          ⚠️ <b>資料可能已過期</b>：最新資料日期為 {freshness.latestDate}，之後已有 {freshness.missed} 個平日沒有更新。
+          可能是每日更新的 GitHub Actions 失敗了，價格與指標僅供參考。
+        </div>
+      )}
+
       {index?.sample && (
         <div className="banner" role="status">
           目前顯示的是<b>隨機產生的範例資料</b>，不是真實股價。GitHub Actions 第一次成功更新後會自動換成真實資料。
@@ -65,15 +78,17 @@ export default function App() {
       )}
 
       <main className="main">
-        {route.page === "screener" ? (
-          <ScreenerPage redUp={redUp} />
-        ) : route.page === "portfolio" ? (
-          <PortfolioPage index={index} indexError={indexError} redUp={redUp} />
-        ) : route.page === "analysis" ? (
-          <AnalysisPage index={index} redUp={redUp} />
-        ) : (
-          <ChartPage index={index} indexError={indexError} route={route} navigate={navigate} redUp={redUp} />
-        )}
+        <Suspense fallback={<div className="card"><p className="muted empty">載入中…</p></div>}>
+          {route.page === "screener" ? (
+            <ScreenerPage redUp={redUp} />
+          ) : route.page === "portfolio" ? (
+            <PortfolioPage index={index} indexError={indexError} redUp={redUp} />
+          ) : route.page === "analysis" ? (
+            <AnalysisPage index={index} redUp={redUp} />
+          ) : (
+            <ChartPage index={index} indexError={indexError} route={route} navigate={navigate} redUp={redUp} />
+          )}
+        </Suspense>
       </main>
 
       <Footer />

@@ -9,3 +9,6 @@ __pycache__/
 # 個人持股資料不可進版控（第三階段會用到）
 my-portfolio*.json
 portfolio*.json
+# Playwright 測試報告
+test-results/
+playwright-report/

@@ -9,6 +9,7 @@ on:
 
 jobs:
   check:
+    name: 單元測試與建置
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -29,3 +30,28 @@ jobs:
         run: |
           pip install pandas numpy
           python scripts/test_indicators.py
+
+  e2e:
+    name: 瀏覽器端對端測試
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 安裝 Chromium
+        run: npx playwright install --with-deps chromium
+      - name: 建置
+        run: npm run build
+      - name: 執行 E2E 測試（桌機＋手機）
+        run: npm run test:e2e
+      - name: 失敗時上傳測試報告
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
