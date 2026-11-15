@@ -17,6 +17,7 @@ CONFIG_PATH = ROOT / "config" / "watchlist.json"         # 觀察清單設定
 DATA_DIR = ROOT / "public" / "data"                      # 前端讀取的資料夾
 INDEX_PATH = DATA_DIR / "index.json"                     # 總表（清單 + 匯率）
 SCREENER_PATH = DATA_DIR / "screener.json"               # 篩選器用的精簡資料
+FX_PATH = DATA_DIR / "fx.json"                           # 歷史匯率（第四階段換算台股報酬用）
 
 # 篩選器每個週期保留最近幾根 K 棒（條件最多看「最近 20 根」，再多留一些緩衝）
 SCREENER_BARS = 30
@@ -55,7 +56,7 @@ def read_json(path: Path) -> dict | None:
         return None
 
 
-def rebuild_index(watchlist: dict, fx: dict) -> dict:
+def rebuild_index(watchlist: dict, fx: dict, risk_free: float | None = None) -> dict:
     """
     依照「磁碟上目前存在的股票檔案」重建 index.json。
     抓失敗的股票會沿用舊檔案，所以這裡讀到的永遠是最新可用的資料。
@@ -82,6 +83,8 @@ def rebuild_index(watchlist: dict, fx: dict) -> dict:
         "sample": any(i["sample"] for i in items),
         # 匯率抓不到時沿用上一次的值（修正 #3 會用到：台股要換成美元）
         "fx": fx or previous.get("fx", {}),
+        # 無風險利率（年化小數，例如 0.0425），抓不到沿用上一次；第四階段算夏普值、Alpha 用
+        "riskFree": risk_free if risk_free is not None else previous.get("riskFree"),
         "tickers": items,
     }
     write_json_atomic(INDEX_PATH, index)

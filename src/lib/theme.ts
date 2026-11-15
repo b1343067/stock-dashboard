@@ -18,6 +18,8 @@ export interface ChartColors {
   macd: string;
   signal: string;
   rsi: string;
+  s1: string;
+  s2: string;
 }
 
 function read(): ChartColors {
@@ -38,6 +40,8 @@ function read(): ChartColors {
     macd: v("--c-macd"),
     signal: v("--c-signal"),
     rsi: v("--c-rsi"),
+    s1: v("--s1"),
+    s2: v("--s2"),
   };
 }
 

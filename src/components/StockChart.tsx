@@ -31,6 +31,8 @@ interface Props {
   redUp: boolean;
   /** 價格顯示的小數位數（台股、美股都用 2） */
   precision?: number;
+  /** 短期趨勢外推的虛線（第一個點是最後一根收盤，接著是未來的交易日）；只在日線顯示 */
+  projection?: { time: string; value: number }[] | null;
 }
 
 // 各週期一開始顯示多少根 K 棒
@@ -46,6 +48,7 @@ interface SeriesRefs {
   macd: ISeriesApi<"Line">;
   signal: ISeriesApi<"Line">;
   rsi: ISeriesApi<"Line">;
+  projection: ISeriesApi<"Line">;
 }
 
 /** 把「可能是 null 的陣列」轉成 lightweight-charts 的格式；null 變成空白點（只有時間、沒有值） */
@@ -60,7 +63,7 @@ function upDown(c: ChartColors, redUp: boolean) {
   return redUp ? { up: c.red, down: c.green } : { up: c.green, down: c.red };
 }
 
-export default function StockChart({ data, timeframe, overlays, redUp, precision = 2 }: Props) {
+export default function StockChart({ data, timeframe, overlays, redUp, precision = 2, projection = null }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<SeriesRefs | null>(null);
@@ -153,7 +156,10 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     requestAnimationFrame(measure);
 
     chartRef.current = chart;
-    seriesRef.current = { candle, volume, lines, macdHist, macd, signal, rsi };
+    // 趨勢外推：虛線、粗一點，最後一個點顯示價格標籤
+    const proj = mkLine(0, { lineWidth: 2, lineStyle: LineStyle.Dashed, lastValueVisible: true, title: "外推" });
+
+    seriesRef.current = { candle, volume, lines, macdHist, macd, signal, rsi, projection: proj };
 
     return () => {
       ro.disconnect();
@@ -184,6 +190,7 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     s.macd.applyOptions({ color: colors.macd });
     s.signal.applyOptions({ color: colors.signal });
     s.rsi.applyOptions({ color: colors.rsi });
+    s.projection.applyOptions({ color: colors.s2 });
     for (const pl of s.rsi.priceLines()) pl.applyOptions({ color: colors.muted });
   }, [colors, redUp]);
 
@@ -218,14 +225,17 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     s.macd.setData(toLine(time, data.macd));
     s.signal.setData(toLine(time, data.signal));
     s.rsi.setData(toLine(time, data.rsi));
+    const proj = timeframe === "daily" && projection ? projection : [];
+    s.projection.setData(proj.map((p) => ({ time: p.time as Time, value: p.value })));
 
     // 預設顯示最近 N 根
     const n = time.length;
     const bars = INITIAL_BARS[timeframe];
-    chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - bars), to: n + 2 });
+    // 有外推時多留一點右邊空間，讓未來的虛線看得到
+    chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - bars), to: n + 2 + (proj.length > 0 ? proj.length : 0) });
     setHoverIndex(null);
     // colors / redUp 也會影響成交量、柱狀體顏色
-  }, [data, timeframe, colors, redUp]);
+  }, [data, timeframe, colors, redUp, projection]);
 
   // ---- 4. 疊加指標的顯示／隱藏 ----
   useEffect(() => {

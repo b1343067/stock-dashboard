@@ -1,6 +1,7 @@
 {
   "_說明": "觀察清單。symbol 為 Yahoo Finance 代號；台股請加 .TW。修改後 GitHub Actions 下次執行就會抓新的股票。",
   "fx": { "USDTWD": "TWD=X" },
+  "riskFree": "^IRX",
   "tickers": [
     { "symbol": "VOO",     "name": "Vanguard S&P 500 ETF",       "currency": "USD" },
     { "symbol": "BRK-B",   "name": "Berkshire Hathaway B",       "currency": "USD" },

@@ -5,8 +5,8 @@
   1. 讀取 config/watchlist.json 的觀察清單
   2. 逐檔用 yfinance 抓 10 年日線
   3. 計算指標（日／週／月線），寫成 public/data/<代號>.json
-  4. 抓 USD/TWD 匯率
-  5. 重建 public/data/index.json
+  4. 抓 USD/TWD 匯率（最新值 + 歷史，歷史寫進 public/data/fx.json）與無風險利率
+  5. 重建 public/data/index.json、screener.json
 
 安全機制：
   - 某一檔抓不到或資料異常 → 不覆蓋，保留前一天的檔案
@@ -26,7 +26,7 @@ import time
 import pandas as pd
 import yfinance as yf
 
-from data_io import load_watchlist, rebuild_index, ticker_path, write_json_atomic
+from data_io import FX_PATH, load_watchlist, rebuild_index, ticker_path, write_json_atomic
 from indicators import build_ticker_payload
 
 HISTORY_PERIOD = "10y"   # 抓 10 年，月線的均線才算得出來
@@ -49,18 +49,45 @@ def download_daily(symbol: str) -> pd.DataFrame | None:
     return None
 
 
-def fetch_fx(fx_config: dict) -> dict:
-    """抓匯率，例如 {"USDTWD": 32.45}。抓不到的就不放，rebuild_index 會沿用舊值。"""
-    result = {}
+def fetch_fx(fx_config: dict) -> tuple[dict, dict]:
+    """
+    抓匯率。回傳 (最新匯率, 歷史匯率)：
+      最新：{"USDTWD": 32.45}，抓不到的就不放，rebuild_index 會沿用舊值
+      歷史：{"USDTWD": {"time": [...], "close": [...]}}，第四階段把台股報酬換成美元時用
+    """
+    latest, history = {}, {}
     for name, yahoo_symbol in fx_config.items():
         try:
-            df = yf.Ticker(yahoo_symbol).history(period="5d", interval="1d")
+            df = yf.Ticker(yahoo_symbol).history(period="10y", interval="1d")
             close = df["Close"].dropna()
             if len(close) > 0:
-                result[name] = round(float(close.iloc[-1]), 4)
+                latest[name] = round(float(close.iloc[-1]), 4)
+                close.index = pd.DatetimeIndex(close.index).tz_localize(None).normalize()
+                history[name] = {
+                    "time": [d.strftime("%Y-%m-%d") for d in close.index],
+                    "close": [round(float(v), 4) for v in close],
+                }
         except Exception as e:
             print(f"  匯率 {name} 抓取失敗：{e}")
-    return result
+    return latest, history
+
+
+def fetch_risk_free(symbol: str | None) -> float | None:
+    """
+    無風險利率：用美國 13 週國庫券殖利率（^IRX），報價單位是「年化 %」，例如 4.25。
+    回傳小數（0.0425）；抓不到回傳 None，沿用上一次的值。
+    """
+    if not symbol:
+        return None
+    try:
+        close = yf.Ticker(symbol).history(period="1mo", interval="1d")["Close"].dropna()
+        if len(close) > 0:
+            v = float(close.iloc[-1]) / 100
+            if 0 <= v < 0.25:   # 合理範圍檢查
+                return round(v, 5)
+    except Exception as e:
+        print(f"  無風險利率抓取失敗：{e}")
+    return None
 
 
 def main() -> int:
@@ -84,14 +111,18 @@ def main() -> int:
             failed.append(symbol)
             print(f"  [{symbol}] 計算指標失敗：{e}，保留前一天的檔案")
 
-    fx = fetch_fx(watchlist.get("fx", {}))
+    fx, fx_history = fetch_fx(watchlist.get("fx", {}))
     print(f"匯率：{fx or '抓取失敗，沿用舊值'}")
+    risk_free = fetch_risk_free(watchlist.get("riskFree"))
+    print(f"無風險利率：{risk_free if risk_free is not None else '抓取失敗，沿用舊值'}")
 
     if not ok:
         print("所有股票都抓取失敗，不更新任何檔案。")
         return 1
 
-    rebuild_index(watchlist, fx)
+    if fx_history:
+        write_json_atomic(FX_PATH, fx_history)
+    rebuild_index(watchlist, fx, risk_free)
     print(f"\n成功 {len(ok)} 檔，失敗 {len(failed)} 檔：{failed}")
     return 0
 

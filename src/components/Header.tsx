@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import type { IndexData } from "../lib/types";
 import { useStoredState } from "../lib/storage";
-import { PORTFOLIO_HREF, SCREENER_HREF, type Page } from "../lib/route";
+import { ANALYSIS_HREF, PORTFOLIO_HREF, SCREENER_HREF, type Page } from "../lib/route";
 
 interface Props {
   index: IndexData | null;
@@ -59,6 +59,13 @@ export default function Header({ index, redUp, onToggleRedUp, page, chartHref }:
           aria-current={page === "portfolio" ? "page" : undefined}
         >
           投資組合
+        </a>
+        <a
+          href={ANALYSIS_HREF}
+          className={page === "analysis" ? "active" : ""}
+          aria-current={page === "analysis" ? "page" : undefined}
+        >
+          組合分析
         </a>
       </nav>
       <div className="header-actions">

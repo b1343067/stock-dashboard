@@ -3,6 +3,7 @@
 //   #/代號/週期 → 看盤頁（pages/ChartPage.tsx）
 //   #/screener  → 指標篩選器（pages/ScreenerPage.tsx）
 //   #/portfolio → 投資組合（pages/PortfolioPage.tsx）
+//   #/analysis  → 組合分析（pages/AnalysisPage.tsx）
 
 import { useCallback, useEffect, useState } from "react";
 import Header from "./components/Header";
@@ -10,6 +11,7 @@ import Footer from "./components/Footer";
 import ChartPage from "./pages/ChartPage";
 import ScreenerPage from "./pages/ScreenerPage";
 import PortfolioPage from "./pages/PortfolioPage";
+import AnalysisPage from "./pages/AnalysisPage";
 import { loadIndex } from "./lib/data";
 import { chartHref, useHashRoute } from "./lib/route";
 import { useStoredState } from "./lib/storage";
@@ -67,6 +69,8 @@ export default function App() {
           <ScreenerPage redUp={redUp} />
         ) : route.page === "portfolio" ? (
           <PortfolioPage index={index} indexError={indexError} redUp={redUp} />
+        ) : route.page === "analysis" ? (
+          <AnalysisPage index={index} redUp={redUp} />
         ) : (
           <ChartPage index={index} indexError={indexError} route={route} navigate={navigate} redUp={redUp} />
         )}

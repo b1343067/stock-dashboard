@@ -55,6 +55,8 @@ export interface IndexData {
   generatedAt: string;
   sample: boolean;
   fx: Record<string, number>; // 例如 { USDTWD: 32.1 }
+  /** 無風險利率（年化小數，例如 0.0425）；舊資料可能沒有 */
+  riskFree?: number | null;
   tickers: TickerSummary[];
 }
 

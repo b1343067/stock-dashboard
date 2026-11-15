@@ -1,10 +1,12 @@
 // 看盤頁：左邊觀察清單、右邊 K 線圖與指標摘要（第一階段）
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import StockChart from "../components/StockChart";
 import Watchlist from "../components/Watchlist";
 import SignalSummary from "../components/SignalSummary";
 import ChartToolbar from "../components/ChartToolbar";
+import TrendCard, { TREND_HORIZON, TREND_LOOKBACK } from "../components/TrendCard";
+import { extrapolate, nextTradingDays } from "../lib/trend";
 import { loadTicker } from "../lib/data";
 import type { Route } from "../lib/route";
 import { useStoredState } from "../lib/storage";
@@ -25,6 +27,7 @@ export default function ChartPage({ index, indexError, route, navigate, redUp }:
   const [tickerError, setTickerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [overlays, setOverlays] = useStoredState("overlays", DEFAULT_OVERLAYS);
+  const [showTrend, setShowTrend] = useStoredState("showTrend", true);
 
   // 網址沒有指定股票時，預設選清單第一檔
   const symbol = route.symbol ?? index?.tickers[0]?.symbol ?? null;
@@ -48,6 +51,18 @@ export default function ChartPage({ index, indexError, route, navigate, redUp }:
 
   const shown = ticker && ticker.symbol === symbol ? ticker : null;
   const series = shown ? shown[route.timeframe] : null;
+
+  // 短期趨勢外推（一律用日線計算）。用 useMemo 避免每次重畫都產生新陣列、讓圖表重設位置。
+  const market: "US" | "TW" = shown && /\.TWO?$/.test(shown.symbol) ? "TW" : "US";
+  const projection = useMemo(() => {
+    if (!shown) return null;
+    const { time, close } = shown.daily;
+    if (close.length < TREND_LOOKBACK) return null;
+    const values = extrapolate(close, TREND_LOOKBACK, TREND_HORIZON);
+    const dates = nextTradingDays(time[time.length - 1], TREND_HORIZON, market);
+    // 第一個點放最新收盤，讓虛線從 K 線最後一根接出去
+    return [{ time: time[time.length - 1], value: close[close.length - 1] }, ...dates.map((d, i) => ({ time: d, value: values[i] }))];
+  }, [shown, market]);
 
   return (
     <div className="layout">
@@ -80,7 +95,13 @@ export default function ChartPage({ index, indexError, route, navigate, redUp }:
           {tickerError ? (
             <p className="error chart-placeholder">此股票資料讀取失敗：{tickerError}</p>
           ) : series ? (
-            <StockChart data={series} timeframe={route.timeframe} overlays={overlays} redUp={redUp} />
+            <StockChart
+              data={series}
+              timeframe={route.timeframe}
+              overlays={overlays}
+              redUp={redUp}
+              projection={showTrend ? projection : null}
+            />
           ) : (
             <div className="chart-placeholder muted">{loading || !index ? "載入中…" : "請選擇股票"}</div>
           )}
@@ -88,6 +109,18 @@ export default function ChartPage({ index, indexError, route, navigate, redUp }:
 
         {series && shown && (
           <SignalSummary data={series} timeframe={route.timeframe} currency={shown.currency} redUp={redUp} />
+        )}
+
+        {shown && projection && (
+          <TrendCard
+            closes={shown.daily.close}
+            lastDate={shown.daily.time[shown.daily.time.length - 1]}
+            currency={shown.currency}
+            market={market}
+            projection={projection}
+            showOnChart={showTrend}
+            onToggle={() => setShowTrend(!showTrend)}
+          />
         )}
       </section>
     </div>

@@ -33,3 +33,9 @@ export function pnlClass(v: number | null | undefined, redUp: boolean): string {
   if (!v) return "";
   return v > 0 === redUp ? "num-red" : "num-green";
 }
+
+/** 固定小數位數（Beta、夏普值這類要對齊的數字，例如 1 → "1.00"） */
+export function fmtFixed(v: number | null | undefined, digits = 2): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  return v.toFixed(digits);
+}

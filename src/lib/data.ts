@@ -73,3 +73,18 @@ export function loadScreener(): Promise<ScreenerData> {
   }
   return screenerPromise;
 }
+
+// ---- 第四階段：歷史匯率 ----
+
+let fxPromise: Promise<Record<string, { time: string[]; close: number[] }> | null> | null = null;
+
+/**
+ * 讀取 public/data/fx.json（USD/TWD 歷史匯率）。
+ * 這個檔案是第四階段才加的，舊的部署可能還沒有 → 回傳 null，分析頁改用最新匯率近似。
+ */
+export function loadFxHistory(): Promise<Record<string, { time: string[]; close: number[] }> | null> {
+  if (!fxPromise) {
+    fxPromise = fetchJson<Record<string, { time: string[]; close: number[] }>>(`${DATA_BASE}/fx.json`).catch(() => null);
+  }
+  return fxPromise;
+}

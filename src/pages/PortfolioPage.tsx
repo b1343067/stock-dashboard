@@ -13,23 +13,16 @@ import HoldingsTable from "../components/portfolio/HoldingsTable";
 import SettingsPanel from "../components/portfolio/SettingsPanel";
 import SummaryCards from "../components/portfolio/SummaryCards";
 import {
-  DEFAULT_SETTINGS,
   buildExport,
   computePortfolio,
   parseImport,
-  sampleHoldings,
-  sanitizeHoldings,
-  sanitizeSettings,
   type Holding,
   type PortfolioSettings,
   type Quote,
 } from "../lib/portfolio";
-import { readStorage, writeStorage } from "../lib/storage";
+import { writeStorage } from "../lib/storage";
+import { KEY_HOLDINGS, KEY_SAMPLE, KEY_SETTINGS, loadHoldings, loadSettings } from "../lib/portfolioStore";
 import type { IndexData } from "../lib/types";
-
-const KEY_HOLDINGS = "portfolio:holdings";
-const KEY_SETTINGS = "portfolio:settings";
-const KEY_SAMPLE = "portfolio:isSample";
 
 interface Props {
   index: IndexData | null;
@@ -37,21 +30,11 @@ interface Props {
   redUp: boolean;
 }
 
-/**
- * 第一次打開（localStorage 沒有任何持股紀錄）→ 顯示範例持股（修正 #6）
- * 之後就讀使用者自己存的。
- */
-function loadInitial(): { holdings: Holding[]; isSample: boolean } {
-  const raw = readStorage<unknown>(KEY_HOLDINGS, null);
-  if (raw === null) return { holdings: sampleHoldings(), isSample: true };
-  return { holdings: sanitizeHoldings(raw)[0], isSample: readStorage<boolean>(KEY_SAMPLE, false) === true };
-}
-
 export default function PortfolioPage({ index, indexError, redUp }: Props) {
-  const [initial] = useState(loadInitial);
+  const [initial] = useState(loadHoldings);
   const [holdings, setHoldings] = useState<Holding[]>(initial.holdings);
   const [isSample, setIsSample] = useState(initial.isSample);
-  const [settings, setSettings] = useState<PortfolioSettings>(() => sanitizeSettings(readStorage<unknown>(KEY_SETTINGS, DEFAULT_SETTINGS)));
+  const [settings, setSettings] = useState<PortfolioSettings>(loadSettings);
   // 表單狀態：null = 關閉、"new" = 新增、其他 = 正在編輯的持股 id
   const [editing, setEditing] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; tone: "ok" | "error" } | null>(null);
