@@ -33,6 +33,8 @@ export function writeStorage<T>(key: string, value: T): void {
 /** 像 useState 一樣用，但會自動存到 localStorage */
 export function useStoredState<T>(key: string, fallback: T) {
   const [value, setValue] = useState<T>(() => readStorage(key, fallback));
-  useEffect(() => writeStorage(key, value), [key, value]);
+  useEffect(() => {
+    writeStorage(key, value);
+  }, [key, value]);
   return [value, setValue] as const;
 }

@@ -16,6 +16,15 @@ ROOT = Path(__file__).resolve().parent.parent          # 專案根目錄
 CONFIG_PATH = ROOT / "config" / "watchlist.json"         # 觀察清單設定
 DATA_DIR = ROOT / "public" / "data"                      # 前端讀取的資料夾
 INDEX_PATH = DATA_DIR / "index.json"                     # 總表（清單 + 匯率）
+SCREENER_PATH = DATA_DIR / "screener.json"               # 篩選器用的精簡資料
+
+# 篩選器每個週期保留最近幾根 K 棒（條件最多看「最近 20 根」，再多留一些緩衝）
+SCREENER_BARS = 30
+# 篩選器需要的欄位（不含開高低量，讓檔案小一點）
+SCREENER_FIELDS = (
+    "time", "close", "ma10", "ma20", "ma50", "ma200",
+    "rsi", "macd", "signal", "hist", "bbUpper", "bbMiddle", "bbLower",
+)
 
 
 def load_watchlist() -> dict:
@@ -76,4 +85,27 @@ def rebuild_index(watchlist: dict, fx: dict) -> dict:
         "tickers": items,
     }
     write_json_atomic(INDEX_PATH, index)
+    build_screener(watchlist, index["generatedAt"])
     return index
+
+
+def build_screener(watchlist: dict, generated_at: str) -> dict:
+    """
+    產生 public/data/screener.json（第二階段：指標篩選器用）。
+    內容是每檔股票、每個週期「最近 SCREENER_BARS 根」的指標，
+    這樣篩選器只要下載一個小檔案，不用把 14 檔完整資料都抓下來。
+    和 index.json 一樣，只讀磁碟上現有的檔案，所以抓失敗的股票會沿用舊資料。
+    """
+    items = []
+    for t in watchlist["tickers"]:
+        payload = read_json(ticker_path(t["symbol"]))
+        if not payload:
+            continue
+        item = {k: payload[k] for k in ("symbol", "name", "currency", "lastDate", "lastClose", "changePct")}
+        for tf in ("daily", "weekly", "monthly"):
+            series = payload[tf]
+            item[tf] = {f: series[f][-SCREENER_BARS:] for f in SCREENER_FIELDS}
+        items.append(item)
+    screener = {"generatedAt": generated_at, "bars": SCREENER_BARS, "tickers": items}
+    write_json_atomic(SCREENER_PATH, screener)
+    return screener

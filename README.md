@@ -10,7 +10,7 @@
 | 階段 | 內容 | 狀態 |
 | --- | --- | --- |
 | 第一階段 | 資料管線、K 線圖（日／週／月）、均線、布林通道、MACD、RSI | ✅ 完成 |
-| 第二階段 | 指標篩選器（自訂條件、AND／OR、儲存組合） | ⏳ 規劃中 |
+| 第二階段 | 指標篩選器（自訂條件、AND／OR、儲存組合） | ✅ 完成 |
 | 第三階段 | 投資組合（持股存在瀏覽器、停利停損提醒、匯出匯入） | ⏳ 規劃中 |
 | 第四階段 | 組合分析（Beta、Alpha、最大回撤、相關係數、夏普最佳化、回測） | ⏳ 規劃中 |
 
@@ -20,6 +20,30 @@
 - 指標摘要卡片：RSI 區間、MACD 多空、布林 %B、股價和均線的相對位置
 - 支援紅漲綠跌／綠漲紅跌切換、深色模式、手機版
 - 網址會記住目前的股票和週期，例如 `/#/NVDA/weekly`
+
+第二階段（`/#/screener`）：
+- 自訂篩選條件，每個條件可選日線／週線／月線，用「全部符合（AND）」或「任一符合（OR）」組合
+- 內建 4 組範例組合；自己的組合可以儲存在瀏覽器（localStorage），下次打開還在
+- 每個條件旁顯示「幾檔符合」，方便調整參數
+- 結果列出每個條件的判斷細節（例如「3 天前交叉」「RSI 28.5」），點一下直接看圖
+- 也可以展開「不符合的股票」，看差在哪個條件
+
+### 篩選條件定義
+
+「最近 N 天內」= 包含最新一根 K 棒往前共 N 根（週線為 N 週、月線為 N 個月），N 可設 1～20。
+
+| 條件 | 判斷方式 |
+| --- | --- |
+| RSI 高於／低於 X | 最新一根 RSI > X ／ < X |
+| RSI 從 X 以下回升 | 最近 N 根內 RSI 由 ≤ X 穿越到 > X，而且現在仍在 X 以上 |
+| MACD 黃金交叉 | 最近 N 根內 DIF 由下往上穿越 DEA（前一根 DIF ≤ DEA，這一根 DIF > DEA） |
+| MACD 死亡交叉 | 最近 N 根內 DIF 由上往下穿越 DEA |
+| MACD 柱狀體連續縮短 | 最近連續 N 根，柱狀體絕對值都比前一根小，且沒有翻到另一邊（正負號相同） |
+| 股價突破布林上／中／下軌 | 最近 N 根內收盤價由下往上穿越該軌 |
+| 股價跌破布林上／中／下軌 | 最近 N 根內收盤價由上往下穿越該軌 |
+| 股價站上／跌破均線 | 最新收盤價 > ／ < 該均線（MA10／20／50／200） |
+
+週線、月線的最新一根可能是「還沒結束的本週／本月」，數值會隨每天更新而變動。
 
 ## 架構
 
@@ -58,12 +82,14 @@
 ```
 .
 ├── .github/workflows/
-│   └── update-data.yml      # 每日自動更新資料的排程（GitHub Actions）
+│   ├── update-data.yml      # 每日自動更新資料的排程（GitHub Actions）
+│   └── ci.yml               # 推送時自動跑測試與建置
 ├── config/
 │   └── watchlist.json       # 觀察清單：要追蹤哪些股票、匯率代號都在這裡改
 ├── public/                  # 原封不動複製到網站上的檔案
 │   ├── data/                # ★ 股價與指標資料（由 Python 腳本產生，不要手動改）
 │   │   ├── index.json       #   總表：股票清單、最新價格、匯率、更新時間
+│   │   ├── screener.json    #   篩選器用：每檔各週期最近 30 根的指標（約 44KB）
 │   │   └── <代號>.json      #   每檔股票一個檔案，含日／週／月線與指標
 │   └── favicon.svg
 ├── reference/               # 舊的課堂作業（只供參考，不會部署）
@@ -76,7 +102,10 @@
 │   └── requirements.txt     #   Python 套件清單
 ├── src/                     # 前端程式（React + TypeScript）
 │   ├── main.tsx             #   進入點
-│   ├── App.tsx              #   主畫面、狀態管理
+│   ├── App.tsx              #   最外層：頁首分頁、切換頁面、頁尾
+│   ├── pages/               #   頁面
+│   │   ├── ChartPage.tsx    #     看盤頁（觀察清單＋K 線圖）
+│   │   └── ScreenerPage.tsx #     指標篩選器
 │   ├── styles.css           #   全站樣式與深淺色主題
 │   ├── components/          #   畫面元件
 │   │   ├── StockChart.tsx   #     K 線圖（lightweight-charts）
@@ -84,10 +113,13 @@
 │   │   ├── Watchlist.tsx    #     觀察清單
 │   │   ├── SignalSummary.tsx#     指標摘要卡片
 │   │   ├── Header.tsx / Footer.tsx / ErrorBoundary.tsx
+│   │   └── screener/        #     篩選器元件：條件列、常用組合、結果列表
 │   └── lib/                 #   非畫面的工具程式
 │       ├── types.ts         #     JSON 資料格式定義
 │       ├── data.ts          #     讀取 JSON
-│       ├── route.ts         #     網址 #/代號/週期
+│       ├── route.ts         #     網址 #/代號/週期、#/screener
+│       ├── screener.ts      #     篩選條件判斷邏輯（純函式）
+│       ├── screener.test.ts #     篩選邏輯的單元測試（npm test）
 │       ├── storage.ts       #     localStorage 安全讀寫
 │       └── theme.ts         #     從 CSS 讀取圖表顏色
 ├── CLAUDE.md                # 給 AI 助手看的專案規則
@@ -149,6 +181,7 @@
 npm install          # 安裝前端套件
 npm run dev          # 開發模式，打開 http://localhost:5173
 npm run build        # 正式打包到 dist/
+npm test             # 執行單元測試（vitest）
 ```
 
 Python 資料腳本：
@@ -203,4 +236,4 @@ python scripts/generate_sample_data.py   # 產生隨機範例資料（會覆蓋 
 
 ## 技術
 
-Vite · React 19 · TypeScript · lightweight-charts v5 · Python · pandas · yfinance · GitHub Actions · Vercel
+Vite · React 19 · TypeScript · Vitest · lightweight-charts v5 · Python · pandas · yfinance · GitHub Actions · Vercel

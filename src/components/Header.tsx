@@ -3,18 +3,22 @@
 import { useEffect } from "react";
 import type { IndexData } from "../lib/types";
 import { useStoredState } from "../lib/storage";
+import { SCREENER_HREF, type Page } from "../lib/route";
 
 interface Props {
   index: IndexData | null;
   redUp: boolean;
   onToggleRedUp: () => void;
+  page: Page;
+  /** 「看盤」分頁要連到哪裡（最後看的那檔股票） */
+  chartHref: string;
 }
 
 type ThemePref = "auto" | "light" | "dark";
 const THEME_LABEL: Record<ThemePref, string> = { auto: "自動", light: "淺色", dark: "深色" };
 const NEXT: Record<ThemePref, ThemePref> = { auto: "light", light: "dark", dark: "auto" };
 
-export default function Header({ index, redUp, onToggleRedUp }: Props) {
+export default function Header({ index, redUp, onToggleRedUp, page, chartHref }: Props) {
   const [theme, setTheme] = useStoredState<ThemePref>("theme", "auto");
 
   // 把主題寫到 <html data-theme="...">，CSS 會依此切換顏色
@@ -38,6 +42,18 @@ export default function Header({ index, redUp, onToggleRedUp }: Props) {
           </span>
         )}
       </div>
+      <nav className="tabs" aria-label="頁面">
+        <a href={chartHref} className={page === "chart" ? "active" : ""} aria-current={page === "chart" ? "page" : undefined}>
+          看盤
+        </a>
+        <a
+          href={SCREENER_HREF}
+          className={page === "screener" ? "active" : ""}
+          aria-current={page === "screener" ? "page" : undefined}
+        >
+          篩選器
+        </a>
+      </nav>
       <div className="header-actions">
         <button type="button" className="btn-ghost" onClick={onToggleRedUp} title="切換漲跌顏色">
           {redUp ? (

@@ -2,6 +2,7 @@
 // 所有讀取都包在 try/catch 裡，失敗時回傳錯誤訊息，讓畫面顯示提示而不是整頁壞掉。
 
 import type { IndexData, SeriesData, TickerData } from "./types";
+import type { ScreenerData } from "./screener";
 
 const DATA_BASE = `${import.meta.env.BASE_URL}data`;
 
@@ -55,4 +56,20 @@ export function lastValid(arr: (number | null)[]): number | null {
     if (v !== null && v !== undefined) return v;
   }
   return null;
+}
+
+// ---- 第二階段：篩選器資料 ----
+
+let screenerPromise: Promise<ScreenerData> | null = null;
+
+/** 讀取 public/data/screener.json（每檔股票各週期最近 30 根的指標） */
+export function loadScreener(): Promise<ScreenerData> {
+  if (!screenerPromise) {
+    screenerPromise = fetchJson<ScreenerData>(`${DATA_BASE}/screener.json`).then((d) => {
+      if (!Array.isArray(d.tickers)) throw new Error("screener.json 格式不正確");
+      return d;
+    });
+    screenerPromise.catch(() => (screenerPromise = null)); // 失敗可重試
+  }
+  return screenerPromise;
 }

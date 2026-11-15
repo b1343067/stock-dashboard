@@ -1,0 +1,31 @@
+# 每次推送或開 Pull Request 時，自動檢查程式能不能正常建置、測試有沒有通過
+name: 檢查程式
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["public/data/**"]   # 每日資料更新不需要檢查
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 前端單元測試
+        run: npm test
+      - name: 建置
+        run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python 指標測試
+        run: |
+          pip install pandas numpy
+          python scripts/test_indicators.py
