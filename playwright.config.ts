@@ -19,7 +19,8 @@ export default defineConfig({
     timeout: 30_000,
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 900 } } },
+    // 桌機跑全部，但不跑標記 @mobile 的（那些只適用手機版畫面）
+    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 900 } }, grepInvert: /@mobile/ },
     // 手機只跑標記 @mobile 的測試
     { name: "mobile", use: { ...devices["Pixel 7"] }, grep: /@mobile/ },
   ],

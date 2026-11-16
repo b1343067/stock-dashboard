@@ -195,11 +195,40 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   padding: 12px 8px;
   position: sticky;
   top: 12px;
-  max-height: calc(100vh - 24px);
-  overflow: auto;
+  /* 扣掉頁首的高度，頁面在最上方時側邊欄底部也不會超出螢幕 */
+  max-height: calc(100vh - 110px);
+  /* 搜尋框固定在上方，只有下面的清單捲動 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
-.watchlist .section-title { padding: 0 8px; }
+.watchlist { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 .watchlist ul { list-style: none; margin: 0; padding: 0; }
+.wl-tools { display: flex; gap: 6px; padding: 0 2px 8px; }
+.wl-search { flex: 1; min-width: 0; }
+.wl-cat-select { display: none; } /* 只有手機版顯示 */
+.wl-scroll { overflow-y: auto; min-height: 0; flex: 1; }
+.wl-group + .wl-group { margin-top: 4px; }
+.wl-group-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: var(--surface);
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-align: left;
+}
+.wl-group-head .muted { margin-left: auto; font-weight: 400; }
+.wl-group-head:disabled { cursor: default; }
+.wl-caret { width: 10px; color: var(--text-3); }
+.wl-group.collapsed ul { display: none; }
 .wl-item {
   width: 100%;
   display: grid;
@@ -390,6 +419,7 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
   margin-bottom: 12px;
 }
 .screener-head h2 { font-size: 18px; }
+.cat-filter { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
 
 .preset-bar { display: flex; flex-direction: column; gap: 8px; padding: 10px 0 12px; border-bottom: 1px solid var(--border); }
 .preset-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -661,16 +691,20 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
   .holdings-table td.num small { display: inline; }
 
   /* 觀察清單變成上方橫向捲動 */
-  .sidebar { position: static; max-height: none; padding: 8px; overflow: hidden; }
-  .watchlist .section-title { display: none; }
-  .watchlist ul {
+  .sidebar { position: static; max-height: none; padding: 8px; }
+  .wl-cat-select { display: block; max-width: 45%; }
+  /* 所有分組攤平成一排，左右滑動 */
+  .wl-scroll {
     display: flex;
     gap: 6px;
     overflow-x: auto;
+    overflow-y: hidden;
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 2px;
   }
+  .wl-group, .wl-group ul, .wl-group.collapsed ul { display: contents; }
+  .wl-group-head { display: none; }
   .watchlist li { flex: 0 0 auto; scroll-snap-align: start; }
   .wl-item { width: auto; min-width: 112px; grid-template-areas: "sym chg" "price price"; }
   .wl-name { display: none; }

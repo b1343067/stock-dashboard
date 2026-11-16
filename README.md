@@ -26,10 +26,10 @@
 - **零後端、零成本**：GitHub Actions 每天抓資料並預先計算指標，前端只讀靜態 JSON；Vercel 免費方案部署。
 - **資料管線有防護**：單檔失敗保留前一天的檔案、原子寫檔不會產生半個檔案、全部失敗不覆蓋任何資料；網頁偵測資料過期會提醒。
 - **計算正確性有驗證**：
-  - 77 項單元測試（Vitest），涵蓋指標、篩選條件、損益與換匯、Beta／Alpha、最佳化、回測
+  - 100 項單元測試（Vitest），涵蓋指標、篩選條件、損益與換匯、Beta／Alpha、最佳化、回測、觀察清單分組，以及用真實資料做的「VOO 對自己 Beta = 1」自我檢查
   - Python 端以參考實作比對 Wilder RSI；組合分析的 Beta、Alpha、最大回撤另外用 numpy 交叉驗證，結果一致
   - 回測與趨勢外推的準確度測試都確認「不偷看未來資料」
-- **端對端測試**：Playwright 用真的瀏覽器跑完整使用流程（桌機＋手機），包含資料讀取失敗、匯入壞檔案等異常情況；每次推送由 CI 自動執行。
+- **端對端測試**：Playwright 用真的瀏覽器跑 17 項完整使用流程（桌機＋手機），包含「首頁只載入需要的資料」，包含資料讀取失敗、匯入壞檔案等異常情況；每次推送由 CI 自動執行。
 - **金融細節處理**：台股先用「當天的歷史匯率」換成美元再計算、台美交易日對齊、預測日期跳過週末與美股休市日、價格含除權息調整。
 - **誠實呈現**：「短期趨勢外推」附上和「明天價格 = 今天價格」比較的歷史準確度，外推比較差時直接寫出來。
 - **隱私**：儲存庫公開，但個人持股只存在使用者自己的瀏覽器（localStorage），可匯出匯入備份。
@@ -46,7 +46,9 @@
 | 第四階段 | 組合分析（Beta、Alpha、最大回撤、相關係數、夏普最佳化、回測） | ✅ 完成 |
 
 第一階段的畫面：
-- 觀察清單：VOO、BRK-B、JPM、MSFT、AMD、AMZN、PLTR、TSLA、GOOGL、NVDA、LLY、COST、XOM、0050.TW
+- 觀察清單：49 檔，分成大盤與債券、產業 ETF、科技、金融、醫療、消費、能源與工業、汽車、台股 9 類（清單在 `config/watchlist.json`，可以自己增減，見「[新增或刪除股票](#新增或刪除股票)」）
+- 側邊欄依分類分組（可收合）並有搜尋框；手機版用分類下拉選單
+- 只在點選某檔股票時才下載它的資料，首頁只載入總表和目前那一檔
 - K 線圖可以切換日線／週線／月線，可以疊加 MA10／20／50／200 和布林通道，下方有 MACD 和 RSI
 - 指標摘要卡片：RSI 區間、MACD 多空、布林 %B、股價和均線的相對位置
 - 支援紅漲綠跌／綠漲紅跌切換、深色模式、手機版
@@ -176,7 +178,7 @@
 │   ├── update-data.yml      # 每日自動更新資料的排程（GitHub Actions）
 │   └── ci.yml               # 推送時自動跑測試與建置
 ├── config/
-│   └── watchlist.json       # 觀察清單：要追蹤哪些股票、匯率代號都在這裡改
+│   └── watchlist.json       # ★ 觀察清單（依分類分組）：新增／刪除股票只要改這個檔案
 ├── docs/screenshots/        # README 用的截圖（範例持股，不含真實資料）
 ├── e2e/                     # Playwright 瀏覽器端對端測試（npm run test:e2e）
 ├── public/                  # 原封不動複製到網站上的檔案
@@ -189,7 +191,8 @@
 ├── reference/               # 舊的課堂作業（只供參考，不會部署）
 ├── scripts/                 # Python 資料處理
 │   ├── indicators.py        #   技術指標計算（核心邏輯）
-│   ├── data_io.py           #   讀寫 JSON、重建 index.json 與 screener.json
+│   ├── data_io.py           #   讀設定檔、讀寫 JSON、重建 index.json 與 screener.json
+│   ├── data_quality.py      #   日期轉成交易所時區、寫檔前的資料檢查
 │   ├── fetch_data.py        #   抓真實資料（GitHub Actions 執行）
 │   ├── generate_sample_data.py  # 產生隨機範例資料（不需網路）
 │   ├── test_indicators.py   #   指標計算的自我檢查
@@ -227,6 +230,8 @@
 │       ├── analytics.test.ts#     組合分析與趨勢外推的單元測試
 │       ├── format.ts        #     金額、百分比格式化
 │       ├── freshness.ts     #     資料過期檢查（落後 3 個平日以上提醒）
+│       ├── watchlist.ts     #     觀察清單分組、搜尋、分類篩選
+│       ├── selfcheck.test.ts#     自我檢查：VOO 對自己 Beta = 1、日期對齊
 │       ├── storage.ts       #     localStorage 安全讀寫
 │       └── theme.ts         #     從 CSS 讀取圖表顏色
 ├── CLAUDE.md                # 給 AI 助手看的專案規則
@@ -335,9 +340,63 @@ python scripts/generate_sample_data.py   # 產生隨機範例資料（會覆蓋 
 
 > ⚠️ 排程（schedule）只會在**預設分支**上執行；另外 GitHub 規定儲存庫 60 天沒有任何活動時會自動停用排程，到時候到 Actions 頁面重新啟用即可。
 
-## 修改觀察清單
+## 新增或刪除股票
 
-編輯 `config/watchlist.json`，新增或刪除股票（台股要加 `.TW`、上櫃加 `.TWO`），commit 後手動觸發一次 Actions 就會產生新檔案。被刪掉的股票，舊的 JSON 檔案可以手動刪除。
+觀察清單只在 **`config/watchlist.json`** 一個檔案，不用改任何程式碼。
+
+### 1. 編輯設定檔
+
+可以直接在 GitHub 網頁上改：打開 `config/watchlist.json` → 右上角鉛筆圖示 → 修改 → **Commit changes**（commit 到 `main`）。
+
+檔案依分類分組，每一檔只要寫代號和名稱：
+
+```jsonc
+{
+  "groups": [
+    {
+      "name": "科技",                                   // 分類名稱（側邊欄的分組標題）
+      "tickers": [
+        { "symbol": "AAPL", "name": "Apple" },
+        { "symbol": "NFLX", "name": "Netflix" }          // ← 新增一行就好（注意上一行結尾要有逗號）
+      ]
+    },
+    {
+      "name": "日股",                                   // ← 新增一個分類
+      "tickers": [{ "symbol": "7203.T", "name": "豐田汽車" }]
+    }
+  ]
+}
+```
+
+| 規則 | 說明 |
+| --- | --- |
+| 代號格式 | 用 Yahoo Finance 的代號：美股直接寫（`AAPL`）、台股上市加 `.TW`（`2330.TW`）、上櫃加 `.TWO`、代號裡的「.」改成「-」（`BRK-B`） |
+| 幣別 | 自動判斷：`.TW`／`.TWO` 是台幣，其他當美元。其他幣別的股票（例如日股）可以加 `"currency": "JPY"`，但組合分析目前只支援美元與台幣換算 |
+| 分類順序 | 側邊欄和篩選器的分類順序 = 檔案裡的順序 |
+| 重複代號 | 只保留第一個，Actions 紀錄會顯示警告 |
+| 刪除股票 | 把那一行刪掉即可；`public/data/` 裡的舊檔案留著不影響網站，也可以手動刪除 |
+| 改名或換分類 | 直接改，下次資料更新後生效，不用重抓歷史資料 |
+
+不確定代號對不對？到 [Yahoo Finance](https://finance.yahoo.com/) 搜尋，網址 `/quote/` 後面那段就是代號。
+
+### 2. 等資料更新
+
+改到 `config/watchlist.json` 並推到 `main` 後，「更新股價資料」Actions 會**自動執行**（也可以到 Actions 頁面手動 Run workflow）。約 3～5 分鐘後新股票就會出現在網站上。
+代號打錯或 Yahoo 抓不到的股票不會出現在網站上，也不會影響其他股票；到 Actions 的執行紀錄搜尋該代號就能看到原因。
+
+### 3. （選用）在本機先看畫面
+
+```bash
+python scripts/generate_sample_data.py --missing-only   # 只替還沒有資料的新股票產生「隨機範例資料」
+npm run dev
+```
+範例資料只是讓你預覽版面，**不要 commit**（`git checkout public/data` 可以還原）。
+
+### 資料更新怎麼處理幾十檔股票
+
+- 每 10 檔一批，批次之間休息幾秒，避免被 Yahoo 限流
+- 每檔失敗會自動重試 3 次（間隔 2、4、8 秒）；全部跑完後，下載失敗的再統一重試一輪
+- 任何一檔失敗（抓不到、資料異常、計算出錯）都只會跳過那一檔並保留它前一天的檔案，不會中斷整個更新
 
 ## 隱私
 

@@ -21,6 +21,12 @@ test("總表讀不到：顯示錯誤訊息，頁首與免責聲明仍在", async
 
 test("資料過期時頁首提醒", async ({ page }) => {
   const t = trackErrors(page);
+  // 範例資料時網站不會顯示過期提醒，所以把 index.json 標成真實資料，測試才不受本機資料影響
+  await page.route("**/data/index.json", async (route) => {
+    const res = await route.fetch();
+    const json = await res.json();
+    await route.fulfill({ response: res, json: { ...json, sample: false } });
+  });
   // 把瀏覽器時間調到最新資料的兩週後
   await page.clock.setFixedTime(new Date(Date.now() + 14 * 86_400_000));
   await page.goto("/");

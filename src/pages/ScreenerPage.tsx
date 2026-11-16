@@ -23,6 +23,7 @@ import {
   type ScreenerPreset,
 } from "../lib/screener";
 import { readStorage, writeStorage } from "../lib/storage";
+import { filterByCategory, groupTickers } from "../lib/watchlist";
 
 const KEY_CURRENT = "screener:current";
 const KEY_PRESETS = "screener:presets";
@@ -30,11 +31,14 @@ const KEY_PRESETS = "screener:presets";
 interface CurrentState {
   mode: CombineMode;
   conditions: Condition[];
+  /** 只篩選某個分類（"all" = 全部） */
+  category: string;
 }
 
 // 第一次使用時的預設條件
 const DEFAULT_STATE: CurrentState = {
   mode: "and",
+  category: "all",
   conditions: [makeCondition("rsiBelow", "daily"), { ...makeCondition("maAbove", "daily"), ma: 200 }],
 };
 
@@ -43,7 +47,11 @@ function loadCurrent(): CurrentState {
   const raw = readStorage<unknown>(KEY_CURRENT, null);
   if (!raw || typeof raw !== "object") return DEFAULT_STATE;
   const o = raw as Partial<CurrentState>;
-  return { mode: o.mode === "or" ? "or" : "and", conditions: sanitizeConditions(o.conditions) };
+  return {
+    mode: o.mode === "or" ? "or" : "and",
+    conditions: sanitizeConditions(o.conditions),
+    category: typeof o.category === "string" && o.category ? o.category : "all",
+  };
 }
 
 export default function ScreenerPage({ redUp }: { redUp: boolean }) {
@@ -66,11 +74,16 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
   }, [presets]);
 
   const { mode, conditions } = state;
-  const results = useMemo(() => (data ? runScreen(data.tickers, conditions, mode) : []), [data, conditions, mode]);
+  const categoryOptions = useMemo(() => (data ? groupTickers(data.tickers) : []), [data]);
+  // 存起來的分類如果已經不存在（設定檔改名或刪除），就當作「全部」
+  const category = state.category === "all" || !data || categoryOptions.some((g) => g.name === state.category) ? state.category : "all";
+  // 先依分類縮小範圍，再套用條件
+  const universe = useMemo(() => (data ? filterByCategory(data.tickers, category) : []), [data, category]);
+  const results = useMemo(() => runScreen(universe, conditions, mode), [universe, conditions, mode]);
   // 每個條件單獨有幾檔符合
   const hitCounts = useMemo(
-    () => conditions.map((c) => (data ? data.tickers.filter((t) => evaluateCondition(t, c).matched).length : null)),
-    [data, conditions],
+    () => conditions.map((c) => (data ? universe.filter((t) => evaluateCondition(t, c).matched).length : null)),
+    [data, universe, conditions],
   );
 
   const setConditions = (conds: Condition[]) => setState((s) => ({ ...s, conditions: conds }));
@@ -79,8 +92,9 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
   const add = () => setConditions([...conditions, makeCondition("rsiBelow", conditions.at(-1)?.tf ?? "daily")]);
 
   // 載入組合時產生新的 id，避免和畫面上的舊條件衝突
+  // 載入組合不改變目前選的分類
   const loadPreset = (p: ScreenerPreset) =>
-    setState({ mode: p.mode, conditions: p.conditions.map((c) => ({ ...c, id: newId() })) });
+    setState((s) => ({ ...s, mode: p.mode, conditions: p.conditions.map((c) => ({ ...c, id: newId() })) }));
 
   const savePreset = (name: string) => {
     const preset: ScreenerPreset = { name, mode, conditions };
@@ -96,25 +110,42 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
       <div className="card">
         <div className="screener-head">
           <h2>指標篩選器</h2>
-          <div className="segmented" role="radiogroup" aria-label="條件組合方式">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={mode === "and"}
-              className={mode === "and" ? "active" : ""}
-              onClick={() => setState((s) => ({ ...s, mode: "and" }))}
-            >
-              全部符合（AND）
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={mode === "or"}
-              className={mode === "or" ? "active" : ""}
-              onClick={() => setState((s) => ({ ...s, mode: "or" }))}
-            >
-              任一符合（OR）
-            </button>
+          <div className="toolbar">
+            <label className="cat-filter">
+              <span>範圍</span>
+              <select
+                aria-label="篩選範圍"
+                value={category}
+                onChange={(e) => setState((s) => ({ ...s, category: e.target.value }))}
+              >
+                <option value="all">全部分類{data ? `（${data.tickers.length} 檔）` : ""}</option>
+                {categoryOptions.map((g) => (
+                  <option key={g.name} value={g.name}>
+                    {g.name}（{g.items.length} 檔）
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="segmented" role="radiogroup" aria-label="條件組合方式">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={mode === "and"}
+                className={mode === "and" ? "active" : ""}
+                onClick={() => setState((s) => ({ ...s, mode: "and" }))}
+              >
+                全部符合（AND）
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={mode === "or"}
+                className={mode === "or" ? "active" : ""}
+                onClick={() => setState((s) => ({ ...s, mode: "or" }))}
+              >
+                任一符合（OR）
+              </button>
+            </div>
           </div>
         </div>
 

@@ -70,7 +70,13 @@ export default function ChartPage({ index, indexError, route, navigate, redUp }:
         {indexError ? (
           <p className="error">無法讀取股票清單：{indexError}</p>
         ) : (
-          <Watchlist items={index?.tickers ?? null} selected={symbol} onSelect={select} redUp={redUp} />
+          <Watchlist
+            items={index?.tickers ?? null}
+            categories={index?.categories}
+            selected={symbol}
+            onSelect={select}
+            redUp={redUp}
+          />
         )}
       </aside>
 

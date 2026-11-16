@@ -28,6 +28,8 @@ export interface ScreenerSeries {
 export interface ScreenerTicker {
   symbol: string;
   name: string;
+  /** 分類；舊資料可能沒有 */
+  category?: string;
   currency: string;
   lastDate: string;
   lastClose: number;

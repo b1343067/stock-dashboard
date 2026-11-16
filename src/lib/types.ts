@@ -44,6 +44,8 @@ export interface TickerSummary {
   symbol: string;
   name: string;
   currency: string;
+  /** 分類（來自 config/watchlist.json 的 groups）；舊資料可能沒有 */
+  category?: string;
   lastDate: string;
   lastClose: number;
   changePct: number;
@@ -57,6 +59,8 @@ export interface IndexData {
   fx: Record<string, number>; // 例如 { USDTWD: 32.1 }
   /** 無風險利率（年化小數，例如 0.0425）；舊資料可能沒有 */
   riskFree?: number | null;
+  /** 分類順序（依設定檔）；舊資料可能沒有 */
+  categories?: string[];
   tickers: TickerSummary[];
 }
 

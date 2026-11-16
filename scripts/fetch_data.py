@@ -2,14 +2,15 @@
 每日資料更新腳本（由 GitHub Actions 執行）
 =========================================
 流程：
-  1. 讀取 config/watchlist.json 的觀察清單
-  2. 逐檔用 yfinance 抓 10 年日線
+  1. 讀取 config/watchlist.json 的觀察清單（依分類分組）
+  2. 分批（每批 BATCH_SIZE 檔）用 yfinance 抓 10 年日線，批次之間稍微休息，避免被 Yahoo 限流
   3. 計算指標（日／週／月線），寫成 public/data/<代號>.json
   4. 抓 USD/TWD 匯率（最新值 + 歷史，歷史寫進 public/data/fx.json）與無風險利率
   5. 重建 public/data/index.json、screener.json
 
 安全機制：
-  - 某一檔抓不到或資料異常 → 不覆蓋，保留前一天的檔案
+  - 每檔失敗會自動重試（間隔越來越長）；全部跑完後，下載失敗的再統一重試一輪
+  - 某一檔抓不到或資料異常 → 不覆蓋，保留前一天的檔案；任何一檔出錯都不會中斷整個更新
   - 匯率抓不到 → 沿用前一次的匯率
   - 全部都失敗 → 結束碼 1（Actions 會顯示紅色失敗通知你），但不會動到任何檔案
 
@@ -20,6 +21,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 
@@ -33,6 +35,15 @@ from indicators import build_ticker_payload
 HISTORY_PERIOD = "10y"   # 抓 10 年，月線的均線才算得出來
 MIN_ROWS = 60            # 少於這個筆數視為資料異常
 RETRIES = 3              # 每檔最多重試次數
+BATCH_SIZE = 10          # 每批幾檔
+BATCH_PAUSE = 3          # 批次之間休息幾秒
+FINAL_RETRY_PAUSE = 30   # 第二輪重試前休息幾秒（Yahoo 暫時限流時通常等一下就好）
+# 測試時可設 FETCH_SLEEP_SCALE=0 跳過所有等待
+SLEEP_SCALE = float(os.environ.get("FETCH_SLEEP_SCALE", "1"))
+
+
+def pause(seconds: float) -> None:
+    time.sleep(seconds * SLEEP_SCALE)
 
 
 def download_daily(symbol: str) -> pd.DataFrame | None:
@@ -47,7 +58,7 @@ def download_daily(symbol: str) -> pd.DataFrame | None:
             print(f"  [{symbol}] 第 {attempt} 次：資料筆數不足（{0 if df is None else len(df)} 筆）")
         except Exception as e:  # yfinance 的錯誤種類很多，這裡統一處理
             print(f"  [{symbol}] 第 {attempt} 次失敗：{e}")
-        time.sleep(2 * attempt)
+        pause(2 ** attempt)  # 2、4、8 秒：越等越久，給伺服器喘息時間
     return None
 
 
@@ -93,31 +104,57 @@ def fetch_risk_free(symbol: str | None) -> float | None:
     return None
 
 
-def main() -> int:
-    watchlist = load_watchlist()
-    ok, failed = [], []
-
-    for t in watchlist["tickers"]:
-        symbol = t["symbol"]
-        print(f"抓取 {symbol} ...")
+def process_symbol(t: dict) -> str:
+    """
+    抓一檔、檢查、計算、寫檔。回傳結果：
+      "ok"        成功
+      "download"  下載失敗（之後會再重試一輪）
+      "invalid"   資料異常或計算失敗（不重試，保留舊檔）
+    任何錯誤都在這裡處理掉，不會往外丟，確保單檔失敗不會中斷整個更新。
+    """
+    symbol = t["symbol"]
+    try:
         df = download_daily(symbol)
         if df is None:
-            failed.append(symbol)
-            print(f"  [{symbol}] 放棄，保留前一天的檔案")
-            continue
+            print(f"  [{symbol}] 下載失敗，保留前一天的檔案")
+            return "download"
         problems = validate_daily(df.dropna(subset=["Close"]), MIN_ROWS)
         if problems:
-            failed.append(symbol)
             print(f"  [{symbol}] 資料異常：{'；'.join(problems)}，保留前一天的檔案")
-            continue
-        try:
-            payload = build_ticker_payload(df, {**t, "sample": False})
-            write_json_atomic(ticker_path(symbol), payload)
-            ok.append(symbol)
-            print(f"  [{symbol}] 完成，最後日期 {payload['lastDate']} 收盤 {payload['lastClose']}")
-        except Exception as e:
-            failed.append(symbol)
-            print(f"  [{symbol}] 計算指標失敗：{e}，保留前一天的檔案")
+            return "invalid"
+        payload = build_ticker_payload(df, {**t, "sample": False})
+        write_json_atomic(ticker_path(symbol), payload)
+        print(f"  [{symbol}] 完成，最後日期 {payload['lastDate']} 收盤 {payload['lastClose']}")
+        return "ok"
+    except Exception as e:  # 保險：任何意料外的錯誤都只影響這一檔
+        print(f"  [{symbol}] 發生錯誤：{e}，保留前一天的檔案")
+        return "invalid"
+
+
+def main() -> int:
+    watchlist = load_watchlist()
+    tickers = watchlist["tickers"]
+    results: dict[str, str] = {}
+
+    # 第一輪：分批抓
+    batches = [tickers[i : i + BATCH_SIZE] for i in range(0, len(tickers), BATCH_SIZE)]
+    for n, batch in enumerate(batches, start=1):
+        print(f"\n=== 第 {n}/{len(batches)} 批（{len(batch)} 檔）===")
+        for t in batch:
+            results[t["symbol"]] = process_symbol(t)
+        if n < len(batches):
+            pause(BATCH_PAUSE)
+
+    # 第二輪：下載失敗的再試一次（常見原因是暫時被限流或網路不穩）
+    retry = [t for t in tickers if results[t["symbol"]] == "download"]
+    if retry:
+        print(f"\n=== 第二輪重試 {len(retry)} 檔：{[t['symbol'] for t in retry]} ===")
+        pause(FINAL_RETRY_PAUSE)
+        for t in retry:
+            results[t["symbol"]] = process_symbol(t)
+
+    ok = [s for s, r in results.items() if r == "ok"]
+    failed = [s for s, r in results.items() if r != "ok"]
 
     fx, fx_history = fetch_fx(watchlist.get("fx", {}))
     print(f"匯率：{fx or '抓取失敗，沿用舊值'}")

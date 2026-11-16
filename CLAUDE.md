@@ -28,11 +28,12 @@
 ## 架構
 
 ### 資料（Python，`scripts/`）
-- `config/watchlist.json`：觀察清單（唯一來源）、匯率代號 `fx`、無風險利率代號 `riskFree`（^IRX）
+- `config/watchlist.json`：觀察清單（唯一來源，使用者自己會改），格式 `groups: [{name, tickers: [{symbol, name, currency?}]}]`；另有匯率代號 `fx`、無風險利率代號 `riskFree`（^IRX）。幣別依代號自動判斷（.TW/.TWO = TWD）
 - `scripts/indicators.py`：**所有指標計算**（MA、Wilder RSI、MACD、布林、週月線 resample、輸出 JSON 結構）
-- `scripts/data_io.py`：路徑常數、原子寫檔、重建 `index.json` 與 `screener.json`（依磁碟上現存檔案）
-- `scripts/fetch_data.py`：yfinance 抓 10y 日線（auto_adjust=True），重試 3 次；匯率歷史寫 `fx.json`；全部失敗 exit 1 且不寫檔
-- `scripts/generate_sample_data.py`：固定種子的隨機漫步範例資料，`sample: true`（會覆蓋 public/data）
+- `scripts/data_io.py`：`load_watchlist()`→`normalize_watchlist()`（攤平成 tickers＋categories、去重、推斷幣別、相容舊格式）、原子寫檔、重建 `index.json` 與 `screener.json`（依磁碟上現存檔案；名稱與分類以設定檔為準；`generated_at` 可沿用舊時間）
+- `scripts/data_quality.py`：`to_exchange_dates()`（先換成交易所時區再取日期，避免台美差一天）、`validate_daily()`（重複／週末日期、價格異常 → 不寫檔）
+- `scripts/fetch_data.py`：每批 10 檔、批次間休息；每檔重試 3 次（2/4/8 秒）＋下載失敗者最後再一輪；`process_symbol()` 吃掉所有錯誤，單檔失敗不中斷；匯率歷史寫 `fx.json`；全部失敗 exit 1 且不寫檔。測試時設 `FETCH_SLEEP_SCALE=0` 跳過等待
+- `scripts/generate_sample_data.py`：固定種子的隨機漫步範例資料，`sample: true`（會覆蓋 public/data）；`--missing-only` 只補沒有資料檔的股票（本機預覽用，不要 commit）
 - `.github/workflows/update-data.yml`：cron `0 22 * * *`（台灣 06:00）、手動觸發、改到 config/scripts 推到 main 時也會跑；有變更才 commit
 - `.github/workflows/ci.yml`：單元測試＋建置＋Python 測試；另一個 job 跑 Playwright E2E（失敗時上傳報告）
 
@@ -42,6 +43,8 @@
 - `lib/types.ts`：**JSON 格式的 TypeScript 定義，改 Python 輸出時必須同步修改**
 - `lib/data.ts`：讀 JSON（帶快取、驗證）：`loadIndex`、`loadTicker`、`loadScreener`、`loadFxHistory`（沒有檔案回傳 null）
 - `lib/freshness.ts`：`checkFreshness()`，最新資料落後 3 個平日以上就在頁首提醒
+- `lib/watchlist.ts`：`groupTickers`（依設定檔分類順序分組＋搜尋）、`filterByCategory`；`components/Watchlist.tsx` 桌機分組可收合、手機攤平成一排＋分類下拉選單
+- 按需載入：首頁只讀 `index.json`＋目前那一檔；篩選器讀 `screener.json`；分析頁只讀持股與 VOO。**不要在首頁一次載入所有股票**
 - `lib/storage.ts`：`useStoredState(key, default)`、`readStorage`／`writeStorage`，key 自動加前綴 `stockdash:`
 - `lib/theme.ts`：從 CSS 變數讀圖表顏色；顏色只在 `styles.css` 的 `:root` 定義（`--s1`／`--s2` 類別色、`--div-*` 發散色，已用資料視覺化指引的驗證工具檢查過）
 - `lib/format.ts`：`fmtMoney`／`fmtPct`／`fmtFixed`／`pnlClass`（漲跌顏色跟著 redUp）
@@ -52,23 +55,23 @@
 - 趨勢外推：`lib/trend.ts`（線性回歸、`nextTradingDays`、`backtestAccuracy`）。**`NYSE_HOLIDAYS` 寫死到 2027 年，每年要補下一年**
 
 ### 測試
-- 單元測試：`src/lib/*.test.ts`（Vitest，`npm test`，只跑 src）
-- E2E：`e2e/*.spec.ts`（Playwright 1.63，`npm run test:e2e`，自動啟動 `vite preview`；desktop 專案跑全部、mobile 專案只跑 `@mobile`）
+- 單元測試：`src/lib/*.test.ts`（Vitest，`npm test`，只跑 src）。`selfcheck.test.ts` 讀真實 `public/data`：VOO 對自己 Beta／相關＝1、每檔日期遞增無週末
+- E2E：`e2e/*.spec.ts`（Playwright 1.63，`npm run test:e2e`，自動啟動 `vite preview`；desktop 專案跑沒標 `@mobile` 的、mobile 專案只跑 `@mobile`）
 - E2E 用 `trackErrors(page)` 收集錯誤，結尾 `expectNoErrors()`；測試不可依賴每天變動的價格數值，只檢查結構與邏輯
 - ⚠️ Playwright 上傳檔案（`setInputFiles`）要用純英文路徑（例如 `mkdtempSync(join(tmpdir(), ...))`）；`testInfo.outputPath()` 的資料夾名稱含中文與「：」「→」，上傳會靜靜失敗
 
 ## 資料格式
 
 - `public/data/<代號>.json`：`{symbol,name,currency,sample,lastDate,lastClose,changePct,daily,weekly,monthly}`，每個週期為欄位導向物件：`time,open,high,low,close,volume,ma10,ma20,ma50,ma200,rsi,macd,signal,hist,bbUpper,bbMiddle,bbLower`。日線保留最近 1260 筆（指標先用完整 10 年算再截斷），週／月線保留全部。
-- `public/data/index.json`：`{generatedAt,sample,fx:{USDTWD},riskFree,tickers:[{symbol,name,currency,lastDate,lastClose,changePct,sample}]}`（riskFree 為年化小數，抓不到沿用上次）
-- `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,lastDate,lastClose,changePct,daily,weekly,monthly}]}`，每週期只有 time/close/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
+- `public/data/index.json`：`{generatedAt,sample,fx:{USDTWD},riskFree,categories:[...],tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,sample}]}`（riskFree 為年化小數，抓不到沿用上次）
+- `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly}]}`，每週期只有 time/close/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
 - `public/data/fx.json`：`{USDTWD:{time,close}}`；沒有時分析頁用最新匯率近似並提示
 
 ### localStorage key（都有 `stockdash:` 前綴）
 - 投資組合：`portfolio:holdings`、`portfolio:settings`、`portfolio:isSample`（沒有 holdings key 時顯示範例持股）
-- 篩選器：`screener:current`（目前條件＋AND/OR）、`screener:presets`（我的組合）
+- 篩選器：`screener:current`（目前條件＋AND/OR＋分類範圍 `category`）、`screener:presets`（我的組合）
 - 分析：`analysis:period`、`analysis:source`
-- 介面：`overlays`、`showTrend`、`redUp`、`theme`
+- 介面：`overlays`、`showTrend`、`redUp`、`theme`、`watchlist:collapsed`
 
 ## 慣例
 
@@ -85,6 +88,10 @@
 - [x] 第三階段 投資組合
 - [x] 第四階段 組合分析＋短期趨勢外推
 - [x] 優化：README 截圖與徽章、E2E 測試進 CI、程式碼分割、資料過期提醒
+- [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
+
+### 已知事實（不要當成 bug 重查）
+- BRK-B 在 2026 年和 VOO 的日報酬幾乎不連動（近 1 年 Beta≈0.08、相關≈0.07；2022 年 0.76／0.81；5 年日報酬 Beta≈0.58）。已確認日期對齊與計算正確，是資料本身的結果
 
 ### 之後可做（使用者尚未決定）
 - 交易紀錄制投資組合（已實現損益、股利、XIRR）

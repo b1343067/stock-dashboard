@@ -7,17 +7,20 @@ GitHub Actions 第一次成功執行後，這些範例檔案就會被真實資�
 注意：這裡的價格都是亂數產生的，和真實股價無關。
 
 執行：
-  python scripts/generate_sample_data.py
+  python scripts/generate_sample_data.py                 # 全部改成範例資料（會覆蓋真實資料！）
+  python scripts/generate_sample_data.py --missing-only  # 只替「還沒有資料檔」的股票產生範例
+                                                         # （新增股票後想在本機先看畫面時用；不要 commit）
 """
 
 from __future__ import annotations
 
+import sys
 import zlib
 
 import numpy as np
 import pandas as pd
 
-from data_io import load_watchlist, rebuild_index, ticker_path, write_json_atomic
+from data_io import INDEX_PATH, load_watchlist, read_json, rebuild_index, ticker_path, write_json_atomic
 from indicators import build_ticker_payload
 
 YEARS = 10
@@ -51,15 +54,22 @@ def fake_ohlcv(symbol: str, end: pd.Timestamp) -> pd.DataFrame:
 
 def main() -> None:
     watchlist = load_watchlist()
+    missing_only = "--missing-only" in sys.argv
     # 結束日設為「今天之前的最後一個平日」
     end = pd.Timestamp.today().normalize() - pd.offsets.BDay(1)
     for t in watchlist["tickers"]:
+        if missing_only and ticker_path(t["symbol"]).exists():
+            continue
         df = fake_ohlcv(t["symbol"], end)
         payload = build_ticker_payload(df, {**t, "sample": True})
         write_json_atomic(ticker_path(t["symbol"]), payload)
         print(f"{t['symbol']}: {payload['lastDate']} 收盤 {payload['lastClose']}")
-    # 範例匯率
-    rebuild_index(watchlist, {"USDTWD": 32.0})
+    if missing_only:
+        # 保留原本的匯率與利率，只是把新的範例股票加進清單
+        prev = read_json(INDEX_PATH) or {}
+        rebuild_index(watchlist, prev.get("fx", {"USDTWD": 32.0}), prev.get("riskFree"))
+    else:
+        rebuild_index(watchlist, {"USDTWD": 32.0})  # 範例匯率
     print("範例資料產生完成")
 
 

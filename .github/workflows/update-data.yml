@@ -27,7 +27,8 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 49 檔＋重試；最壞情況（全部失敗都重試兩輪）約 25 分鐘
+    timeout-minutes: 45
     steps:
       - name: 取得程式碼
         uses: actions/checkout@v4

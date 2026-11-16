@@ -1,21 +1,101 @@
 {
-  "_說明": "觀察清單。symbol 為 Yahoo Finance 代號；台股請加 .TW。修改後 GitHub Actions 下次執行就會抓新的股票。",
+  "_說明": "觀察清單。新增股票：在對應分類的 tickers 裡加一行 { \"symbol\": \"代號\", \"name\": \"名稱\" }；新增分類：在 groups 裡加一個 { \"name\": \"分類名稱\", \"tickers\": [...] }。代號用 Yahoo Finance 格式：美股直接寫代號、台股上市加 .TW、上櫃加 .TWO、代號裡的點改成 -（例如 BRK-B）。幣別會依代號自動判斷，不用填。改完 commit 推到 main，GitHub Actions 會自動抓新股票的資料。",
   "fx": { "USDTWD": "TWD=X" },
   "riskFree": "^IRX",
-  "tickers": [
-    { "symbol": "VOO",     "name": "Vanguard S&P 500 ETF",       "currency": "USD" },
-    { "symbol": "BRK-B",   "name": "Berkshire Hathaway B",       "currency": "USD" },
-    { "symbol": "JPM",     "name": "JPMorgan Chase",             "currency": "USD" },
-    { "symbol": "MSFT",    "name": "Microsoft",                  "currency": "USD" },
-    { "symbol": "AMD",     "name": "Advanced Micro Devices",     "currency": "USD" },
-    { "symbol": "AMZN",    "name": "Amazon",                     "currency": "USD" },
-    { "symbol": "PLTR",    "name": "Palantir",                   "currency": "USD" },
-    { "symbol": "TSLA",    "name": "Tesla",                      "currency": "USD" },
-    { "symbol": "GOOGL",   "name": "Alphabet A",                 "currency": "USD" },
-    { "symbol": "NVDA",    "name": "NVIDIA",                     "currency": "USD" },
-    { "symbol": "LLY",     "name": "Eli Lilly",                  "currency": "USD" },
-    { "symbol": "COST",    "name": "Costco",                     "currency": "USD" },
-    { "symbol": "XOM",     "name": "Exxon Mobil",                "currency": "USD" },
-    { "symbol": "0050.TW", "name": "元大台灣50",                  "currency": "TWD" }
+  "groups": [
+    {
+      "name": "大盤與債券",
+      "tickers": [
+        { "symbol": "VOO", "name": "Vanguard S&P 500 ETF" },
+        { "symbol": "QQQ", "name": "Invesco 那斯達克 100 ETF" },
+        { "symbol": "VT", "name": "Vanguard 全世界股票 ETF" },
+        { "symbol": "VXUS", "name": "Vanguard 美國以外股票 ETF" },
+        { "symbol": "SGOV", "name": "iShares 0-3 個月美國國庫券 ETF" },
+        { "symbol": "BND", "name": "Vanguard 總體債券 ETF" },
+        { "symbol": "GLD", "name": "SPDR 黃金 ETF" }
+      ]
+    },
+    {
+      "name": "產業 ETF",
+      "tickers": [
+        { "symbol": "XLV", "name": "醫療保健類股 ETF" },
+        { "symbol": "XLP", "name": "必需消費類股 ETF" },
+        { "symbol": "XLE", "name": "能源類股 ETF" },
+        { "symbol": "SMH", "name": "VanEck 半導體 ETF" },
+        { "symbol": "VNQ", "name": "Vanguard 房地產 ETF" }
+      ]
+    },
+    {
+      "name": "科技",
+      "tickers": [
+        { "symbol": "AAPL", "name": "Apple" },
+        { "symbol": "MSFT", "name": "Microsoft" },
+        { "symbol": "GOOGL", "name": "Alphabet A" },
+        { "symbol": "AMZN", "name": "Amazon" },
+        { "symbol": "META", "name": "Meta Platforms" },
+        { "symbol": "NVDA", "name": "NVIDIA" },
+        { "symbol": "AMD", "name": "Advanced Micro Devices" },
+        { "symbol": "AVGO", "name": "Broadcom" },
+        { "symbol": "TSM", "name": "台積電 ADR" },
+        { "symbol": "PLTR", "name": "Palantir" },
+        { "symbol": "ORCL", "name": "Oracle" },
+        { "symbol": "INTC", "name": "Intel" }
+      ]
+    },
+    {
+      "name": "金融",
+      "tickers": [
+        { "symbol": "JPM", "name": "JPMorgan Chase" },
+        { "symbol": "BRK-B", "name": "Berkshire Hathaway B" },
+        { "symbol": "V", "name": "Visa" },
+        { "symbol": "MA", "name": "Mastercard" },
+        { "symbol": "GS", "name": "Goldman Sachs" }
+      ]
+    },
+    {
+      "name": "醫療",
+      "tickers": [
+        { "symbol": "LLY", "name": "Eli Lilly" },
+        { "symbol": "JNJ", "name": "Johnson & Johnson" },
+        { "symbol": "UNH", "name": "UnitedHealth" },
+        { "symbol": "ABBV", "name": "AbbVie" }
+      ]
+    },
+    {
+      "name": "消費",
+      "tickers": [
+        { "symbol": "COST", "name": "Costco" },
+        { "symbol": "WMT", "name": "Walmart" },
+        { "symbol": "PG", "name": "Procter & Gamble" },
+        { "symbol": "KO", "name": "Coca-Cola" },
+        { "symbol": "MCD", "name": "McDonald's" },
+        { "symbol": "HD", "name": "Home Depot" }
+      ]
+    },
+    {
+      "name": "能源與工業",
+      "tickers": [
+        { "symbol": "XOM", "name": "Exxon Mobil" },
+        { "symbol": "CVX", "name": "Chevron" },
+        { "symbol": "CAT", "name": "Caterpillar" },
+        { "symbol": "GE", "name": "GE Aerospace" }
+      ]
+    },
+    {
+      "name": "汽車",
+      "tickers": [
+        { "symbol": "TSLA", "name": "Tesla" }
+      ]
+    },
+    {
+      "name": "台股",
+      "tickers": [
+        { "symbol": "0050.TW", "name": "元大台灣50" },
+        { "symbol": "006208.TW", "name": "富邦台50" },
+        { "symbol": "2330.TW", "name": "台積電" },
+        { "symbol": "2317.TW", "name": "鴻海" },
+        { "symbol": "2454.TW", "name": "聯發科" }
+      ]
+    }
   ]
 }
