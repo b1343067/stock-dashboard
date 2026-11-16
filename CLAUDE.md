@@ -53,6 +53,9 @@
 - `lib/format.ts`：`fmtMoney`／`fmtPct`／`fmtFixed`／`pnlClass`（漲跌顏色跟著 redUp）
 - 看盤：`pages/ChartPage.tsx`（報價標頭）、`components/StockChart.tsx`（lightweight-charts v5；MACD／RSI 窗格展開才建立；趨勢外推虛線）、`components/StatusCards.tsx`＋`lib/signals.ts`（白話狀態卡）、`components/TrendCard.tsx`、`components/Sparkline.tsx`（觀察清單迷你走勢，資料來自 `index.json` 的 `spark`）
 - 頁首：`components/Header.tsx`（分頁、快速搜尋、提醒鈴鐺、紅漲綠跌、深淺色）、`components/BottomNav.tsx`（手機，5 個分頁）
+- 走勢比較：`pages/ComparePage.tsx`＋`lib/compare.ts`（`normalize`／`compareStats`／`parseSymbols`），路由 `#/compare/A,B`（route.symbol 放逗號字串），最多 4 檔；線色 `--s1`～`--s4`（已用驗證工具檢查，淺色背景下黃綠對比 < 3:1，所以一定要有直接標籤＋表格）
+- 效率前緣：`analytics.ts` 的 `simulatePortfolios`（固定種子亂數＋投影到 5%～45%）、`frontierEnvelope`；`components/analysis/FrontierChart.tsx`（SVG，標籤依兩點相對位置擺放避免重疊）
+- PWA：`public/manifest.webmanifest`、`public/icons/`、`public/sw.js`（手寫：頁面與 /data 網路優先、/assets 快取優先；**改快取策略時要改 cache 名稱版本**）；main.tsx 只在 PROD 註冊；App 有離線提示
 - 市場總覽：`pages/MarketPage.tsx`＋`lib/market.ts`（`periodChange`／`breadth`／`topMovers`／`categoryStats`／`heatIntensity`）；只用 index.json（含 spark 算 30 天漲跌），**首頁不可下載個股檔案**（E2E 檢查）
 - 價格提醒：`lib/alerts.ts`（條件、`evaluateAlert`、`alertState`、`acknowledge`）、`lib/alertsStore.ts`（`useSyncExternalStore` 共用狀態、`useAlertQuotes`：只有 RSI 提醒時才載入 screener.json）、`components/AlertsPanel.tsx`（lazy，桌機右側／手機底部滑出）、`components/AlertBanner.tsx`；App 統一計算 triggered
 - 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合）、`pages/ScreenerPage.tsx`、`components/screener/`
@@ -63,6 +66,7 @@
 ### 測試
 - 單元測試：`src/lib/*.test.ts`（Vitest，`npm test`，只跑 src）。`selfcheck.test.ts` 讀真實 `public/data`：VOO 對自己 Beta／相關＝1、每檔日期遞增無週末（沒有資料時自動跳過）
 - E2E：`e2e/*.spec.ts`（Playwright 1.63，`npm run test:e2e`，自動啟動 `vite preview`；desktop 專案跑沒標 `@mobile` 的、mobile 專案只跑 `@mobile`）
+- Playwright 預設 `serviceWorkers: "block"`（SW 會繞過 page.route 的模擬）；只有 `pwa.spec.ts` 用 `test.use({ serviceWorkers: "allow" })` 測離線
 - E2E 用 `trackErrors(page)` 收集錯誤，結尾 `expectNoErrors()`；測試不可依賴每天變動的價格數值，只檢查結構與邏輯
 - ⚠️ Playwright 上傳檔案（`setInputFiles`）要用純英文路徑（例如 `mkdtempSync(join(tmpdir(), ...))`）；`testInfo.outputPath()` 的資料夾名稱含中文與「：」「→」，上傳會靜靜失敗
 
@@ -108,6 +112,9 @@
 - [x] 優化：README 截圖與徽章、E2E 測試進 CI、程式碼分割、資料過期提醒
 - [x] 全站改版：紫藍主色、深淺色、K 線指標收合、白話狀態卡、手機底部導覽、快速搜尋
 - [x] 市場總覽首頁、價格提醒
+- [x] 加碼 A：多檔走勢比較、效率前緣圖、PWA（離線瀏覽）
+- [ ] 加碼 B：K 線畫圖工具、基本面資料（使用者已同意，等「繼續」）
+- [ ] 加碼 C：交易紀錄制投資組合（已實現損益、股利、XIRR）、英文版（使用者已同意，等「繼續」）
 - [x] 資料品質：自動修正小問題＋status.json；資料搬到 data 分支（main 不再每天變大）
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
 
@@ -115,8 +122,7 @@
 - BRK-B 在 2026 年和 VOO 的日報酬幾乎不連動（近 1 年 Beta≈0.08、相關≈0.07；2022 年 0.76／0.81；5 年日報酬 Beta≈0.58）。已確認日期對齊與計算正確，是資料本身的結果
 
 ### 之後可做（使用者尚未決定）
-- 交易紀錄制投資組合（已實現損益、股利、XIRR）
-- 效率前緣圖、多檔走勢比較、篩選器新條件（均線交叉、52 週新高低、成交量）
+- 篩選器新條件（均線交叉、52 週新高低、成交量）
 - 篩選結果 Telegram 通知、英文版
 
 ### 舊作業（reference/old_streamlit_app.py，尚未取得）要修正的點：全部完成

@@ -411,3 +411,67 @@ export function backtestStats(time: string[], values: number[], rf: number): Bac
     finalValue: last,
   };
 }
+
+// ---------------------------------------------------------------------------
+// 效率前緣（用隨機組合模擬）
+// ---------------------------------------------------------------------------
+
+/** 固定種子的亂數（同樣的資料每次畫出來都一樣，測試也可以重現） */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export interface SimPoint {
+  vol: number;
+  ret: number;
+  sharpe: number;
+}
+
+/**
+ * 在權重限制 [lo, hi] 內隨機產生 n 組權重，算出每組的預期報酬與波動。
+ * 隨機權重：先抽指數分佈再正規化（各種組合比較平均地分散），再投影回限制範圍內。
+ */
+export function simulatePortfolios(mu: number[], cov: number[][], rf: number, n: number, lo = 0.05, hi = 0.45, seed = 42): SimPoint[] {
+  const k = mu.length;
+  if (k === 0 || k * lo > 1 + 1e-9 || k * hi < 1 - 1e-9) return [];
+  const rand = seededRandom(seed);
+  const pts: SimPoint[] = [];
+  for (let i = 0; i < n; i++) {
+    const raw = mu.map(() => -Math.log(1 - rand()));
+    const sum = raw.reduce((a, b) => a + b, 0);
+    const w = projectToBox(raw.map((x) => x / sum), lo, hi);
+    const p = portfolioPerf(w, mu, cov, rf);
+    pts.push({ vol: p.vol, ret: p.expReturn, sharpe: p.sharpe });
+  }
+  return pts;
+}
+
+/**
+ * 效率前緣（近似）：把波動度切成 bins 段，每段取報酬最高的點，
+ * 再只保留「報酬隨波動遞增」的點——同樣風險下報酬最高的組合連成的線。
+ */
+export function frontierEnvelope(points: SimPoint[], bins = 40): SimPoint[] {
+  if (points.length === 0) return [];
+  const minV = Math.min(...points.map((p) => p.vol));
+  const maxV = Math.max(...points.map((p) => p.vol));
+  const width = (maxV - minV) / bins || 1;
+  const best: (SimPoint | undefined)[] = Array(bins + 1).fill(undefined);
+  for (const p of points) {
+    const b = Math.min(bins, Math.floor((p.vol - minV) / width));
+    if (!best[b] || p.ret > best[b]!.ret) best[b] = p;
+  }
+  const out: SimPoint[] = [];
+  for (const p of best) {
+    if (!p) continue;
+    // 只保留往右上走的點（最低風險點左下方的「低效率」部分不算前緣）
+    if (out.length === 0 || p.ret > out[out.length - 1].ret) out.push(p);
+  }
+  return out;
+}

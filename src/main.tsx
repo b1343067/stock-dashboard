@@ -25,3 +25,13 @@ createRoot(document.getElementById("root")!).render(
     </ErrorBoundary>
   </StrictMode>,
 );
+
+// 註冊 Service Worker（只在正式版；開發模式不用，避免快取干擾改程式）
+// 功能：可以「加到主畫面」、沒網路時顯示上次的資料（見 public/sw.js）
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      /* 註冊失敗（例如瀏覽器不支援）不影響網站本身 */
+    });
+  });
+}

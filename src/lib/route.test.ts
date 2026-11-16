@@ -1,6 +1,6 @@
 // 網址路由的單元測試。執行：npm test
 import { describe, expect, it } from "vitest";
-import { chartHref, parseHash } from "./route";
+import { chartHref, compareHref, parseHash } from "./route";
 
 describe("parseHash", () => {
   it("剛打開網站（沒有 hash）→ 市場總覽", () => {
@@ -20,5 +20,9 @@ describe("parseHash", () => {
   });
   it("chartHref 和 parseHash 互相對應（含特殊字元）", () => {
     expect(parseHash(chartHref("BRK-B", "monthly"))).toEqual({ page: "chart", symbol: "BRK-B", timeframe: "monthly" });
+  });
+  it("比較頁", () => {
+    expect(parseHash(compareHref(["NVDA", "0050.TW"]))).toEqual({ page: "compare", symbol: "NVDA,0050.TW", timeframe: "daily" });
+    expect(parseHash("#/compare")).toEqual({ page: "compare", symbol: null, timeframe: "daily" });
   });
 });

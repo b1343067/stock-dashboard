@@ -9,7 +9,7 @@ import TrendCard, { TREND_HORIZON, TREND_LOOKBACK } from "../components/TrendCar
 import { extrapolate, nextTradingDays } from "../lib/trend";
 import { loadTicker } from "../lib/data";
 import { fmtFixed, pnlClass } from "../lib/format";
-import type { Route } from "../lib/route";
+import { compareHref, type Route } from "../lib/route";
 import { useStoredState } from "../lib/storage";
 import type { IndexData, OverlayKey, TickerData, Timeframe } from "../lib/types";
 
@@ -126,6 +126,11 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
                 <button type="button" className="chip" onClick={() => onAddAlert(shown.symbol, quote.close)} title="這檔股票到某個價格時提醒我">
                   🔔 ＋ 提醒
                 </button>
+              )}
+              {shown && (
+                <a className="chip" href={compareHref(shown.symbol === "VOO" ? ["VOO", "QQQ"] : [shown.symbol, "VOO"])} title="和其他股票比較走勢">
+                  📈 比較
+                </a>
               )}
             </div>
             {quote && (

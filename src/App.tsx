@@ -2,6 +2,7 @@
 // 頁面由網址 hash 決定（見 src/lib/route.ts）：
 //   （空白）／#/market → 市場總覽（pages/MarketPage.tsx，網站打開的第一頁）
 //   #/代號/週期 → 看盤頁（pages/ChartPage.tsx）
+//   #/compare/A,B → 多檔走勢比較（pages/ComparePage.tsx）
 //   #/screener  → 指標篩選器（pages/ScreenerPage.tsx）
 //   #/portfolio → 投資組合（pages/PortfolioPage.tsx）
 //   #/analysis  → 組合分析（pages/AnalysisPage.tsx）
@@ -15,6 +16,7 @@ import AlertBanner from "./components/AlertBanner";
 // lightweight-charts 也會被拆成獨立檔案，只有需要畫圖的頁面才載入。
 const MarketPage = lazy(() => import("./pages/MarketPage"));
 const ChartPage = lazy(() => import("./pages/ChartPage"));
+const ComparePage = lazy(() => import("./pages/ComparePage"));
 const ScreenerPage = lazy(() => import("./pages/ScreenerPage"));
 const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
 const AnalysisPage = lazy(() => import("./pages/AnalysisPage"));
@@ -54,6 +56,19 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [route.page]);
 
+  // 離線偵測：沒網路時顯示提示（Service Worker 會提供上次存下來的資料）
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
   // 資料過期檢查（Actions 連續失敗時提醒）
   const freshness = useMemo(() => (index ? checkFreshness(index.tickers.map((t) => t.lastDate)) : null), [index]);
 
@@ -86,6 +101,12 @@ export default function App() {
 
       <AlertBanner triggered={triggered} quotes={quotes} onOpen={() => openAlerts()} />
 
+      {!online && (
+        <div className="banner offline-banner" role="status">
+          📴 目前離線，顯示的是上次載入的資料；恢復網路後會自動使用最新資料。
+        </div>
+      )}
+
       {freshness?.stale && !index?.sample && (
         <div className="banner" role="alert">
           ⚠️ <b>資料可能已過期</b>：最新資料日期為 {freshness.latestDate}，之後已有 {freshness.missed} 個平日沒有更新。
@@ -103,6 +124,8 @@ export default function App() {
         <Suspense fallback={<div className="card"><p className="muted empty">載入中…</p></div>}>
           {route.page === "market" ? (
             <MarketPage index={index} indexError={indexError} redUp={redUp} />
+          ) : route.page === "compare" ? (
+            <ComparePage index={index} symbolsParam={route.symbol} redUp={redUp} />
           ) : route.page === "screener" ? (
             <ScreenerPage redUp={redUp} />
           ) : route.page === "portfolio" ? (

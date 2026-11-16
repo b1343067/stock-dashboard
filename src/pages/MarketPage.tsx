@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import Sparkline from "../components/Sparkline";
 import { fmtFixed, pnlClass } from "../lib/format";
 import { breadth, categoryStats, heatIntensity, periodChange, topMovers, type Mover, type Period } from "../lib/market";
-import { chartHref } from "../lib/route";
+import { chartHref, compareHref } from "../lib/route";
 import { useStoredState } from "../lib/storage";
 import type { IndexData, TickerSummary } from "../lib/types";
 
@@ -66,6 +66,12 @@ export default function MarketPage({ index, indexError, redUp }: Props) {
       </div>
 
       {/* 大盤指標 */}
+      <div className="bench-head">
+        <h3 className="section-title">大盤指標</h3>
+        <a className="btn-link" href={compareHref(benches.slice(0, 4).map((t) => t.symbol))}>
+          比較走勢 →
+        </a>
+      </div>
       <section className="bench-grid" aria-label="大盤指標">
         {benches.map((t) => {
           const c = periodChange(t, period);

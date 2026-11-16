@@ -10,6 +10,9 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:4173",
     trace: "off",
+    // 預設封鎖 Service Worker：它會攔截網頁的請求，讓「模擬請求失敗」的測試失效。
+    // 只有 PWA 離線測試（pwa.spec.ts）會打開它。
+    serviceWorkers: "block",
   },
   // 測試前自動啟動「打包後的網站」（要先 npm run build）
   webServer: {

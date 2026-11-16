@@ -47,6 +47,8 @@
   /* 組合分析圖表：類別色（固定順序）與發散色（相關係數），依資料視覺化指引驗證過的色票 */
   --s1: #2a78d6;
   --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
   --div-pos: #2a78d6;
   --div-neg: #e34948;
   --div-mid: #f0efec;
@@ -88,6 +90,8 @@
     --c-rsi: #a78bfa;
     --s1: #3987e5;
     --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
     --div-pos: #3987e5;
     --div-neg: #e66767;
     --div-mid: #383835;
@@ -126,6 +130,8 @@
   --c-rsi: #a78bfa;
   --s1: #3987e5;
   --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
   --div-pos: #3987e5;
   --div-neg: #e66767;
   --div-mid: #383835;
@@ -874,6 +880,42 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
 .alert-state { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); white-space: nowrap; }
 .alert-state.state-triggered { background: var(--accent-strong); color: var(--accent-ink); }
 
+/* ---------- 效率前緣 ---------- */
+.frontier-title { margin-top: 22px; }
+.frontier-svg { width: 100%; height: auto; display: block; }
+.fr-grid { stroke: var(--grid); stroke-width: 1; }
+.fr-tick { fill: var(--text-3); font-size: 11px; font-family: var(--font-mono); }
+.fr-axis { fill: var(--text-3); font-size: 11.5px; font-weight: 600; }
+.fr-cloud circle { fill: var(--text-3); opacity: 0.22; }
+.fr-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.fr-label { pointer-events: none; fill: var(--text); font-size: 12px; font-weight: 800; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }
+.fr-marker { cursor: pointer; }
+.fr-marker:focus { outline: none; }
+.fr-marker:focus circle:last-of-type { stroke: var(--accent); }
+.fr-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; color: var(--text-2); margin-top: 6px; }
+.fr-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); opacity: 0.5; margin-right: 2px; }
+.fr-swatch-line { display: inline-block; width: 16px; height: 3px; border-radius: 2px; background: var(--accent); vertical-align: 3px; margin-right: 2px; }
+.fr-hover { margin-left: auto; color: var(--text); font-weight: 600; }
+
+/* ---------- 走勢比較 ---------- */
+.compare { display: flex; flex-direction: column; gap: 18px; }
+.bench-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: -8px; }
+.bench-head .section-title { margin: 0; }
+.cmp-picks { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.cmp-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1.5px solid var(--border); border-radius: 999px; padding: 4px 6px 4px 12px; font-weight: 800; font-size: 13.5px;
+}
+.cmp-chip a { color: var(--text); text-decoration: none; }
+.cmp-chip button { border: 0; background: none; color: var(--text-3); font-size: 16px; line-height: 1; padding: 0 4px; }
+.cmp-chip button:hover { color: var(--red); }
+.cmp-add { position: relative; width: 240px; }
+.cmp-add .text-input { width: 100%; }
+.cmp-chart { margin-top: 4px; }
+.cmp-canvas { height: 380px; width: 100%; }
+.cmp-table { margin-top: 12px; }
+a.chip { text-decoration: none; }
+
 /* ---------- 手機版 ---------- */
 @media (max-width: 860px) {
   .app { padding: 0 14px; }
@@ -965,6 +1007,11 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
   .chart-canvas.panes-2 { height: 540px; }
 
   .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+  .cmp-add { width: 100%; }
+  .cmp-table th:nth-child(5), .cmp-table td:nth-child(5), .cmp-table td .muted { display: none; }
+  .cmp-canvas { height: 300px; }
+  .compare .segmented { overflow-x: auto; max-width: 100%; }
 
   /* 提醒面板改從下方滑出 */
   .sheet-backdrop { align-items: flex-end; }

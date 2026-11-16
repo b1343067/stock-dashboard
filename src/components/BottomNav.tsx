@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import type { Page } from "../lib/route";
 import { NAV_ITEMS } from "./Header";
 
-const ICONS: Record<Page, ReactNode> = {
+// 只有出現在導覽列的頁面需要圖示（比較頁從看盤頁、市場總覽進入，不在導覽列）
+const ICONS: Partial<Record<Page, ReactNode>> = {
   market: (
     <>
       <rect x="3" y="3" width="6" height="6" rx="1.5" />

@@ -14,6 +14,9 @@ import {
   portfolioPerf,
   projectToBox,
   sliceFrom,
+  frontierEnvelope,
+  seededRandom,
+  simulatePortfolios,
 } from "./analytics";
 import { backtestAccuracy, extrapolate, linearFit, nextTradingDays } from "./trend";
 
@@ -209,5 +212,36 @@ describe("短期趨勢外推（修正 #4）", () => {
   });
   it("資料不足時回傳 null", () => {
     expect(backtestAccuracy([1, 2, 3], 20, 1)).toBeNull();
+  });
+});
+
+describe("效率前緣（模擬）", () => {
+  const mu = [0.12, 0.08, 0.1, 0.06];
+  const cov = [
+    [0.09, 0.02, 0.03, 0.01],
+    [0.02, 0.04, 0.01, 0.005],
+    [0.03, 0.01, 0.06, 0.01],
+    [0.01, 0.005, 0.01, 0.02],
+  ];
+  it("固定種子 → 結果相同", () => {
+    expect(seededRandom(1)()).toBe(seededRandom(1)());
+    expect(simulatePortfolios(mu, cov, 0.03, 50)).toEqual(simulatePortfolios(mu, cov, 0.03, 50));
+  });
+  it("模擬的組合都不會超過最佳化的夏普值", () => {
+    const pts = simulatePortfolios(mu, cov, 0.03, 2000);
+    expect(pts).toHaveLength(2000);
+    const best = maxSharpe(mu, cov, 0.03);
+    for (const p of pts) expect(p.sharpe).toBeLessThanOrEqual(best.sharpe + 1e-9);
+  });
+  it("前緣：波動越大、報酬越高", () => {
+    const f = frontierEnvelope(simulatePortfolios(mu, cov, 0.03, 2000));
+    expect(f.length).toBeGreaterThan(3);
+    for (let i = 1; i < f.length; i++) {
+      expect(f[i].vol).toBeGreaterThan(f[i - 1].vol);
+      expect(f[i].ret).toBeGreaterThan(f[i - 1].ret);
+    }
+  });
+  it("檔數不符合權重限制時回傳空的", () => {
+    expect(simulatePortfolios([0.1, 0.1], [[0.04, 0], [0, 0.04]], 0.03, 10)).toEqual([]);
   });
 });

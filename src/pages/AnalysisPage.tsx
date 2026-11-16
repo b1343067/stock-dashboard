@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import BacktestChart from "../components/analysis/BacktestChart";
 import CorrelationHeatmap from "../components/analysis/CorrelationHeatmap";
 import WeightsCompare from "../components/analysis/WeightsCompare";
+import FrontierChart from "../components/analysis/FrontierChart";
 import {
   alignSeries,
   analyze,
@@ -20,6 +21,8 @@ import {
   maxSharpe,
   portfolioPerf,
   sliceFrom,
+  frontierEnvelope,
+  simulatePortfolios,
   type PriceSeries,
 } from "../lib/analytics";
 import { loadFxHistory, loadTicker } from "../lib/data";
@@ -165,6 +168,14 @@ export default function AnalysisPage({ index, redUp }: Props) {
     return maxSharpe(result.assets.map((a) => a.capm), result.cov, rf, W_LO, W_HI, currentW);
   }, [result, rf, currentW]);
   const currentPerf = result ? portfolioPerf(currentW, result.assets.map((a) => a.capm), result.cov, rf) : null;
+
+  // 效率前緣：在同樣的權重限制下隨機產生 2500 組組合（固定種子，畫面每次一樣）
+  const frontier = useMemo(() => {
+    if (!result) return null;
+    const mu = result.assets.map((a) => a.capm);
+    const cloud = simulatePortfolios(mu, result.cov, rf, 2500, W_LO, W_HI);
+    return cloud.length ? { cloud, line: frontierEnvelope(cloud) } : null;
+  }, [result, rf]);
 
   // ---- 4. 回測（修正 #5）----
   const firstDate = fullAligned?.time[0];
@@ -360,6 +371,21 @@ export default function AnalysisPage({ index, redUp }: Props) {
               <p className="hint">
                 預期報酬用 CAPM 估計、風險用期間內的歷史共變異數。結果對假設很敏感（特別是市場預期報酬），只能當作參考方向，不是買賣建議。
               </p>
+              {frontier && (
+                <>
+                  <h3 className="section-title frontier-title">效率前緣</h3>
+                  <FrontierChart
+                    cloud={frontier.cloud}
+                    frontier={frontier.line}
+                    current={{ vol: currentPerf.vol, ret: currentPerf.expReturn, sharpe: currentPerf.sharpe }}
+                    suggested={{ vol: opt.vol, ret: opt.expReturn, sharpe: opt.sharpe }}
+                  />
+                  <p className="hint">
+                    每個灰點是一組符合權重限制（{W_LO * 100}%～{W_HI * 100}%）的隨機組合；上緣的線是「同樣風險下預期報酬最高」的組合。
+                    目前組合離線越遠，代表在同樣風險下還有更有效率的配置。建議組合是線上夏普值最高的點。
+                  </p>
+                </>
+              )}
             </>
           ) : (
             <p className="muted empty">{opt?.reason ?? "無法最佳化"}</p>

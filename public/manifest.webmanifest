@@ -1,0 +1,16 @@
+{
+  "name": "投資看盤",
+  "short_name": "投資看盤",
+  "description": "個人投資看盤：K 線、指標篩選、投資組合與組合分析",
+  "lang": "zh-Hant-TW",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f1014",
+  "theme_color": "#6366f1",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

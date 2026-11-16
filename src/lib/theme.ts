@@ -20,6 +20,8 @@ export interface ChartColors {
   rsi: string;
   s1: string;
   s2: string;
+  s3: string;
+  s4: string;
 }
 
 function read(): ChartColors {
@@ -42,6 +44,8 @@ function read(): ChartColors {
     rsi: v("--c-rsi"),
     s1: v("--s1"),
     s2: v("--s2"),
+    s3: v("--s3"),
+    s4: v("--s4"),
   };
 }
 

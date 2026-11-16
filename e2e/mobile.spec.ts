@@ -5,6 +5,7 @@ import { expectNoHorizontalScroll, trackErrors } from "./helpers";
 for (const [name, path] of [
   ["市場總覽", "/"],
   ["看盤", "/#/VOO/daily"],
+  ["走勢比較", "/#/compare/NVDA,AMD,TSM,2330.TW"],
   ["篩選器", "/#/screener"],
   ["投資組合", "/#/portfolio"],
   ["組合分析", "/#/analysis"],
