@@ -5,6 +5,7 @@ import { useState } from "react";
 import { chartHref } from "../../lib/route";
 import type { Condition, ScreenResult } from "../../lib/screener";
 import type { Timeframe } from "../../lib/types";
+import { t } from "../../lib/i18n";
 
 interface Props {
   results: ScreenResult[];
@@ -20,18 +21,18 @@ export default function ResultsTable({ results, conditions, redUp }: Props) {
   const tf: Timeframe = conditions[0]?.tf ?? "daily";
 
   if (conditions.length === 0) {
-    return <p className="muted empty">請新增至少一個條件，或從上方載入範例組合。</p>;
+    return <p className="muted empty">{t("請新增至少一個條件，或從上方載入範例組合。")}</p>;
   }
 
   return (
     <div className="results">
       <h3 className="section-title">
-        符合條件 <span className="count-badge">{matched.length}</span>
-        <span className="muted"> / {results.length} 檔</span>
+        {t("符合條件")}{" "}<span className="count-badge">{matched.length}</span>
+        <span className="muted"> {t("/ {0} 檔", [results.length])}</span>
       </h3>
 
       {matched.length === 0 ? (
-        <p className="muted empty">目前沒有股票符合。可以放寬參數，或改用「任一符合（OR）」。</p>
+        <p className="muted empty">{t("目前沒有股票符合。可以放寬參數，或改用「任一符合（OR）」。")}</p>
       ) : (
         <ResultList rows={matched} conditions={conditions} tf={tf} redUp={redUp} />
       )}
@@ -39,7 +40,7 @@ export default function ResultsTable({ results, conditions, redUp }: Props) {
       {others.length > 0 && (
         <>
           <button type="button" className="btn-link" onClick={() => setShowOthers(!showOthers)} aria-expanded={showOthers}>
-            {showOthers ? "▾" : "▸"} 不符合的股票（{others.length}）
+            {t("{0} 不符合的股票（{1}）", [showOthers ? "▾" : "▸", others.length])}
           </button>
           {showOthers && <ResultList rows={others} conditions={conditions} tf={tf} redUp={redUp} dim />}
         </>
@@ -63,24 +64,24 @@ function ResultList({
 }) {
   return (
     <ul className={`result-list${dim ? " dim" : ""}`}>
-      {rows.map(({ ticker: t, results }) => {
-        const up = t.changePct >= 0;
-        const chgCls = t.changePct === 0 ? "" : up === redUp ? "num-red" : "num-green";
+      {rows.map(({ ticker: tk, results }) => {
+        const up = tk.changePct >= 0;
+        const chgCls = tk.changePct === 0 ? "" : up === redUp ? "num-red" : "num-green";
         return (
-          <li key={t.symbol}>
-            <a className="result-item" href={chartHref(t.symbol, tf)}>
+          <li key={tk.symbol}>
+            <a className="result-item" href={chartHref(tk.symbol, tf)}>
               <div className="result-head">
-                <span className="result-sym">{t.symbol}</span>
-                <span className="result-name">{t.name}</span>
+                <span className="result-sym">{tk.symbol}</span>
+                <span className="result-name">{tk.name}</span>
                 <span className="result-price">
-                  {t.lastClose.toFixed(2)} <small className="muted">{t.currency}</small>
+                  {tk.lastClose.toFixed(2)} <small className="muted">{tk.currency}</small>
                 </span>
                 <span className={`result-chg ${chgCls}`}>
                   {up ? "+" : ""}
-                  {t.changePct.toFixed(2)}%
+                  {tk.changePct.toFixed(2)}%
                 </span>
                 <span className="result-go" aria-hidden="true">
-                  看圖 ›
+                  {t("看圖 ›")}
                 </span>
               </div>
               <div className="result-conds">

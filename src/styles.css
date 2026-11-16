@@ -205,7 +205,7 @@ a { color: var(--accent); }
 }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
 .brand-mark { width: 28px; height: 28px; border-radius: 9px; background: var(--accent-strong); display: grid; place-items: center; }
-.brand-name { font-weight: 800; font-size: 17px; letter-spacing: -0.01em; }
+.brand-name { font-weight: 800; font-size: 17px; letter-spacing: -0.01em; white-space: nowrap; }
 .tabs { display: flex; gap: 4px; }
 .tabs a {
   padding: 7px 14px;
@@ -1073,6 +1073,9 @@ a.chip { text-decoration: none; }
 
 @media (max-width: 480px) {
   .brand-name { font-size: 16px; }
+  /* 頁首右邊 4 個按鈕（提醒、漲跌色、語言、主題）縮小一點，和 Logo 擠得下同一行 */
+  .header-actions { gap: 6px; }
+  .hdr-btn { min-width: 34px; height: 34px; padding: 0 6px; }
   .quote-last { font-size: 30px; }
 }
 
@@ -1131,3 +1134,4 @@ a.chip { text-decoration: none; }
   .tx-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tx-summary .stat:last-child { grid-column: 1 / -1; }
 }
+.lang-btn { font-weight: 800; font-size: 12.5px; min-width: 36px; }

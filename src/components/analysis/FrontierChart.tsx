@@ -5,6 +5,7 @@
 
 import { useMemo, useState } from "react";
 import type { SimPoint } from "../../lib/analytics";
+import { t } from "../../lib/i18n";
 
 interface Props {
   cloud: SimPoint[];
@@ -59,7 +60,7 @@ export default function FrontierChart({ cloud, frontier, current, suggested }: P
       tabIndex={0}
       onFocus={() => setHover({ label, p })}
       onBlur={() => setHover(null)}
-      aria-label={`${label}：預期報酬 ${pct(p.ret)}、波動 ${pct(p.vol)}、夏普值 ${p.sharpe.toFixed(2)}`}
+      aria-label={t("{0}：預期報酬 {1}、波動 {2}、夏普值 {3}", [label, pct(p.ret), pct(p.vol), p.sharpe.toFixed(2)])}
     >
       {/* 比點大的透明圓：滑鼠比較好指到 */}
       <circle cx={scale.x(p.vol)} cy={scale.y(p.ret)} r={14} fill="transparent" />
@@ -77,7 +78,7 @@ export default function FrontierChart({ cloud, frontier, current, suggested }: P
 
   return (
     <div className="frontier">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="效率前緣圖：橫軸預期波動、縱軸預期報酬" className="frontier-svg">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t("效率前緣圖：橫軸預期波動、縱軸預期報酬")} className="frontier-svg">
         {/* 格線與座標 */}
         {scale.yt.map((v) => (
           <g key={`y${v}`}>
@@ -93,10 +94,10 @@ export default function FrontierChart({ cloud, frontier, current, suggested }: P
           </text>
         ))}
         <text x={(PAD.l + W - PAD.r) / 2} y={H - 6} textAnchor="middle" className="fr-axis">
-          預期波動（風險）→
+          {t("預期波動（風險）→")}
         </text>
         <text x={14} y={(PAD.t + H - PAD.b) / 2} textAnchor="middle" className="fr-axis" transform={`rotate(-90 14 ${(PAD.t + H - PAD.b) / 2})`}>
-          預期報酬 →
+          {t("預期報酬 →")}
         </text>
 
         {/* 隨機組合 */}
@@ -108,25 +109,25 @@ export default function FrontierChart({ cloud, frontier, current, suggested }: P
         {/* 效率前緣 */}
         <path d={line} className="fr-line" />
         {/* 兩個點通常很靠近：位置比較高的那個標籤放左上、比較低的放右下，標籤才會各自貼著自己的點 */}
-        {marker("目前組合", current, "var(--s1)", suggested && suggested.ret > current.ret ? "right" : "left")}
-        {suggested && marker("建議組合", suggested, "var(--s2)", suggested.ret > current.ret ? "left" : "right")}
+        {marker(t("目前組合"), current, "var(--s1)", suggested && suggested.ret > current.ret ? "right" : "left")}
+        {suggested && marker(t("建議組合"), suggested, "var(--s2)", suggested.ret > current.ret ? "left" : "right")}
       </svg>
       <div className="fr-legend small">
         <span>
-          <i className="fr-dot" /> 隨機組合（{cloud.length} 組）
+          <i className="fr-dot" /> {" "}{t("隨機組合（")}{cloud.length} {" "}{t("組）")}
         </span>
         <span>
-          <i className="fr-swatch-line" /> 效率前緣
+          <i className="fr-swatch-line" /> {" "}{t("效率前緣")}
         </span>
         <span>
-          <i className="swatch" style={{ background: "var(--s1)" }} /> 目前
+          <i className="swatch" style={{ background: "var(--s1)" }} /> {" "}{t("目前")}
         </span>
         <span>
-          <i className="swatch" style={{ background: "var(--s2)" }} /> 建議（夏普值最高）
+          <i className="swatch" style={{ background: "var(--s2)" }} /> {" "}{t("建議（夏普值最高）")}
         </span>
         {hover && (
           <span className="fr-hover num">
-            {hover.label}：報酬 {pct(hover.p.ret)}・波動 {pct(hover.p.vol)}・夏普 {hover.p.sharpe.toFixed(2)}
+            {t("{0}：報酬 {1}・波動 {2}・夏普 {3}", [hover.label, pct(hover.p.ret), pct(hover.p.vol), hover.p.sharpe.toFixed(2)])}
           </span>
         )}
       </div>

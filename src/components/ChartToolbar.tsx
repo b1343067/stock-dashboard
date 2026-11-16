@@ -1,6 +1,7 @@
 // 圖表工具列：左邊切換日／週／月線與均線，右邊「＋布林／＋MACD／＋RSI」展開進階指標
 
 import type { OverlayKey, Timeframe } from "../lib/types";
+import { getLang, t } from "../lib/i18n";
 
 interface Props {
   timeframe: Timeframe;
@@ -14,6 +15,8 @@ const TF: [Timeframe, string, string][] = [
   ["weekly", "週", "週線"],
   ["monthly", "月", "月線"],
 ];
+
+const SHORT_EN: Record<Timeframe, string> = { daily: "D", weekly: "W", monthly: "M" };
 
 const MA: [OverlayKey, string, string][] = [
   ["ma10", "MA10", "var(--c-ma10)"],
@@ -32,18 +35,19 @@ export default function ChartToolbar({ timeframe, onTimeframe, overlays, onOverl
   const toggle = (k: OverlayKey) => onOverlays({ ...overlays, [k]: !overlays[k] });
   return (
     <div className="chart-tools">
-      <div className="segmented" role="radiogroup" aria-label="K 線週期">
+      <div className="segmented" role="radiogroup" aria-label={t("K 線週期")}>
         {TF.map(([tf, short, full]) => (
           <button
             key={tf}
             type="button"
             role="radio"
-            aria-label={full}
+            aria-label={t(full)}
             aria-checked={timeframe === tf}
             className={timeframe === tf ? "active" : ""}
             onClick={() => onTimeframe(tf)}
           >
-            {short}
+            {/* 英文用 D／W／M；不用翻譯表，因為「週」在篩選器裡是「weeks」的意思 */}
+            {getLang() === "en" ? SHORT_EN[tf] : short}
           </button>
         ))}
       </div>
@@ -60,10 +64,10 @@ export default function ChartToolbar({ timeframe, onTimeframe, overlays, onOverl
           type="button"
           className={`chip chip-add${overlays[k] ? " on" : ""}`}
           aria-pressed={overlays[k]}
-          title={overlays[k] ? `收起 ${label}` : `展開 ${label}`}
+          title={overlays[k] ? t("收起 {0}", [t(label)]) : t("展開 {0}", [t(label)])}
           onClick={() => toggle(k)}
         >
-          {overlays[k] ? "−" : "＋"} {label}
+          {overlays[k] ? "−" : "＋"} {t(label)}
         </button>
       ))}
     </div>

@@ -24,6 +24,7 @@ import {
 } from "../lib/screener";
 import { readStorage, writeStorage } from "../lib/storage";
 import { filterByCategory, groupTickers } from "../lib/watchlist";
+import { t } from "../lib/i18n";
 
 const KEY_CURRENT = "screener:current";
 const KEY_PRESETS = "screener:presets";
@@ -100,7 +101,7 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
     const preset: ScreenerPreset = { name, mode, conditions };
     setPresets((ps) => {
       const exists = ps.some((p) => p.name === name);
-      if (exists && !window.confirm(`已經有「${name}」，要覆蓋嗎？`)) return ps;
+      if (exists && !window.confirm(t("已經有「{0}」，要覆蓋嗎？", [name]))) return ps;
       return exists ? ps.map((p) => (p.name === name ? preset : p)) : [...ps, preset];
     });
   };
@@ -109,24 +110,24 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
     <div className="screener">
       <div className="card">
         <div className="screener-head">
-          <h2>指標篩選器</h2>
+          <h2>{t("指標篩選器")}</h2>
           <div className="toolbar">
             <label className="cat-filter">
-              <span>範圍</span>
+              <span>{t("範圍")}</span>
               <select
-                aria-label="篩選範圍"
+                aria-label={t("篩選範圍")}
                 value={category}
                 onChange={(e) => setState((s) => ({ ...s, category: e.target.value }))}
               >
-                <option value="all">全部分類{data ? `（${data.tickers.length} 檔）` : ""}</option>
+                <option value="all">{t("全部分類{0}", [data ? t("（{0} 檔）", [data.tickers.length]) : ""])}</option>
                 {categoryOptions.map((g) => (
                   <option key={g.name} value={g.name}>
-                    {g.name}（{g.items.length} 檔）
+                    {t("{0}（{1} 檔）", [t(g.name), g.items.length])}
                   </option>
                 ))}
               </select>
             </label>
-            <div className="segmented" role="radiogroup" aria-label="條件組合方式">
+            <div className="segmented" role="radiogroup" aria-label={t("條件組合方式")}>
               <button
                 type="button"
                 role="radio"
@@ -134,7 +135,7 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
                 className={mode === "and" ? "active" : ""}
                 onClick={() => setState((s) => ({ ...s, mode: "and" }))}
               >
-                全部符合（AND）
+                {t("全部符合（AND）")}
               </button>
               <button
                 type="button"
@@ -143,7 +144,7 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
                 className={mode === "or" ? "active" : ""}
                 onClick={() => setState((s) => ({ ...s, mode: "or" }))}
               >
-                任一符合（OR）
+                {t("任一符合（OR）")}
               </button>
             </div>
           </div>
@@ -172,11 +173,11 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
 
         <div className="cond-actions">
           <button type="button" className="btn-ghost" onClick={add}>
-            ＋ 新增條件
+            {t("＋ 新增條件")}
           </button>
           {conditions.length > 0 && (
             <button type="button" className="btn-link" onClick={() => setConditions([])}>
-              清除全部
+              {t("清除全部")}
             </button>
           )}
         </div>
@@ -185,7 +186,7 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
           <p className="cond-summary">
             {conditions.map((c, i) => (
               <span key={c.id}>
-                {i > 0 && <b className="joiner">{mode === "and" ? " 且 " : " 或 "}</b>}
+                {i > 0 && <b className="joiner">{mode === "and" ? t(" 且 ") : t(" 或 ")}</b>}
                 {describeCondition(c)}
               </span>
             ))}
@@ -195,15 +196,14 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
 
       <div className="card">
         {error ? (
-          <p className="error">篩選資料讀取失敗：{error}</p>
+          <p className="error">{t("篩選資料讀取失敗：{0}", [error])}</p>
         ) : !data ? (
-          <p className="muted empty">載入中…</p>
+          <p className="muted empty">{t("載入中…")}</p>
         ) : (
           <>
             <ResultsTable results={results} conditions={conditions} redUp={redUp} />
             <p className="hint">
-              資料日期：{data.tickers[0]?.lastDate ?? "—"}。「最近 N 天內」包含最新一根 K 棒；週線、月線的最新一根可能是尚未結束的本週／本月。
-              篩選結果只是指標狀態，不代表買賣建議。
+              {t("資料日期：{0}。「最近 N 天內」包含最新一根 K 棒；週線、月線的最新一根可能是尚未結束的本週／本月。 篩選結果只是指標狀態，不代表買賣建議。", [data.tickers[0]?.lastDate ?? "—"])}
             </p>
           </>
         )}

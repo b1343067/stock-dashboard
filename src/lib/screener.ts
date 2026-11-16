@@ -7,6 +7,7 @@
 //   「最近 N 根內」= 包含最新這一根，往前共 N 根。N = 1 代表「就是最新這一根」。
 
 import type { Timeframe } from "./types";
+import { t } from "./i18n";
 
 /** 篩選器用的精簡資料（public/data/screener.json 裡的每個週期） */
 export interface ScreenerSeries {
@@ -39,6 +40,7 @@ export interface ScreenerTicker {
   fundamentals?: ScreenerFundamentals;
   symbol: string;
   name: string;
+  nameEn?: string;
   /** 分類；舊資料可能沒有 */
   category?: string;
   currency: string;
@@ -212,7 +214,7 @@ export function findCrossDown(a: (number | null)[], b: (number | null)[], n: num
 }
 
 function ago(k: number, tf: Timeframe): string {
-  return k === 0 ? "最新一根" : `${k} ${TF_UNIT[tf]}前`;
+  return k === 0 ? t("最新一根") : t("{0} {1}前", [k, t(TF_UNIT[tf])]);
 }
 
 function bandSeries(s: ScreenerSeries, band: Band) {
@@ -223,27 +225,27 @@ function bandSeries(s: ScreenerSeries, band: Band) {
 function evaluateFundamental(ticker: ScreenerTicker, c: Condition): CondResult {
   const f = ticker.fundamentals;
   const value = clamp(c.value, LIMITS.value.min, LIMITS.value.max);
-  if (!f) return { matched: false, detail: "無基本面資料" };
+  if (!f) return { matched: false, detail: t("無基本面資料") };
   const close = ticker.lastClose;
   switch (c.kind) {
     case "peBelow":
       // 沒有本益比（ETF、虧損）一律不符合，避免把虧損公司當成「便宜」
-      if (!isNum(f.pe)) return { matched: false, detail: "無本益比" };
-      return { matched: f.pe < value, detail: `本益比 ${f.pe.toFixed(1)}` };
+      if (!isNum(f.pe)) return { matched: false, detail: t("無本益比") };
+      return { matched: f.pe < value, detail: t("本益比 {0}", [f.pe.toFixed(1)]) };
     case "yieldAbove": {
       const y = isNum(f.dividendYield) ? f.dividendYield : 0;
-      return { matched: y > value, detail: `殖利率 ${y.toFixed(2)}%` };
+      return { matched: y > value, detail: t("殖利率 {0}%", [y.toFixed(2)]) };
     }
     case "near52High": {
-      if (!isNum(f.high52w) || f.high52w <= 0) return { matched: false, detail: "無 52 週資料" };
+      if (!isNum(f.high52w) || f.high52w <= 0) return { matched: false, detail: t("無 52 週資料") };
       // 距高點還差幾 %（0 = 就在高點）；四捨五入到 0.01，避免 4.9999…／5.0000…1 這種浮點誤差讓剛好 5% 判斷錯
       const gap = Math.round((1 - close / f.high52w) * 10000) / 100;
-      return { matched: gap <= value, detail: gap <= 0 ? "創 52 週新高" : `距高點 ${gap.toFixed(1)}%` };
+      return { matched: gap <= value, detail: gap <= 0 ? t("創 52 週新高") : t("距高點 {0}%", [gap.toFixed(1)]) };
     }
     case "near52Low": {
-      if (!isNum(f.low52w) || f.low52w <= 0) return { matched: false, detail: "無 52 週資料" };
+      if (!isNum(f.low52w) || f.low52w <= 0) return { matched: false, detail: t("無 52 週資料") };
       const gap = Math.round((close / f.low52w - 1) * 10000) / 100; // 比低點高幾 %
-      return { matched: gap <= value, detail: gap <= 0 ? "創 52 週新低" : `高於低點 ${gap.toFixed(1)}%` };
+      return { matched: gap <= value, detail: gap <= 0 ? t("創 52 週新低") : t("高於低點 {0}%", [gap.toFixed(1)]) };
     }
     default:
       return { matched: false, detail: "" };
@@ -254,7 +256,7 @@ function evaluateFundamental(ticker: ScreenerTicker, c: Condition): CondResult {
 export function evaluateCondition(ticker: ScreenerTicker, c: Condition): CondResult {
   if (KIND_META[c.kind].noTf) return evaluateFundamental(ticker, c);
   const s = ticker[c.tf];
-  if (!s || s.close.length === 0) return { matched: false, detail: "無資料" };
+  if (!s || s.close.length === 0) return { matched: false, detail: t("無資料") };
   const last = s.close.length - 1;
   const n = clamp(Math.round(c.n), LIMITS.n.min, LIMITS.n.max);
   const value = clamp(c.value, LIMITS.value.min, LIMITS.value.max);
@@ -262,11 +264,11 @@ export function evaluateCondition(ticker: ScreenerTicker, c: Condition): CondRes
 
   switch (c.kind) {
     case "rsiAbove":
-      if (!isNum(rsi)) return { matched: false, detail: "RSI 無資料" };
+      if (!isNum(rsi)) return { matched: false, detail: t("RSI 無資料") };
       return { matched: rsi > value, detail: `RSI ${rsi.toFixed(1)}` };
 
     case "rsiBelow":
-      if (!isNum(rsi)) return { matched: false, detail: "RSI 無資料" };
+      if (!isNum(rsi)) return { matched: false, detail: t("RSI 無資料") };
       return { matched: rsi < value, detail: `RSI ${rsi.toFixed(1)}` };
 
     case "rsiRebound": {
@@ -274,18 +276,18 @@ export function evaluateCondition(ticker: ScreenerTicker, c: Condition): CondRes
       const level = s.rsi.map(() => value);
       const k = findCrossUp(s.rsi, level, n);
       const stillAbove = isNum(rsi) && rsi >= value;
-      if (k >= 0 && stillAbove) return { matched: true, detail: `${ago(k, c.tf)}回升，RSI ${rsi.toFixed(1)}` };
-      return { matched: false, detail: isNum(rsi) ? `RSI ${rsi.toFixed(1)}` : "RSI 無資料" };
+      if (k >= 0 && stillAbove) return { matched: true, detail: t("{0}回升，RSI {1}", [ago(k, c.tf), rsi.toFixed(1)]) };
+      return { matched: false, detail: isNum(rsi) ? `RSI ${rsi.toFixed(1)}` : t("RSI 無資料") };
     }
 
     case "macdGolden": {
       const k = findCrossUp(s.macd, s.signal, n);
-      return { matched: k >= 0, detail: k >= 0 ? `${ago(k, c.tf)}交叉` : "未交叉" };
+      return { matched: k >= 0, detail: k >= 0 ? t("{0}交叉", [ago(k, c.tf)]) : t("未交叉") };
     }
 
     case "macdDeath": {
       const k = findCrossDown(s.macd, s.signal, n);
-      return { matched: k >= 0, detail: k >= 0 ? `${ago(k, c.tf)}交叉` : "未交叉" };
+      return { matched: k >= 0, detail: k >= 0 ? t("{0}交叉", [ago(k, c.tf)]) : t("未交叉") };
     }
 
     case "histShrink": {
@@ -298,24 +300,24 @@ export function evaluateCondition(ticker: ScreenerTicker, c: Condition): CondRes
         if (Math.abs(h1) < Math.abs(h0)) count++;
         else break;
       }
-      const side = isNum(s.hist[last]) ? (s.hist[last]! > 0 ? "正值柱" : "負值柱") : "";
-      return { matched: count >= n, detail: count > 0 ? `${side}已連續縮短 ${count} 根` : "未縮短" };
+      const side = isNum(s.hist[last]) ? (s.hist[last]! > 0 ? t("正值柱") : t("負值柱")) : "";
+      return { matched: count >= n, detail: count > 0 ? t("{0}已連續縮短 {1} 根", [side, count]) : t("未縮短") };
     }
 
     case "bbBreakUp":
     case "bbBreakDown": {
       const band = bandSeries(s, c.band);
       const k = c.kind === "bbBreakUp" ? findCrossUp(s.close, band, n) : findCrossDown(s.close, band, n);
-      return { matched: k >= 0, detail: k >= 0 ? `${ago(k, c.tf)}${c.kind === "bbBreakUp" ? "突破" : "跌破"}` : "未發生" };
+      return { matched: k >= 0, detail: k >= 0 ? (c.kind === "bbBreakUp" ? t("{0}突破", [ago(k, c.tf)]) : t("{0}跌破", [ago(k, c.tf)])) : t("未發生") };
     }
 
     case "maAbove":
     case "maBelow": {
       const ma = s[`ma${c.ma}` as const][last];
       const close = s.close[last];
-      if (!isNum(ma)) return { matched: false, detail: `MA${c.ma} 無資料` };
+      if (!isNum(ma)) return { matched: false, detail: t("MA{0} 無資料", [c.ma]) };
       const diff = (close / ma - 1) * 100;
-      const detail = `距 MA${c.ma} ${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`;
+      const detail = t("距 MA{0} {1}{2}%", [c.ma, diff >= 0 ? "+" : "", diff.toFixed(1)]);
       return { matched: c.kind === "maAbove" ? close > ma : close < ma, detail };
     }
     default:
@@ -344,37 +346,37 @@ export function runScreen(data: ScreenerTicker[], conditions: Condition[], mode:
 
 /** 把條件轉成一句中文，例如「日線 RSI 低於 30」 */
 export function describeCondition(c: Condition): string {
-  const tf = TF_LABEL[c.tf];
-  const within = c.n === 1 ? "（最新一根）" : `（最近 ${c.n} ${TF_UNIT[c.tf]}內）`;
+  const tf = t(TF_LABEL[c.tf]);
+  const within = c.n === 1 ? t("（最新一根）") : t("（最近 {0} {1}內）", [c.n, t(TF_UNIT[c.tf])]);
   switch (c.kind) {
     case "rsiAbove":
-      return `${tf} RSI 高於 ${c.value}`;
+      return t("{0} RSI 高於 {1}", [tf, c.value]);
     case "rsiBelow":
-      return `${tf} RSI 低於 ${c.value}`;
+      return t("{0} RSI 低於 {1}", [tf, c.value]);
     case "rsiRebound":
-      return `${tf} RSI 從 ${c.value} 以下回升${within}`;
+      return t("{0} RSI 從 {1} 以下回升{2}", [tf, c.value, within]);
     case "macdGolden":
-      return `${tf} MACD 黃金交叉${within}`;
+      return t("{0} MACD 黃金交叉{1}", [tf, within]);
     case "macdDeath":
-      return `${tf} MACD 死亡交叉${within}`;
+      return t("{0} MACD 死亡交叉{1}", [tf, within]);
     case "histShrink":
-      return `${tf} MACD 柱狀體連續縮短 ${c.n} 根`;
+      return t("{0} MACD 柱狀體連續縮短 {1} 根", [tf, c.n]);
     case "bbBreakUp":
-      return `${tf} 股價突破布林${BAND_LABEL[c.band]}${within}`;
+      return t("{0} 股價突破布林{1}{2}", [tf, t(BAND_LABEL[c.band]), within]);
     case "bbBreakDown":
-      return `${tf} 股價跌破布林${BAND_LABEL[c.band]}${within}`;
+      return t("{0} 股價跌破布林{1}{2}", [tf, t(BAND_LABEL[c.band]), within]);
     case "maAbove":
-      return `${tf} 股價站上 MA${c.ma}`;
+      return t("{0} 股價站上 MA{1}", [tf, c.ma]);
     case "maBelow":
-      return `${tf} 股價跌破 MA${c.ma}`;
+      return t("{0} 股價跌破 MA{1}", [tf, c.ma]);
     case "peBelow":
-      return `本益比低於 ${c.value} 倍`;
+      return t("本益比低於 {0} 倍", [c.value]);
     case "yieldAbove":
-      return `殖利率高於 ${c.value}%`;
+      return t("殖利率高於 {0}%", [c.value]);
     case "near52High":
-      return `距 52 週高點 ${c.value}% 以內`;
+      return t("距 52 週高點 {0}% 以內", [c.value]);
     case "near52Low":
-      return `距 52 週低點 ${c.value}% 以內`;
+      return t("距 52 週低點 {0}% 以內", [c.value]);
   }
 }
 

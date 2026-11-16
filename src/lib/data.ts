@@ -3,6 +3,7 @@
 
 import type { IndexData, SeriesData, TickerData } from "./types";
 import type { ScreenerData } from "./screener";
+import { getLang, t } from "./i18n";
 
 const DATA_BASE = `${import.meta.env.BASE_URL}data`;
 
@@ -12,14 +13,23 @@ const tickerCache = new Map<string, Promise<TickerData>>();
 async function fetchJson<T>(url: string): Promise<T> {
   // cache: "no-cache" → 每次都向伺服器確認有沒有新版本（資料每天更新）
   const res = await fetch(url, { cache: "no-cache" });
-  if (!res.ok) throw new Error(`讀取失敗（HTTP ${res.status}）：${url}`);
+  if (!res.ok) throw new Error(t("讀取失敗（HTTP {0}）：{1}", [res.status, url]));
   return (await res.json()) as T;
+}
+
+/**
+ * 英文模式：有英文名稱（設定檔的 nameEn）就用英文名稱。
+ * 在讀資料這一層統一換掉，畫面上所有顯示 name 的地方都不用改。
+ * 快取裡保留原始資料，每次讀取時才換，所以切換語言後重新讀取就會正確。
+ */
+export function localizeName<T extends { name: string; nameEn?: string }>(x: T): T {
+  return getLang() === "en" && x.nameEn ? { ...x, name: x.nameEn } : x;
 }
 
 export async function loadIndex(): Promise<IndexData> {
   const data = await fetchJson<IndexData>(`${DATA_BASE}/index.json`);
-  if (!Array.isArray(data.tickers)) throw new Error("index.json 格式不正確");
-  return data;
+  if (!Array.isArray(data.tickers)) throw new Error(t("index.json 格式不正確"));
+  return { ...data, tickers: data.tickers.map(localizeName) };
 }
 
 export function loadTicker(symbol: string): Promise<TickerData> {
@@ -33,7 +43,7 @@ export function loadTicker(symbol: string): Promise<TickerData> {
     p.catch(() => tickerCache.delete(symbol));
     tickerCache.set(symbol, p);
   }
-  return p;
+  return p.then(localizeName);
 }
 
 /** 基本檢查：確認必要欄位存在、長度一致，避免畫圖時才出錯 */
@@ -41,10 +51,10 @@ function validateTicker(d: TickerData): void {
   for (const tf of ["daily", "weekly", "monthly"] as const) {
     const s: SeriesData | undefined = d[tf];
     if (!s || !Array.isArray(s.time) || s.time.length === 0) {
-      throw new Error(`${d.symbol ?? "?"} 缺少 ${tf} 資料`);
+      throw new Error(t("{0} 缺少 {1} 資料", [d.symbol ?? "?", tf]));
     }
     if (s.close.length !== s.time.length) {
-      throw new Error(`${d.symbol} 的 ${tf} 資料長度不一致`);
+      throw new Error(t("{0} 的 {1} 資料長度不一致", [d.symbol, tf]));
     }
   }
 }
@@ -66,12 +76,12 @@ let screenerPromise: Promise<ScreenerData> | null = null;
 export function loadScreener(): Promise<ScreenerData> {
   if (!screenerPromise) {
     screenerPromise = fetchJson<ScreenerData>(`${DATA_BASE}/screener.json`).then((d) => {
-      if (!Array.isArray(d.tickers)) throw new Error("screener.json 格式不正確");
+      if (!Array.isArray(d.tickers)) throw new Error(t("screener.json 格式不正確"));
       return d;
     });
     screenerPromise.catch(() => (screenerPromise = null)); // 失敗可重試
   }
-  return screenerPromise;
+  return screenerPromise.then((d) => ({ ...d, tickers: d.tickers.map(localizeName) }));
 }
 
 // ---- 第四階段：歷史匯率 ----

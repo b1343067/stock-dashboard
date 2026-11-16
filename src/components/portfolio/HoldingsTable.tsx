@@ -3,6 +3,7 @@
 import { chartHref } from "../../lib/route";
 import { fmtMoney, fmtNum, fmtPct, fmtSignedMoney, pnlClass } from "../../lib/format";
 import type { HoldingRow, StopStatus } from "../../lib/portfolio";
+import { t } from "../../lib/i18n";
 
 interface Props {
   rows: HoldingRow[];
@@ -24,7 +25,7 @@ const STATUS_LABEL: Record<StopStatus, string> = {
 
 export default function HoldingsTable({ rows, redUp, alertPct, onEdit, onDelete }: Props) {
   if (rows.length === 0) {
-    return <p className="muted empty">還沒有持股。按「＋ 新增持股」開始，或匯入之前匯出的檔案。</p>;
+    return <p className="muted empty">{t("還沒有持股。按「＋ 新增持股」開始，或匯入之前匯出的檔案。")}</p>;
   }
 
   // 停利 = 獲利方向的顏色；停損 = 虧損方向的顏色（跟著紅漲綠跌設定）
@@ -38,68 +39,68 @@ export default function HoldingsTable({ rows, redUp, alertPct, onEdit, onDelete 
       <table className="holdings-table">
         <thead>
           <tr>
-            <th>股票</th>
-            <th className="num">股數</th>
-            <th className="num">成本</th>
-            <th className="num">現價</th>
-            <th className="num">市值</th>
-            <th className="num">未實現損益</th>
-            <th className="num">比重</th>
-            <th>停利／停損</th>
-            <th aria-label="操作" />
+            <th>{t("股票")}</th>
+            <th className="num">{t("股數")}</th>
+            <th className="num">{t("成本")}</th>
+            <th className="num">{t("現價")}</th>
+            <th className="num">{t("市值")}</th>
+            <th className="num">{t("未實現損益")}</th>
+            <th className="num">{t("比重")}</th>
+            <th>{t("停利／停損")}</th>
+            <th aria-label={t("操作")} />
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => {
             const h = r.holding;
             const c = r.currency;
-            const label = STATUS_LABEL[r.status];
+            const label = STATUS_LABEL[r.status] ? t(STATUS_LABEL[r.status]) : "";
             const hit = r.status === "tp-hit" || r.status === "sl-hit";
             return (
               <tr key={h.id} className={rowTone(r.status)}>
-                <td data-label="股票" className="cell-stock">
+                <td data-label={t("股票")} className="cell-stock">
                   <a href={chartHref(h.symbol)} className="stock-link">
                     {h.symbol}
                   </a>
-                  <span className={`type-tag ${h.type}`}>{h.type === "core" ? "核心" : "短線"}</span>
-                  <small className="muted stock-name">{r.quote?.name ?? "無報價"}</small>
+                  <span className={`type-tag ${h.type}`}>{h.type === "core" ? t("核心") : t("短線")}</span>
+                  <small className="muted stock-name">{r.quote?.name ?? t("無報價")}</small>
                 </td>
-                <td data-label="股數" className="num">
+                <td data-label={t("股數")} className="num">
                   {fmtNum(h.shares, 4)}
                 </td>
-                <td data-label="成本" className="num">
+                <td data-label={t("成本")} className="num">
                   {fmtMoney(h.cost, c, 2)}
                 </td>
-                <td data-label="現價" className="num">
+                <td data-label={t("現價")} className="num">
                   {r.quote ? fmtMoney(r.quote.price, c, 2) : "—"}
                 </td>
-                <td data-label="市值" className="num">
+                <td data-label={t("市值")} className="num">
                   {fmtMoney(r.marketValue, c)}
                 </td>
-                <td data-label="未實現損益" className={`num ${pnlClass(r.pnl, redUp)}`}>
+                <td data-label={t("未實現損益")} className={`num ${pnlClass(r.pnl, redUp)}`}>
                   {fmtSignedMoney(r.pnl, c)}
                   <small> {fmtPct(r.returnPct, 2, true)}</small>
                 </td>
-                <td data-label="比重" className="num">
+                <td data-label={t("比重")} className="num">
                   {fmtPct(r.weightPct, 1)}
                 </td>
-                <td data-label="停利／停損" className="cell-stop">
+                <td data-label={t("停利／停損")} className="cell-stop">
                   {h.type === "short" ? (
                     <>
                       <span className="stop-line">
-                        <span className="muted">停利</span> {fmtMoney(r.tpPrice, c, 2)}{" "}
+                        <span className="muted">{t("停利")}</span> {fmtMoney(r.tpPrice, c, 2)}{" "}
                         <small className="muted">
-                          +{r.tpPctUsed}%{r.toTpPct !== null && r.toTpPct > 0 ? ` · 差 ${r.toTpPct.toFixed(1)}%` : ""}
+                          +{r.tpPctUsed}%{r.toTpPct !== null && r.toTpPct > 0 ? t(" · 差 {0}%", [r.toTpPct.toFixed(1)]) : ""}
                         </small>
                       </span>
                       <span className="stop-line">
-                        <span className="muted">停損</span> {fmtMoney(r.slPrice, c, 2)}{" "}
+                        <span className="muted">{t("停損")}</span> {fmtMoney(r.slPrice, c, 2)}{" "}
                         <small className="muted">
-                          −{r.slPctUsed}%{r.toSlPct !== null && r.toSlPct > 0 ? ` · 差 ${r.toSlPct.toFixed(1)}%` : ""}
+                          −{r.slPctUsed}%{r.toSlPct !== null && r.toSlPct > 0 ? t(" · 差 {0}%", [r.toSlPct.toFixed(1)]) : ""}
                         </small>
                       </span>
                       {label && (
-                        <span className={`stop-badge${hit ? " hit" : ""}`} title={`距離 ${alertPct}% 以內會提醒`}>
+                        <span className={`stop-badge${hit ? " hit" : ""}`} title={t("距離 {0}% 以內會提醒", [alertPct])}>
                           {hit ? "●" : "▲"} {label}
                         </span>
                       )}
@@ -110,15 +111,15 @@ export default function HoldingsTable({ rows, redUp, alertPct, onEdit, onDelete 
                 </td>
                 <td className="cell-actions">
                   <button type="button" className="btn-ghost btn-sm" onClick={() => onEdit(h.id)}>
-                    編輯
+                    {t("編輯")}
                   </button>
                   {onDelete && (
                     <button
                       type="button"
                       className="icon-btn"
-                      aria-label={`刪除 ${h.symbol}`}
-                      title="刪除"
-                      onClick={() => window.confirm(`確定刪除 ${h.symbol}？`) && onDelete(h.id)}
+                      aria-label={t("刪除 {0}", [h.symbol])}
+                      title={t("刪除")}
+                      onClick={() => window.confirm(t("確定刪除 {0}？", [h.symbol])) && onDelete(h.id)}
                     >
                       ×
                     </button>

@@ -11,6 +11,7 @@
 // ⚠️ 交易紀錄和持股一樣只存在使用者的瀏覽器，不可寫進程式碼或儲存庫。
 
 import { guessCurrency, type Holding } from "./portfolio";
+import { t } from "./i18n";
 
 export type TxType = "buy" | "sell" | "dividend";
 
@@ -74,29 +75,29 @@ export function sortTransactions(txs: Transaction[]): Transaction[] {
 export function buildLedger(txs: Transaction[], currencyOf: (s: string) => string = guessCurrency): LedgerResult {
   const map = new Map<string, Position>();
   const warnings: string[] = [];
-  for (const t of sortTransactions(txs)) {
-    let p = map.get(t.symbol);
+  for (const tx of sortTransactions(txs)) {
+    let p = map.get(tx.symbol);
     if (!p) {
-      p = { symbol: t.symbol, currency: currencyOf(t.symbol), shares: 0, costBasis: 0, avgCost: 0, realized: 0, dividends: 0, fees: 0, invested: 0, firstDate: t.date };
-      map.set(t.symbol, p);
+      p = { symbol: tx.symbol, currency: currencyOf(tx.symbol), shares: 0, costBasis: 0, avgCost: 0, realized: 0, dividends: 0, fees: 0, invested: 0, firstDate: tx.date };
+      map.set(tx.symbol, p);
     }
-    if (t.type === "buy") {
-      const cost = t.shares * t.price + t.fee;
-      p.shares += t.shares;
+    if (tx.type === "buy") {
+      const cost = tx.shares * tx.price + tx.fee;
+      p.shares += tx.shares;
       p.costBasis += cost;
       p.invested += cost;
-      p.fees += t.fee;
-    } else if (t.type === "sell") {
-      let n = t.shares;
+      p.fees += tx.fee;
+    } else if (tx.type === "sell") {
+      let n = tx.shares;
       if (n > p.shares + EPS) {
-        warnings.push(`${t.date} ${t.symbol} 賣出 ${t.shares} 股，但當時只持有 ${round(p.shares)} 股（以持有股數計算）`);
+        warnings.push(t("{0} {1} 賣出 {2} 股，但當時只持有 {3} 股（以持有股數計算）", [tx.date, tx.symbol, tx.shares, round(p.shares)]));
         n = p.shares;
       }
       if (n <= EPS) continue;
       const avg = p.shares > 0 ? p.costBasis / p.shares : 0;
       // 只賣掉一部分時，手續費依比例分攤（超賣的部分不算）
-      const fee = t.fee * (n / t.shares);
-      p.realized += n * t.price - fee - n * avg;
+      const fee = tx.fee * (n / tx.shares);
+      p.realized += n * tx.price - fee - n * avg;
       p.costBasis -= n * avg;
       p.shares -= n;
       p.fees += fee;
@@ -105,7 +106,7 @@ export function buildLedger(txs: Transaction[], currencyOf: (s: string) => strin
         p.costBasis = 0; // 全部賣光，清掉殘留的浮點誤差
       }
     } else {
-      p.dividends += t.amount;
+      p.dividends += tx.amount;
     }
     p.avgCost = p.shares > 0 ? p.costBasis / p.shares : 0;
   }

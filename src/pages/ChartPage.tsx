@@ -15,6 +15,7 @@ import { fmtFixed, pnlClass } from "../lib/format";
 import { compareHref, type Route } from "../lib/route";
 import { readStorage, useStoredState, writeStorage } from "../lib/storage";
 import type { IndexData, OverlayKey, TickerData, Timeframe } from "../lib/types";
+import { t } from "../lib/i18n";
 
 // 預設：K 線＋MA20／50／200；布林、MACD、RSI 收起來（使用者展開後會記住）
 const DEFAULT_OVERLAYS: Record<OverlayKey, boolean> = {
@@ -151,7 +152,7 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
     <div className="layout">
       <aside className="sidebar">
         {indexError ? (
-          <p className="error">無法讀取股票清單：{indexError}</p>
+          <p className="error">{t("無法讀取股票清單：{0}", [indexError])}</p>
         ) : (
           <Watchlist
             items={index?.tickers ?? null}
@@ -169,19 +170,19 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
           <div className="quote-main">
             <div className="quote-meta">
               <span>{shown?.name ?? summary?.name ?? ""}</span>
-              {summary?.category && <span className="badge">{summary.category}</span>}
+              {summary?.category && <span className="badge">{t(summary.category)}</span>}
               {shown && <span>{shown.currency}</span>}
             </div>
             <div className="quote-title-row">
               <h2 className="quote-symbol chart-title">{shown?.symbol ?? symbol ?? "—"}</h2>
               {shown && quote && (
-                <button type="button" className="chip" onClick={() => onAddAlert(shown.symbol, quote.close)} title="這檔股票到某個價格時提醒我">
-                  🔔 ＋ 提醒
+                <button type="button" className="chip" onClick={() => onAddAlert(shown.symbol, quote.close)} title={t("這檔股票到某個價格時提醒我")}>
+                  {t("🔔 ＋ 提醒")}
                 </button>
               )}
               {shown && (
-                <a className="chip" href={compareHref(shown.symbol === "VOO" ? ["VOO", "QQQ"] : [shown.symbol, "VOO"])} title="和其他股票比較走勢">
-                  📈 比較
+                <a className="chip" href={compareHref(shown.symbol === "VOO" ? ["VOO", "QQQ"] : [shown.symbol, "VOO"])} title={t("和其他股票比較走勢")}>
+                  {t("📈 比較")}
                 </a>
               )}
             </div>
@@ -189,9 +190,7 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
               <div className="quote-price">
                 <span className="num quote-last">{fmtFixed(quote.close, 2)}</span>
                 <span className={`num quote-chg ${pnlClass(quote.chg, redUp)}`}>
-                  {quote.chg >= 0 ? "+" : ""}
-                  {quote.chg.toFixed(2)}　{quote.pct >= 0 ? "+" : ""}
-                  {quote.pct.toFixed(2)}%
+                  {t("{0}{1}　{2}{3}%", [quote.chg >= 0 ? "+" : "", quote.chg.toFixed(2), quote.pct >= 0 ? "+" : "", quote.pct.toFixed(2)])}
                 </span>
               </div>
             )}
@@ -199,23 +198,23 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
           {quote && (
             <dl className="quote-stats num">
               <div>
-                <dt>開盤</dt>
+                <dt>{t("開盤")}</dt>
                 <dd>{fmtFixed(quote.open, 2)}</dd>
               </div>
               <div>
-                <dt>最高</dt>
+                <dt>{t("最高")}</dt>
                 <dd>{fmtFixed(quote.high, 2)}</dd>
               </div>
               <div>
-                <dt>最低</dt>
+                <dt>{t("最低")}</dt>
                 <dd>{fmtFixed(quote.low, 2)}</dd>
               </div>
               <div>
-                <dt>昨收</dt>
+                <dt>{t("昨收")}</dt>
                 <dd>{fmtFixed(quote.prev, 2)}</dd>
               </div>
               <div>
-                <dt>成交量</dt>
+                <dt>{t("成交量")}</dt>
                 <dd>{fmtVolume(quote.volume)}</dd>
               </div>
             </dl>
@@ -239,11 +238,11 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
             waiting={pending !== null}
             onUndo={() => saveDrawings(drawings.slice(0, -1))}
             onClear={() => {
-              if (window.confirm(`刪除 ${symbol ?? ""} ${route.timeframe === "daily" ? "日線" : route.timeframe === "weekly" ? "週線" : "月線"}上畫的 ${drawings.length} 條線？`)) saveDrawings([]);
+              if (window.confirm(t("刪除 {0} {1}上畫的 {2} 條線？", [symbol ?? "", route.timeframe === "daily" ? t("日線") : route.timeframe === "weekly" ? t("週線") : t("月線"), drawings.length]))) saveDrawings([]);
             }}
           />
           {tickerError ? (
-            <p className="error chart-placeholder">此股票資料讀取失敗：{tickerError}</p>
+            <p className="error chart-placeholder">{t("此股票資料讀取失敗：{0}", [tickerError])}</p>
           ) : series ? (
             <StockChart
               data={series}
@@ -256,7 +255,7 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
               onChartClick={drawMode === "none" ? undefined : onChartClick}
             />
           ) : (
-            <div className="chart-placeholder muted">{loading || !index ? "載入中…" : "請選擇股票"}</div>
+            <div className="chart-placeholder muted">{loading || !index ? t("載入中…") : t("請選擇股票")}</div>
           )}
         </div>
 

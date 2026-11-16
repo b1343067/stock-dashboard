@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BUILTIN_PRESETS, type ScreenerPreset } from "../../lib/screener";
+import { t } from "../../lib/i18n";
 
 interface Props {
   presets: ScreenerPreset[];
@@ -26,29 +27,29 @@ export default function PresetBar({ presets, onLoad, onSave, onDelete, canSave }
   return (
     <div className="preset-bar">
       <div className="preset-group">
-        <span className="preset-label">範例組合</span>
+        <span className="preset-label">{t("範例組合")}</span>
         {BUILTIN_PRESETS.map((p) => (
           <button key={p.name} type="button" className="chip" onClick={() => onLoad(p)}>
-            {p.name}
+            {t(p.name)}
           </button>
         ))}
       </div>
 
       <div className="preset-group">
-        <span className="preset-label">我的組合</span>
-        {presets.length === 0 && <span className="muted small">尚未儲存</span>}
+        <span className="preset-label">{t("我的組合")}</span>
+        {presets.length === 0 && <span className="muted small">{t("尚未儲存")}</span>}
         {presets.map((p) => (
           <span key={p.name} className="chip chip-saved">
-            <button type="button" className="chip-main" onClick={() => onLoad(p)} title="載入">
-              {p.name}
+            <button type="button" className="chip-main" onClick={() => onLoad(p)} title={t("載入")}>
+              {t(p.name)}
             </button>
             <button
               type="button"
               className="chip-x"
-              aria-label={`刪除組合 ${p.name}`}
-              title="刪除"
+              aria-label={t("刪除組合 {0}", [p.name])}
+              title={t("刪除")}
               onClick={() => {
-                if (window.confirm(`確定刪除「${p.name}」？`)) onDelete(p.name);
+                if (window.confirm(t("確定刪除「{0}」？", [p.name]))) onDelete(p.name);
               }}
             >
               ×
@@ -67,17 +68,17 @@ export default function PresetBar({ presets, onLoad, onSave, onDelete, canSave }
             <input
               autoFocus
               className="text-input"
-              placeholder="組合名稱"
+              placeholder={t("組合名稱")}
               maxLength={40}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Escape" && setSaving(false)}
             />
             <button type="submit" className="btn-primary" disabled={!name.trim()}>
-              儲存
+              {t("儲存")}
             </button>
             <button type="button" className="btn-ghost" onClick={() => setSaving(false)}>
-              取消
+              {t("取消")}
             </button>
           </form>
         ) : (
@@ -85,10 +86,10 @@ export default function PresetBar({ presets, onLoad, onSave, onDelete, canSave }
             type="button"
             className="btn-ghost"
             disabled={!canSave}
-            title={canSave ? "把目前的條件存起來" : "請先新增條件"}
+            title={canSave ? t("把目前的條件存起來") : t("請先新增條件")}
             onClick={() => setSaving(true)}
           >
-            ＋ 儲存目前條件
+            {t("＋ 儲存目前條件")}
           </button>
         )}
       </div>

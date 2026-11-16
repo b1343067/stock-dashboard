@@ -4,6 +4,7 @@
 import { useMemo } from "react";
 import { fmtNum } from "../lib/format";
 import { backtestAccuracy, type AccuracyStats } from "../lib/trend";
+import { t } from "../lib/i18n";
 
 export const TREND_LOOKBACK = 20; // 用最近 20 個交易日
 export const TREND_HORIZON = 5; // 外推 5 個交易日
@@ -31,10 +32,10 @@ export default function TrendCard({ closes, lastDate, currency, market, projecti
     <div className="card">
       <div className="trend-head">
         <h3 className="section-title">
-          短期趨勢外推 <span className="muted">· 最近 {TREND_LOOKBACK} 個交易日線性回歸</span>
+          {t("短期趨勢外推")}{" "}<span className="muted">{t("· 最近 {0} 個交易日線性回歸", [TREND_LOOKBACK])}</span>
         </h3>
         <label className="check">
-          <input type="checkbox" checked={showOnChart} onChange={onToggle} /> 在日線圖上顯示虛線
+          <input type="checkbox" checked={showOnChart} onChange={onToggle} /> {" "}{t("在日線圖上顯示虛線")}
         </label>
       </div>
 
@@ -43,14 +44,14 @@ export default function TrendCard({ closes, lastDate, currency, market, projecti
           <table className="data-table">
             <thead>
               <tr>
-                <th>交易日</th>
-                <th className="num">外推價格</th>
-                <th className="num">相對今天</th>
+                <th>{t("交易日")}</th>
+                <th className="num">{t("外推價格")}</th>
+                <th className="num">{t("相對今天")}</th>
               </tr>
             </thead>
             <tbody>
               <tr className="muted">
-                <td>{lastDate}（最新收盤）</td>
+                <td>{t("{0}（最新收盤）", [lastDate])}</td>
                 <td className="num">{fmtNum(last, 2)}</td>
                 <td className="num">—</td>
               </tr>
@@ -67,8 +68,7 @@ export default function TrendCard({ closes, lastDate, currency, market, projecti
             </tbody>
           </table>
           <p className="hint">
-            幣別 {currency}。日期只算交易日（跳過週末{market === "US" ? "與美股休市日" : "；台股國定假日未排除"}）。
-            回歸直線是「最適合過去 {TREND_LOOKBACK} 天」的線，不一定通過最新收盤價，所以第一天可能和今天有落差。
+            {t("幣別 {0}。日期只算交易日（跳過週末{1}）。 回歸直線是「最適合過去 {2} 天」的線，不一定通過最新收盤價，所以第一天可能和今天有落差。", [currency, market === "US" ? t("與美股休市日") : t("；台股國定假日未排除"), TREND_LOOKBACK])}
           </p>
         </div>
 
@@ -76,17 +76,17 @@ export default function TrendCard({ closes, lastDate, currency, market, projecti
           <table className="data-table">
             <thead>
               <tr>
-                <th>歷史準確度（近 {acc[0]?.samples ?? 0} 次）</th>
+                <th>{t("歷史準確度（近 {0} 次）", [acc[0]?.samples ?? 0])}</th>
                 {acc.map((a) => (
                   <th key={a.horizon} className="num">
-                    {a.horizon === 1 ? "隔天" : `${a.horizon} 天後`}
+                    {a.horizon === 1 ? t("隔天") : t("{0} 天後", [a.horizon])}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>趨勢外推 平均誤差</td>
+                <td>{t("趨勢外推 平均誤差")}</td>
                 {acc.map((a) => (
                   <td key={a.horizon} className={`num ${a.trendMape <= a.naiveMape ? "better" : ""}`}>
                     {a.trendMape.toFixed(2)}%
@@ -94,7 +94,7 @@ export default function TrendCard({ closes, lastDate, currency, market, projecti
                 ))}
               </tr>
               <tr>
-                <td>「明天 = 今天」平均誤差</td>
+                <td>{t("「明天 = 今天」平均誤差")}</td>
                 {acc.map((a) => (
                   <td key={a.horizon} className={`num ${a.naiveMape < a.trendMape ? "better" : ""}`}>
                     {a.naiveMape.toFixed(2)}%
@@ -102,7 +102,7 @@ export default function TrendCard({ closes, lastDate, currency, market, projecti
                 ))}
               </tr>
               <tr>
-                <td>外推誤差較小的比例</td>
+                <td>{t("外推誤差較小的比例")}</td>
                 {acc.map((a) => (
                   <td key={a.horizon} className="num">
                     {a.winRate.toFixed(0)}%
@@ -110,7 +110,7 @@ export default function TrendCard({ closes, lastDate, currency, market, projecti
                 ))}
               </tr>
               <tr>
-                <td>漲跌方向猜對</td>
+                <td>{t("漲跌方向猜對")}</td>
                 {acc.map((a) => (
                   <td key={a.horizon} className="num">
                     {Number.isFinite(a.directionHit) ? `${a.directionHit.toFixed(0)}%` : "—"}
@@ -121,10 +121,9 @@ export default function TrendCard({ closes, lastDate, currency, market, projecti
           </table>
           {acc.length > 0 && (
             <p className="hint">
-              {acc.every((a) => a.naiveMape < a.trendMape)
-                ? "這檔股票過去一年，趨勢外推的誤差比「明天價格 = 今天價格」還大，"
-                : "趨勢外推在部分情況誤差較小，但差距有限，"}
-              代表單靠過去走勢的直線無法可靠預測股價。粗體 = 誤差較小的方法；方向猜對率 50% 左右等於丟銅板。
+              {t("{0}代表單靠過去走勢的直線無法可靠預測股價。粗體 = 誤差較小的方法；方向猜對率 50% 左右等於丟銅板。", [acc.every((a) => a.naiveMape < a.trendMape)
+                ? t("這檔股票過去一年，趨勢外推的誤差比「明天價格 = 今天價格」還大，")
+                : t("趨勢外推在部分情況誤差較小，但差距有限，")])}
             </p>
           )}
         </div>

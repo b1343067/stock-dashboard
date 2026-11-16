@@ -55,6 +55,8 @@ export interface TickerData {
   fundamentals?: Fundamentals;
   symbol: string;
   name: string;
+  /** 英文名稱（設定檔有填才有；英文模式顯示用） */
+  nameEn?: string;
   currency: "USD" | "TWD" | string;
   sample: boolean;
   lastDate: string;
@@ -69,6 +71,8 @@ export interface TickerData {
 export interface TickerSummary {
   symbol: string;
   name: string;
+  /** 英文名稱（設定檔有填才有） */
+  nameEn?: string;
   currency: string;
   /** 分類（來自 config/watchlist.json 的 groups）；舊資料可能沒有 */
   category?: string;

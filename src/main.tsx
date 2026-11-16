@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { applyDocumentLang } from "./lib/i18n";
 // 字體：數字用 Inter（等寬數字）、標題與英文用 Manrope；中文用系統字體（蘋方／思源黑體／微軟正黑體）
 // 字型檔跟網站一起打包，不依賴外部 CDN；只會下載畫面上用到的字元範圍（拉丁字母）
 import "@fontsource-variable/inter/wght.css";
@@ -17,6 +18,9 @@ try {
 } catch {
   /* 忽略 */
 }
+
+// <html lang> 依使用者選的語言設定（index.html 預設 zh-Hant-TW）
+applyDocumentLang();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

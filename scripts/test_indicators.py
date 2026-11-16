@@ -114,6 +114,15 @@ def main() -> None:
     assert fresh["pe"] == 25.12 and fresh["infoDate"] == "2026-11-14" and fresh["high52w"] == 120.0
     assert merge_fundamentals(st, {}, None, "2026-11-14")["pe"] is None
 
+    # ---- 英文名稱（加碼 C-2）：設定檔的 nameEn 會保留，沒填就沒有這個欄位 ----
+    from data_io import normalize_watchlist
+    wl = normalize_watchlist({"groups": [{"name": "台股", "tickers": [
+        {"symbol": "0050.TW", "name": "元大台灣50", "nameEn": " Yuanta Taiwan 50 "},
+        {"symbol": "VOO", "name": "Vanguard S&P 500 ETF"},
+    ]}]})
+    assert wl["tickers"][0]["nameEn"] == "Yuanta Taiwan 50"
+    assert "nameEn" not in wl["tickers"][1]
+
     print(f"全部通過（RSI 與參考實作最大差異 {diff:.6f}）")
 
 

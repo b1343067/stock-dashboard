@@ -1,4 +1,5 @@
 // 價格提醒的判斷邏輯（純函式，測試在 alerts.test.ts）
+import { t } from "./i18n";
 // 提醒只存在使用者的瀏覽器（localStorage），每次打開網站時拿最新資料檢查一次。
 // 網站是靜態的、沒有後端，所以沒辦法在你沒打開網站時推播通知。
 
@@ -69,7 +70,7 @@ export function evaluateAlert(a: PriceAlert, q: Quote | undefined): AlertResult 
 export function describeAlert(a: PriceAlert): string {
   const m = KIND_META[a.kind];
   const v = a.kind.startsWith("change") ? Math.abs(a.value) : a.value;
-  return `${a.symbol} ${m.label} ${v}${m.unit ? ` ${m.unit}`.replace(" %", "%") : ""}`;
+  return `${a.symbol} ${t(m.label)} ${v}${m.unit ? ` ${t(m.unit)}`.replace(" %", "%") : ""}`;
 }
 
 export type AlertState = "triggered" | "watching" | "acknowledged" | "disabled" | "noData";

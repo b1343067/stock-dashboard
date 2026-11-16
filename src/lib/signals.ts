@@ -4,6 +4,7 @@
 
 import { lastValid } from "./data";
 import type { SeriesData } from "./types";
+import { t } from "./i18n";
 
 /** 偏多 = 漲的顏色、偏空 = 跌的顏色、neutral = 灰色（顏色跟著紅漲綠跌設定） */
 export type Tone = "bull" | "bear" | "neutral";
@@ -26,10 +27,10 @@ const pct = (v: number, d = 1) => `${v >= 0 ? "+" : ""}${v.toFixed(d)}%`;
 
 export function rsiStatus(rsi: number | null): StatusItem | null {
   if (rsi === null) return null;
-  const tag = rsi >= 70 ? "超買" : rsi <= 30 ? "超賣" : "中性";
+  const tag = rsi >= 70 ? t("超買") : rsi <= 30 ? t("超賣") : t("中性");
   // 超買代表漲多了（偏空警訊）、超賣代表跌深了（可能反彈），所以顏色和「漲跌」相反
   const tone: Tone = rsi >= 70 ? "bear" : rsi <= 30 ? "bull" : "neutral";
-  const note = rsi >= 70 ? "高於 70，短線漲多" : rsi <= 30 ? "低於 30，短線跌深" : "介於 30～70 之間";
+  const note = rsi >= 70 ? t("高於 70，短線漲多") : rsi <= 30 ? t("低於 30，短線跌深") : t("介於 30～70 之間");
   return { key: "rsi", title: "RSI 14", value: rsi.toFixed(1), tag, tone, note, gauge: Math.max(0, Math.min(100, rsi)) };
 }
 
@@ -44,21 +45,21 @@ export function maStatus(close: number, ma20: number | null, ma50: number | null
   const ref = ma50 ?? ma20;
   if (ref === null) return null;
   const refName = ma50 !== null ? "50" : "20";
-  let tag = "盤整";
+  let tag = t("盤整");
   let tone: Tone = "neutral";
   if (ma20 !== null && ma50 !== null && ma200 !== null) {
-    if (close > ma20 && ma20 > ma50 && ma50 > ma200) [tag, tone] = ["多頭排列", "bull"];
-    else if (close < ma20 && ma20 < ma50 && ma50 < ma200) [tag, tone] = ["空頭排列", "bear"];
+    if (close > ma20 && ma20 > ma50 && ma50 > ma200) [tag, tone] = [t("多頭排列"), "bull"];
+    else if (close < ma20 && ma20 < ma50 && ma50 < ma200) [tag, tone] = [t("空頭排列"), "bear"];
   }
   const d = (close / ref - 1) * 100;
-  const d200 = ma200 !== null ? `；200 日均線 ${pct((close / ma200 - 1) * 100)}` : "";
+  const d200 = ma200 !== null ? t("；200 日均線 {0}", [pct((close / ma200 - 1) * 100)]) : "";
   return {
     key: "ma",
-    title: "均線位置",
+    title: t("均線位置"),
     value: pct(d),
     tag,
     tone: tone === "neutral" ? (d >= 0 ? "bull" : "bear") : tone,
-    note: `${d >= 0 ? "高於" : "低於"} ${refName} 日均線${d200}`,
+    note: t("{0} {1} 日均線{2}", [d >= 0 ? t("高於") : t("低於"), refName, d200]),
     gauge: null,
   };
 }
@@ -67,14 +68,14 @@ export function maStatus(close: number, ma20: number | null, ma50: number | null
 export function macdStatus(macd: number | null, signal: number | null, hist: number | null, prevHist: number | null): StatusItem | null {
   if (macd === null || signal === null || hist === null) return null;
   const bull = macd > signal;
-  const trend = prevHist === null ? "" : Math.abs(hist) < Math.abs(prevHist) ? "，柱狀體縮短中" : "，柱狀體放大中";
+  const trend = prevHist === null ? "" : Math.abs(hist) < Math.abs(prevHist) ? t("，柱狀體縮短中") : t("，柱狀體放大中");
   return {
     key: "macd",
     title: "MACD",
     value: hist.toFixed(2),
-    tag: bull ? "偏多" : "偏空",
+    tag: bull ? t("偏多") : t("偏空"),
     tone: bull ? "bull" : "bear",
-    note: `DIF 在 DEA ${bull ? "之上" : "之下"}${trend}`,
+    note: t("DIF 在 DEA {0}{1}", [bull ? t("之上") : t("之下"), trend]),
     gauge: null,
   };
 }
@@ -83,19 +84,19 @@ export function macdStatus(macd: number | null, signal: number | null, hist: num
 export function bbStatus(close: number, upper: number | null, lower: number | null): StatusItem | null {
   if (upper === null || lower === null || upper <= lower) return null;
   const b = ((close - lower) / (upper - lower)) * 100;
-  let tag = "中段";
+  let tag = t("中段");
   let tone: Tone = "neutral";
-  if (b > 100) [tag, tone] = ["突破上軌", "bull"];
-  else if (b < 0) [tag, tone] = ["跌破下軌", "bear"];
-  else if (b >= 80) tag = "接近上軌";
-  else if (b <= 20) tag = "接近下軌";
+  if (b > 100) [tag, tone] = [t("突破上軌"), "bull"];
+  else if (b < 0) [tag, tone] = [t("跌破下軌"), "bear"];
+  else if (b >= 80) tag = t("接近上軌");
+  else if (b <= 20) tag = t("接近下軌");
   return {
     key: "bb",
-    title: "布林通道 %B",
+    title: t("布林通道 %B"),
     value: `${b.toFixed(0)}%`,
     tag,
     tone,
-    note: b > 100 || b < 0 ? "收盤價在通道外" : `位於通道${b >= 50 ? "上半部" : "下半部"}`,
+    note: b > 100 || b < 0 ? t("收盤價在通道外") : t("位於通道{0}", [b >= 50 ? t("上半部") : t("下半部")]),
     gauge: Math.max(0, Math.min(100, b)),
   };
 }

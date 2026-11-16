@@ -29,8 +29,12 @@ import { useAlertQuotes, useAlerts } from "./lib/alertsStore";
 import { chartHref, useHashRoute } from "./lib/route";
 import { useStoredState } from "./lib/storage";
 import type { IndexData, Timeframe } from "./lib/types";
+import { t, useLang } from "./lib/i18n";
 
 export default function App() {
+  // 語言切換時，下面的畫面用 key 整個重新建立：每個元件都會用新語言重新顯示
+  // （包括 useMemo 裡算好的文字、圖表的日期格式），比逐一追蹤哪裡用到文字可靠
+  const lang = useLang();
   const [index, setIndex] = useState<IndexData | null>(null);
   const [indexError, setIndexError] = useState<string | null>(null);
   const [route, setRoute] = useHashRoute();
@@ -43,7 +47,7 @@ export default function App() {
     loadIndex()
       .then(setIndex)
       .catch((e: unknown) => setIndexError(e instanceof Error ? e.message : String(e)));
-  }, []);
+  }, [lang]); // 切換語言時重新讀取（股票名稱換成該語言）
 
   useEffect(() => {
     if (route.page === "chart" && route.symbol) setLastChart(chartHref(route.symbol, route.timeframe));
@@ -87,7 +91,7 @@ export default function App() {
   );
 
   return (
-    <div className="app">
+    <div className="app" key={lang}>
       <Header
         index={index}
         redUp={redUp}
@@ -103,25 +107,24 @@ export default function App() {
 
       {!online && (
         <div className="banner offline-banner" role="status">
-          📴 目前離線，顯示的是上次載入的資料；恢復網路後會自動使用最新資料。
+          {t("📴 目前離線，顯示的是上次載入的資料；恢復網路後會自動使用最新資料。")}
         </div>
       )}
 
       {freshness?.stale && !index?.sample && (
         <div className="banner" role="alert">
-          ⚠️ <b>資料可能已過期</b>：最新資料日期為 {freshness.latestDate}，之後已有 {freshness.missed} 個平日沒有更新。
-          可能是每日更新的 GitHub Actions 失敗了，價格與指標僅供參考。
+          ⚠️ <b>{t("資料可能已過期")}</b>{t("：最新資料日期為")}{" "}{freshness.latestDate}{t("，之後已有")}{" "}{freshness.missed} {" "}{t("個平日沒有更新。 可能是每日更新的 GitHub Actions 失敗了，價格與指標僅供參考。")}
         </div>
       )}
 
       {index?.sample && (
         <div className="banner" role="status">
-          目前顯示的是<b>隨機產生的範例資料</b>，不是真實股價。GitHub Actions 第一次成功更新後會自動換成真實資料。
+          {t("目前顯示的是")}<b>{t("隨機產生的範例資料")}</b>{t("，不是真實股價。GitHub Actions 第一次成功更新後會自動換成真實資料。")}
         </div>
       )}
 
       <main className="main">
-        <Suspense fallback={<div className="card"><p className="muted empty">載入中…</p></div>}>
+        <Suspense fallback={<div className="card"><p className="muted empty">{t("載入中…")}</p></div>}>
           {route.page === "market" ? (
             <MarketPage index={index} indexError={indexError} redUp={redUp} />
           ) : route.page === "compare" ? (

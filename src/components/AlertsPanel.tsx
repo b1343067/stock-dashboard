@@ -17,6 +17,7 @@ import {
 import { setAlerts, useAlerts } from "../lib/alertsStore";
 import { chartHref } from "../lib/route";
 import type { TickerSummary } from "../lib/types";
+import { t } from "../lib/i18n";
 
 interface Props {
   tickers: TickerSummary[];
@@ -82,12 +83,12 @@ export default function AlertsPanel({ tickers, quotes, prefill, onClose }: Props
   const add = () => {
     const sym = symbol.trim().toUpperCase();
     const v = Number(value);
-    if (!sym) return setError("請輸入股票代號");
-    if (!tickers.some((t) => t.symbol === sym)) return setError(`${sym} 不在觀察清單，沒有資料可以檢查`);
-    if (!Number.isFinite(v) || value.trim() === "") return setError("請輸入數值");
-    if (kind.startsWith("price") && v <= 0) return setError("價格必須大於 0");
-    if (kind.startsWith("rsi") && (v < 0 || v > 100)) return setError("RSI 介於 0～100");
-    if (kind.startsWith("change") && v <= 0) return setError("漲跌幅請輸入大於 0 的數字，例如 3");
+    if (!sym) return setError(t("請輸入股票代號"));
+    if (!tickers.some((t) => t.symbol === sym)) return setError(t("{0} 不在觀察清單，沒有資料可以檢查", [sym]));
+    if (!Number.isFinite(v) || value.trim() === "") return setError(t("請輸入數值"));
+    if (kind.startsWith("price") && v <= 0) return setError(t("價格必須大於 0"));
+    if (kind.startsWith("rsi") && (v < 0 || v > 100)) return setError(t("RSI 介於 0～100"));
+    if (kind.startsWith("change") && v <= 0) return setError(t("漲跌幅請輸入大於 0 的數字，例如 3"));
     setAlerts([...alerts, newAlert(sym, kind, v, repeat)]);
     setError(null);
   };
@@ -107,8 +108,8 @@ export default function AlertsPanel({ tickers, quotes, prefill, onClose }: Props
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sheet-head">
-          <h2 id="alerts-title">價格提醒</h2>
-          <button type="button" className="icon-btn" aria-label="關閉" onClick={onClose}>
+          <h2 id="alerts-title">{t("價格提醒")}</h2>
+          <button type="button" className="icon-btn" aria-label={t("關閉")} onClick={onClose}>
             ×
           </button>
         </div>
@@ -123,8 +124,8 @@ export default function AlertsPanel({ tickers, quotes, prefill, onClose }: Props
           <input
             className="text-input"
             list="alert-symbols"
-            placeholder="代號，例如 TSLA"
-            aria-label="股票代號"
+            placeholder={t("代號，例如 TSLA")}
+            aria-label={t("股票代號")}
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
             autoCapitalize="characters"
@@ -137,10 +138,10 @@ export default function AlertsPanel({ tickers, quotes, prefill, onClose }: Props
             ))}
           </datalist>
           <div className="alert-cond">
-            <select aria-label="條件" value={kind} onChange={(e) => changeKind(e.target.value as AlertKind)}>
+            <select aria-label={t("條件")} value={kind} onChange={(e) => changeKind(e.target.value as AlertKind)}>
               {KIND_ORDER.map((k) => (
                 <option key={k} value={k}>
-                  {KIND_META[k].label}
+                  {t(KIND_META[k].label)}
                 </option>
               ))}
             </select>
@@ -149,18 +150,18 @@ export default function AlertsPanel({ tickers, quotes, prefill, onClose }: Props
               type="number"
               inputMode="decimal"
               step="any"
-              aria-label="數值"
+              aria-label={t("數值")}
               value={value}
               onChange={(e) => setValue(e.target.value)}
             />
-            {KIND_META[kind].unit && <span className="muted small alert-unit">{KIND_META[kind].unit}</span>}
+            {KIND_META[kind].unit && <span className="muted small alert-unit">{t(KIND_META[kind].unit)}</span>}
           </div>
           <div className="alert-submit">
             <label className="check small">
-              <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} /> 每天重複提醒
+              <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} /> {" "}{t("每天重複提醒")}
             </label>
             <button type="submit" className="btn-primary">
-              新增
+              {t("新增")}
             </button>
           </div>
           {error && (
@@ -172,13 +173,13 @@ export default function AlertsPanel({ tickers, quotes, prefill, onClose }: Props
 
         {triggeredIds.length > 0 && (
           <button type="button" className="btn-ghost ack-all" onClick={() => setAlerts(acknowledge(alerts, triggeredIds, dates))}>
-            全部標為已讀（{triggeredIds.length}）
+            {t("全部標為已讀（{0}）", [triggeredIds.length])}
           </button>
         )}
 
         {sorted.length === 0 ? (
           <p className="muted empty">
-            還沒有提醒。例如：「TSLA 收盤價跌到 300 以下」「NVDA RSI 低於 30」。
+            {t("還沒有提醒。例如：「TSLA 收盤價跌到 300 以下」「NVDA RSI 低於 30」。")}
           </p>
         ) : (
           <ul className="alert-list">
@@ -189,17 +190,16 @@ export default function AlertsPanel({ tickers, quotes, prefill, onClose }: Props
                     {describeAlert(a)}
                   </a>
                   <span className="muted small">
-                    目前 {fmtCurrent(a.kind, current)}
-                    {a.repeat ? " · 每天重複" : " · 提醒一次"}
+                    {t("目前 {0}{1}", [fmtCurrent(a.kind, current), a.repeat ? t(" · 每天重複") : t(" · 提醒一次")])}
                   </span>
                 </div>
-                <span className={`alert-state state-${state}`}>{STATE_LABEL[state]}</span>
+                <span className={`alert-state state-${state}`}>{t(STATE_LABEL[state])}</span>
                 {state === "triggered" && (
                   <button type="button" className="btn-link" onClick={() => setAlerts(acknowledge(alerts, [a.id], dates))}>
-                    知道了
+                    {t("知道了")}
                   </button>
                 )}
-                <button type="button" className="icon-btn" aria-label={`刪除提醒：${describeAlert(a)}`} onClick={() => setAlerts(alerts.filter((x) => x.id !== a.id))}>
+                <button type="button" className="icon-btn" aria-label={t("刪除提醒：{0}", [describeAlert(a)])} onClick={() => setAlerts(alerts.filter((x) => x.id !== a.id))}>
                   ×
                 </button>
               </li>
@@ -207,7 +207,7 @@ export default function AlertsPanel({ tickers, quotes, prefill, onClose }: Props
           </ul>
         )}
         <p className="hint">
-          🔔 每次打開網站時，用最新的收盤資料檢查（資料每天台灣時間早上 6 點更新）。這是靜態網站，沒打開時無法推播通知。提醒只存在這個瀏覽器。
+          {t("🔔 每次打開網站時，用最新的收盤資料檢查（資料每天台灣時間早上 6 點更新）。這是靜態網站，沒打開時無法推播通知。提醒只存在這個瀏覽器。")}
         </p>
       </div>
     </div>

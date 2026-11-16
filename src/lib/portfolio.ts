@@ -10,6 +10,7 @@
 // 型別
 // ---------------------------------------------------------------------------
 
+import { t } from "./i18n";
 export type HoldingType = "core" | "short";
 
 export interface Holding {
@@ -349,17 +350,17 @@ export function parseImport(text: string): { holdings: Holding[]; settings: Port
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("檔案不是有效的 JSON");
+    throw new Error(t("檔案不是有效的 JSON"));
   }
   // 也接受「只有持股陣列」的簡單格式
   const raw: Partial<PortfolioFile> = Array.isArray(data) ? { holdings: data as Holding[] } : (data as Partial<PortfolioFile>);
   // 只有交易紀錄、沒有持股的檔案也可以（交易紀錄模式匯出的）
   const obj = raw && typeof raw === "object" && !Array.isArray(raw.holdings) && Array.isArray(raw.transactions) ? { ...raw, holdings: [] } : raw;
   if (!obj || typeof obj !== "object" || !Array.isArray(obj.holdings)) {
-    throw new Error("找不到持股資料（holdings）");
+    throw new Error(t("找不到持股資料（holdings）"));
   }
   const [holdings, dropped] = sanitizeHoldings(obj.holdings);
-  if (holdings.length === 0 && obj.holdings.length > 0) throw new Error("檔案裡的持股格式都不正確");
+  if (holdings.length === 0 && obj.holdings.length > 0) throw new Error(t("檔案裡的持股格式都不正確"));
   // 重新產生 id，避免和現有資料衝突
   return {
     holdings: holdings.map((h) => ({ ...h, id: newHoldingId() })),

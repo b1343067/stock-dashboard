@@ -7,6 +7,7 @@
 //   - 無風險利率 rf 是年化小數（例如 0.04 = 4%），換成日利率 = rf / 252
 //   - 市場基準 = VOO（S&P 500 ETF）
 
+import { t } from "./i18n";
 export const TRADING_DAYS = 252;
 
 export interface PriceSeries {
@@ -320,10 +321,10 @@ export function maxSharpe(mu: number[], cov: number[][], rf: number, lo = 0.05, 
   const n = mu.length;
   const fail = (reason: string): OptimizeResult => ({ ok: false, reason, weights: [], expReturn: NaN, vol: NaN, sharpe: NaN });
   if (n * lo > 1 + 1e-9 || n * hi < 1 - 1e-9) {
-    return fail(`權重限制 ${lo * 100}%～${hi * 100}% 下，至少需要 ${Math.ceil(1 / hi)} 檔、最多 ${Math.floor(1 / lo)} 檔股票（目前 ${n} 檔）`);
+    return fail(t("權重限制 {0}%～{1}% 下，至少需要 {2} 檔、最多 {3} 檔股票（目前 {4} 檔）", [lo * 100, hi * 100, Math.ceil(1 / hi), Math.floor(1 / lo), n]));
   }
   if (mu.every((m) => m - rf <= 0)) {
-    return fail("所有股票的預期超額報酬都 ≤ 0（市場預期報酬低於無風險利率），夏普值最佳化沒有意義。可以調整「市場預期報酬」再試。");
+    return fail(t("所有股票的預期超額報酬都 ≤ 0（市場預期報酬低於無風險利率），夏普值最佳化沒有意義。可以調整「市場預期報酬」再試。"));
   }
 
   const sharpeOf = (w: number[]) => portfolioPerf(w, mu, cov, rf).sharpe;

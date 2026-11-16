@@ -2,6 +2,7 @@
 // 只負責按鈕；畫線的判斷在 src/lib/drawings.ts，實際畫在 StockChart 上。
 
 import type { DrawMode } from "../lib/drawings";
+import { t } from "../lib/i18n";
 
 interface Props {
   mode: DrawMode;
@@ -21,26 +22,26 @@ const TOOLS: [Exclude<DrawMode, "none">, string, string][] = [
 export default function DrawingTools({ mode, onMode, count, waiting, onUndo, onClear }: Props) {
   // 提示文字：讓使用者知道下一步要做什麼
   const hint =
-    mode === "trend" ? (waiting ? "再點一下終點完成（Esc 取消）" : "點一下趨勢線的起點") : mode === "hline" ? "在想要的價位點一下" : count > 0 ? `已畫 ${count} 條` : "";
+    mode === "trend" ? (waiting ? t("再點一下終點完成（Esc 取消）") : t("點一下趨勢線的起點")) : mode === "hline" ? t("在想要的價位點一下") : count > 0 ? t("已畫 {0} 條", [count]) : "";
   return (
-    <div className="draw-tools" role="toolbar" aria-label="畫圖工具">
+    <div className="draw-tools" role="toolbar" aria-label={t("畫圖工具")}>
       {TOOLS.map(([m, label, title]) => (
         <button
           key={m}
           type="button"
           className={`chip${mode === m ? " on draw-on" : ""}`}
           aria-pressed={mode === m}
-          title={title}
+          title={t(title)}
           onClick={() => onMode(mode === m ? "none" : m)}
         >
-          {label}
+          {t(label)}
         </button>
       ))}
-      <button type="button" className="chip" disabled={count === 0} onClick={onUndo} title="刪除最後畫的一條">
-        ↶ 復原
+      <button type="button" className="chip" disabled={count === 0} onClick={onUndo} title={t("刪除最後畫的一條")}>
+        {t("↶ 復原")}
       </button>
-      <button type="button" className="chip" disabled={count === 0} onClick={onClear} title="刪除這檔股票這個週期畫的全部線">
-        清除
+      <button type="button" className="chip" disabled={count === 0} onClick={onClear} title={t("刪除這檔股票這個週期畫的全部線")}>
+        {t("清除")}
       </button>
       {hint && <span className="draw-hint muted small">{hint}</span>}
     </div>

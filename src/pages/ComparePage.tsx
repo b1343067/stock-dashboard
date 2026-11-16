@@ -11,6 +11,7 @@ import { useStoredState } from "../lib/storage";
 import { useThemeColors } from "../lib/theme";
 import type { IndexData, TickerData } from "../lib/types";
 import { matchesQuery } from "../lib/watchlist";
+import { t, locale } from "../lib/i18n";
 
 // 固定順序的類別色（第 1 檔藍、第 2 檔橘、第 3 檔青綠、第 4 檔黃）
 const SLOTS = ["s1", "s2", "s3", "s4"] as const;
@@ -74,13 +75,13 @@ export default function ComparePage({ index, symbolsParam, redUp }: Props) {
     <div className="compare">
       <div className="market-head">
         <div>
-          <h2>走勢比較</h2>
-          <p className="muted small">最多 {MAX_COMPARE} 檔，從同一天起算累積報酬（各自用原幣計算；台股為台幣報酬）。</p>
+          <h2>{t("走勢比較")}</h2>
+          <p className="muted small">{t("最多 {0} 檔，從同一天起算累積報酬（各自用原幣計算；台股為台幣報酬）。", [MAX_COMPARE])}</p>
         </div>
-        <div className="segmented" role="radiogroup" aria-label="期間">
+        <div className="segmented" role="radiogroup" aria-label={t("期間")}>
           {(Object.keys(RANGE_LABEL) as Range[]).map((r) => (
             <button key={r} type="button" role="radio" aria-checked={range === r} className={range === r ? "active" : ""} onClick={() => setRange(r)}>
-              {RANGE_LABEL[r]}
+              {t(RANGE_LABEL[r])}
             </button>
           ))}
         </div>
@@ -93,7 +94,7 @@ export default function ComparePage({ index, symbolsParam, redUp }: Props) {
               <i className="swatch" style={{ background: `var(--${SLOTS[i]})` }} />
               <a href={chartHref(s)}>{s}</a>
               {symbols.length > 1 && (
-                <button type="button" aria-label={`移除 ${s}`} onClick={() => setSymbols(symbols.filter((x) => x !== s))}>
+                <button type="button" aria-label={t("移除 {0}", [s])} onClick={() => setSymbols(symbols.filter((x) => x !== s))}>
                   ×
                 </button>
               )}
@@ -103,8 +104,8 @@ export default function ComparePage({ index, symbolsParam, redUp }: Props) {
             <div className="cmp-add">
               <input
                 className="text-input"
-                placeholder="＋ 加入比較（代號或名稱）"
-                aria-label="加入比較的股票"
+                placeholder={t("＋ 加入比較（代號或名稱）")}
+                aria-label={t("加入比較的股票")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -140,12 +141,12 @@ export default function ComparePage({ index, symbolsParam, redUp }: Props) {
           .filter(([s]) => symbols.includes(s))
           .map(([s, e]) => (
             <p key={s} className="error small">
-              {s} 讀取失敗：{e}
+              {t("{0} 讀取失敗：{1}", [s, e])}
             </p>
           ))}
 
         {lines.length === 0 ? (
-          <div className="chart-placeholder muted">載入中…</div>
+          <div className="chart-placeholder muted">{t("載入中…")}</div>
         ) : (
           <CompareChart lines={lines} />
         )}
@@ -154,11 +155,11 @@ export default function ComparePage({ index, symbolsParam, redUp }: Props) {
           <table className="data-table cmp-table">
             <thead>
               <tr>
-                <th>股票</th>
-                <th className="num">累積報酬</th>
-                <th className="num">年化波動</th>
-                <th className="num">最大回撤</th>
-                <th>期間</th>
+                <th>{t("股票")}</th>
+                <th className="num">{t("累積報酬")}</th>
+                <th className="num">{t("年化波動")}</th>
+                <th className="num">{t("最大回撤")}</th>
+                <th>{t("期間")}</th>
               </tr>
             </thead>
             <tbody>
@@ -172,14 +173,14 @@ export default function ComparePage({ index, symbolsParam, redUp }: Props) {
                     <td className={`num ${pnlClass(st?.totalReturn, redUp)}`}>{fmtPct(st?.totalReturn, 2, true)}</td>
                     <td className="num">{fmtPct(st?.annVol, 1)}</td>
                     <td className="num">{fmtPct(st?.maxDrawdown, 1)}</td>
-                    <td className="muted small">{st ? `${st.start} ～ ${st.end}` : "資料不足"}</td>
+                    <td className="muted small">{st ? t("{0} ～ {1}", [st.start, st.end]) : t("資料不足")}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <p className="hint">價格已含除權息調整。日線資料最多約 5 年。</p>
+        <p className="hint">{t("價格已含除權息調整。日線資料最多約 5 年。")}</p>
       </div>
     </div>
   );
@@ -201,7 +202,7 @@ function CompareChart({ lines }: { lines: { symbol: string; color: string; n: No
       layout: { background: { type: ColorType.Solid, color: "transparent" }, attributionLogo: false },
       rightPriceScale: { borderVisible: false },
       timeScale: { borderVisible: false },
-      localization: { locale: "zh-TW", dateFormat: "yyyy-MM-dd", priceFormatter: (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` },
+      localization: { locale: locale(), dateFormat: "yyyy-MM-dd", priceFormatter: (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` },
     });
     chart.subscribeCrosshairMove((p) => setHover(p.time ? String(p.time) : null));
     chartRef.current = chart;

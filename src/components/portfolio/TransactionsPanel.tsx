@@ -6,6 +6,7 @@ import TransactionForm from "./TransactionForm";
 import { fmtMoney, fmtPct, fmtSignedMoney, pnlClass } from "../../lib/format";
 import { fromUsd, type PortfolioSettings, type Quote } from "../../lib/portfolio";
 import { TX_LABEL, buildLedger, positionStats, totals, type Transaction } from "../../lib/transactions";
+import { t, locale } from "../../lib/i18n";
 
 interface Props {
   transactions: Transaction[];
@@ -43,10 +44,10 @@ export default function TransactionsPanel(props: Props) {
   return (
     <div className="card tx-panel">
       <div className="screener-head">
-        <h3 className="section-title">交易紀錄與報酬</h3>
+        <h3 className="section-title">{t("交易紀錄與報酬")}</h3>
         <div className="toolbar">
           <button type="button" className="btn-primary" onClick={() => setAdding(true)} disabled={adding}>
-            ＋ 新增交易
+            {t("＋ 新增交易")}
           </button>
         </div>
       </div>
@@ -62,28 +63,28 @@ export default function TransactionsPanel(props: Props) {
 
       {txs.length === 0 ? (
         <div className="empty tx-empty">
-          <p className="muted">還沒有交易紀錄。輸入每一筆買進、賣出、股利，就能算出已實現損益與真正的年化報酬（XIRR）。</p>
+          <p className="muted">{t("還沒有交易紀錄。輸入每一筆買進、賣出、股利，就能算出已實現損益與真正的年化報酬（XIRR）。")}</p>
           <button type="button" className="btn-ghost" onClick={props.onLoadSample}>
-            載入範例交易看看
+            {t("載入範例交易看看")}
           </button>
         </div>
       ) : (
         <>
           <div className="summary-grid tx-summary">
-            <Stat label="已實現損益" value={fmtSignedMoney(show(tt.realizedUsd), ccy)} cls={pnlClass(tt.realizedUsd, redUp)} note="賣出的部分賺賠多少" />
-            <Stat label="股利收入" value={fmtMoney(show(tt.dividendsUsd), ccy)} note="實領金額合計" />
-            <Stat label="未實現損益" value={fmtSignedMoney(show(tt.unrealizedUsd), ccy)} cls={pnlClass(tt.unrealizedUsd, redUp)} note="還持有的部分" />
+            <Stat label={t("已實現損益")} value={fmtSignedMoney(show(tt.realizedUsd), ccy)} cls={pnlClass(tt.realizedUsd, redUp)} note={t("賣出的部分賺賠多少")} />
+            <Stat label={t("股利收入")} value={fmtMoney(show(tt.dividendsUsd), ccy)} note={t("實領金額合計")} />
+            <Stat label={t("未實現損益")} value={fmtSignedMoney(show(tt.unrealizedUsd), ccy)} cls={pnlClass(tt.unrealizedUsd, redUp)} note={t("還持有的部分")} />
             <Stat
-              label="總損益"
+              label={t("總損益")}
               value={fmtSignedMoney(show(tt.totalPnlUsd), ccy)}
               cls={pnlClass(tt.totalPnlUsd, redUp)}
-              note={`投入本金 ${fmtMoney(show(tt.investedUsd), ccy)}`}
+              note={t("投入本金 {0}", [fmtMoney(show(tt.investedUsd), ccy)])}
             />
             <Stat
-              label="年化報酬（XIRR）"
+              label={t("年化報酬（XIRR）")}
               value={tt.xirr === null ? "—" : fmtPct(tt.xirr * 100, 2, true)}
               cls={pnlClass(tt.xirr, redUp)}
-              note="考慮每筆錢投入多久"
+              note={t("考慮每筆錢投入多久")}
             />
           </div>
           {ledger.warnings.length > 0 && (
@@ -93,20 +94,20 @@ export default function TransactionsPanel(props: Props) {
               ))}
             </ul>
           )}
-          {tt.missing.length > 0 && <p className="hint">{tt.missing.join("、")} 不在觀察清單、沒有報價，未計入總計。</p>}
+          {tt.missing.length > 0 && <p className="hint">{t("{0} 不在觀察清單、沒有報價，未計入總計。", [tt.missing.join(t("、"))])}</p>}
 
-          <h4 className="sub-title">每檔報酬</h4>
+          <h4 className="sub-title">{t("每檔報酬")}</h4>
           <div className="table-scroll">
             <table className="data-table tx-stats">
               <thead>
                 <tr>
-                  <th>股票</th>
-                  <th className="num">持有股數</th>
-                  <th className="num">平均成本</th>
-                  <th className="num">已實現</th>
-                  <th className="num">股利</th>
-                  <th className="num">未實現</th>
-                  <th className="num">總報酬</th>
+                  <th>{t("股票")}</th>
+                  <th className="num">{t("持有股數")}</th>
+                  <th className="num">{t("平均成本")}</th>
+                  <th className="num">{t("已實現")}</th>
+                  <th className="num">{t("股利")}</th>
+                  <th className="num">{t("未實現")}</th>
+                  <th className="num">{t("總報酬")}</th>
                   <th className="num">XIRR</th>
                 </tr>
               </thead>
@@ -116,7 +117,7 @@ export default function TransactionsPanel(props: Props) {
                     <td>
                       <b>{s.symbol}</b> <span className="muted small">{s.currency}</span>
                     </td>
-                    <td className="num">{s.shares > 0 ? s.shares.toLocaleString("zh-TW", { maximumFractionDigits: 4 }) : "已出清"}</td>
+                    <td className="num">{s.shares > 0 ? s.shares.toLocaleString(locale(), { maximumFractionDigits: 4 }) : t("已出清")}</td>
                     <td className="num">{s.shares > 0 ? fmtMoney(s.avgCost, s.currency, 2) : "—"}</td>
                     <td className={`num ${pnlClass(s.realized, redUp)}`}>{fmtSignedMoney(s.realized, s.currency)}</td>
                     <td className="num">{s.dividends ? fmtMoney(s.dividends, s.currency) : "—"}</td>
@@ -129,43 +130,43 @@ export default function TransactionsPanel(props: Props) {
             </table>
           </div>
 
-          <h4 className="sub-title">交易清單（{txs.length} 筆）</h4>
+          <h4 className="sub-title">{t("交易清單（{0} 筆）", [txs.length])}</h4>
           <div className="table-scroll">
             <table className="data-table tx-list">
               <thead>
                 <tr>
-                  <th>日期</th>
-                  <th>種類</th>
-                  <th>股票</th>
-                  <th className="num">股數</th>
-                  <th className="num">價格</th>
-                  <th className="num">費用</th>
-                  <th className="num">金額</th>
-                  <th aria-label="操作" />
+                  <th>{t("日期")}</th>
+                  <th>{t("種類")}</th>
+                  <th>{t("股票")}</th>
+                  <th className="num">{t("股數")}</th>
+                  <th className="num">{t("價格")}</th>
+                  <th className="num">{t("費用")}</th>
+                  <th className="num">{t("金額")}</th>
+                  <th aria-label={t("操作")} />
                 </tr>
               </thead>
               <tbody>
-                {visible.map((t) => {
-                  const c = currencyOf(t.symbol);
-                  const amount = t.type === "buy" ? -(t.shares * t.price + t.fee) : t.type === "sell" ? t.shares * t.price - t.fee : t.amount;
+                {visible.map((tx) => {
+                  const c = currencyOf(tx.symbol);
+                  const amount = tx.type === "buy" ? -(tx.shares * tx.price + tx.fee) : tx.type === "sell" ? tx.shares * tx.price - tx.fee : tx.amount;
                   return (
-                    <tr key={t.id}>
-                      <td className="tx-date">{t.date}</td>
+                    <tr key={tx.id}>
+                      <td className="tx-date">{tx.date}</td>
                       <td>
-                        <span className={`tx-type tx-${t.type}`}>{TX_LABEL[t.type]}</span>
+                        <span className={`tx-type tx-${tx.type}`}>{t(TX_LABEL[tx.type])}</span>
                       </td>
-                      <td>{t.symbol}</td>
-                      <td className="num">{t.type === "dividend" ? "—" : t.shares.toLocaleString("zh-TW", { maximumFractionDigits: 4 })}</td>
-                      <td className="num">{t.type === "dividend" ? "—" : fmtMoney(t.price, c, 2)}</td>
-                      <td className="num">{t.fee ? fmtMoney(t.fee, c) : "—"}</td>
+                      <td>{tx.symbol}</td>
+                      <td className="num">{tx.type === "dividend" ? "—" : tx.shares.toLocaleString(locale(), { maximumFractionDigits: 4 })}</td>
+                      <td className="num">{tx.type === "dividend" ? "—" : fmtMoney(tx.price, c, 2)}</td>
+                      <td className="num">{tx.fee ? fmtMoney(tx.fee, c) : "—"}</td>
                       <td className="num">{fmtSignedMoney(amount, c)}</td>
                       <td className="cell-actions">
                         <button
                           type="button"
                           className="icon-btn"
-                          aria-label={`刪除 ${t.date} ${t.symbol} ${TX_LABEL[t.type]}`}
-                          title="刪除"
-                          onClick={() => window.confirm(`刪除 ${t.date} ${t.symbol} ${TX_LABEL[t.type]}？`) && props.onDelete(t.id)}
+                          aria-label={t("刪除 {0} {1} {2}", [tx.date, tx.symbol, t(TX_LABEL[tx.type])])}
+                          title={t("刪除")}
+                          onClick={() => window.confirm(t("刪除 {0} {1} {2}？", [tx.date, tx.symbol, t(TX_LABEL[tx.type])])) && props.onDelete(tx.id)}
                         >
                           ×
                         </button>
@@ -178,13 +179,11 @@ export default function TransactionsPanel(props: Props) {
           </div>
           {sorted.length > 15 && (
             <button type="button" className="btn-ghost btn-sm" onClick={() => setShowAll(!showAll)}>
-              {showAll ? "只顯示最近 15 筆" : `顯示全部 ${sorted.length} 筆`}
+              {showAll ? t("只顯示最近 15 筆") : t("顯示全部 {0} 筆", [sorted.length])}
             </button>
           )}
           <p className="hint">
-            成本用「移動平均成本法」：賣出時以當時的平均成本計算已實現損益。XIRR 把目前市值當成 {priceDate} 拿回的錢，
-            依每筆現金流的日期計算年化報酬；整體以美元計算，台股每筆依交易當天的匯率換算
-            {fxHistory ? "" : "（目前沒有歷史匯率，暫用最新匯率）"}。持有不到幾個月時 XIRR 會被放大，參考就好。
+            {t("成本用「移動平均成本法」：賣出時以當時的平均成本計算已實現損益。XIRR 把目前市值當成 {0} 拿回的錢， 依每筆現金流的日期計算年化報酬；整體以美元計算，台股每筆依交易當天的匯率換算{1}。持有不到幾個月時 XIRR 會被放大，參考就好。", [priceDate, fxHistory ? "" : t("（目前沒有歷史匯率，暫用最新匯率）")])}
           </p>
         </>
       )}

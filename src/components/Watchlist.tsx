@@ -8,6 +8,7 @@ import type { TickerSummary } from "../lib/types";
 import { useStoredState } from "../lib/storage";
 import { filterByCategory, groupTickers } from "../lib/watchlist";
 import Sparkline from "./Sparkline";
+import { t } from "../lib/i18n";
 
 interface Props {
   items: TickerSummary[] | null;
@@ -45,35 +46,35 @@ export default function Watchlist({ items, categories = [], selected, onSelect, 
     if (r.left < l.left || r.right > l.right) list.scrollLeft += r.left - l.left - 8;
   }, [selected, items]);
 
-  if (!items) return <p className="muted pad">載入中…</p>;
-  if (items.length === 0) return <p className="muted pad">目前沒有資料</p>;
+  if (!items) return <p className="muted pad">{t("載入中…")}</p>;
+  if (items.length === 0) return <p className="muted pad">{t("目前沒有資料")}</p>;
 
   const toggle = (name: string) =>
     setCollapsed(collapsed.includes(name) ? collapsed.filter((c) => c !== name) : [...collapsed, name]);
 
   return (
-    <nav className="watchlist" aria-label="觀察清單">
+    <nav className="watchlist" aria-label={t("觀察清單")}>
       <div className="wl-tools">
         <input
           type="search"
           className="text-input wl-search"
-          placeholder={`搜尋 ${items.length} 檔（代號或名稱）`}
-          aria-label="搜尋股票"
+          placeholder={t("搜尋 {0} 檔（代號或名稱）", [items.length])}
+          aria-label={t("搜尋股票")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select className="wl-cat-select" aria-label="分類" value={mobileCat} onChange={(e) => setMobileCat(e.target.value)}>
-          <option value="all">全部分類</option>
+        <select className="wl-cat-select" aria-label={t("分類")} value={mobileCat} onChange={(e) => setMobileCat(e.target.value)}>
+          <option value="all">{t("全部分類")}</option>
           {groupTickers(items, categories).map((g) => (
             <option key={g.name} value={g.name}>
-              {g.name}（{g.items.length}）
+              {t("{0}（{1}）", [t(g.name), g.items.length])}
             </option>
           ))}
         </select>
       </div>
 
       <div className="wl-scroll" ref={listRef}>
-        {total === 0 && <p className="muted pad small">找不到「{query}」</p>}
+        {total === 0 && <p className="muted pad small">{t("找不到「{0}」", [query])}</p>}
         {groups.map((g) => {
           // 搜尋時一律展開，才看得到結果
           const open = searching || !collapsed.includes(g.name);
@@ -84,7 +85,7 @@ export default function Watchlist({ items, categories = [], selected, onSelect, 
                 <span className="wl-caret" aria-hidden="true">
                   {open ? "▾" : "▸"}
                 </span>
-                {g.name}
+                {t(g.name)}
                 <span className="muted">{g.items.length}</span>
               </button>
               <ul>

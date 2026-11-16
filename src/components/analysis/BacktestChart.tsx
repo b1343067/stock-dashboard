@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ColorType, LineSeries, createChart, type IChartApi, type ISeriesApi, type Time } from "lightweight-charts";
 import { useThemeColors } from "../../lib/theme";
+import { t, locale } from "../../lib/i18n";
 
 interface Props {
   time: string[];
@@ -32,12 +33,12 @@ export default function BacktestChart({ time, portfolio, benchmark, benchmarkNam
       layout: { background: { type: ColorType.Solid, color: "transparent" }, attributionLogo: false },
       rightPriceScale: { borderVisible: false },
       timeScale: { borderVisible: false },
-      localization: { locale: "zh-TW", dateFormat: "yyyy-MM-dd", priceFormatter: (v: number) => pct(v) },
+      localization: { locale: locale(), dateFormat: "yyyy-MM-dd", priceFormatter: (v: number) => pct(v) },
       handleScroll: false,
       handleScale: false,
     });
     const opts = { lineWidth: 2 as const, priceLineVisible: false };
-    const p = chart.addSeries(LineSeries, { ...opts, title: "組合" });
+    const p = chart.addSeries(LineSeries, { ...opts, title: t("組合") });
     const b = chart.addSeries(LineSeries, { ...opts, title: benchmarkName });
     // 0% 基準線
     p.createPriceLine({ price: 0, lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: "" });
@@ -80,7 +81,7 @@ export default function BacktestChart({ time, portfolio, benchmark, benchmarkNam
       <div className="bt-legend" aria-live="polite">
         <span className="legend-date">{time[i]}</span>
         <span>
-          <i className="swatch" style={{ background: "var(--s1)" }} /> 組合 <b>{pct(pRet[i])}</b>
+          <i className="swatch" style={{ background: "var(--s1)" }} /> {" "}{t("組合")}{" "}<b>{pct(pRet[i])}</b>
         </span>
         <span>
           <i className="swatch" style={{ background: "var(--s2)" }} /> {benchmarkName} <b>{pct(bRet[i])}</b>

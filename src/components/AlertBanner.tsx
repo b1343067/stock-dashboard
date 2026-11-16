@@ -3,6 +3,7 @@
 import { acknowledge, describeAlert, type PriceAlert, type Quote } from "../lib/alerts";
 import { setAlerts, useAlerts } from "../lib/alertsStore";
 import { chartHref } from "../lib/route";
+import { t } from "../lib/i18n";
 
 interface Props {
   triggered: PriceAlert[];
@@ -22,25 +23,25 @@ export default function AlertBanner({ triggered, quotes, onOpen }: Props) {
         🔔
       </span>
       <div className="alert-banner-list">
-        <b>{triggered.length} 個價格提醒已觸發：</b>
+        <b>{t("{0} 個價格提醒已觸發：", [triggered.length])}</b>
         {triggered.slice(0, SHOW).map((a, i) => (
           <span key={a.id}>
-            {i > 0 && "、"}
+            {i > 0 && t("、")}
             <a href={chartHref(a.symbol)}>{describeAlert(a)}</a>
           </span>
         ))}
         {triggered.length > SHOW && (
           <button type="button" className="btn-link" onClick={onOpen}>
-            還有 {triggered.length - SHOW} 個
+            {t("還有 {0} 個", [triggered.length - SHOW])}
           </button>
         )}
       </div>
       <span className="alert-banner-actions">
         <button type="button" className="btn-ghost" onClick={onOpen}>
-          管理
+          {t("管理")}
         </button>
         <button type="button" className="btn-primary" onClick={() => setAlerts(acknowledge(alerts, triggered.map((a) => a.id), dates))}>
-          知道了
+          {t("知道了")}
         </button>
       </span>
     </div>

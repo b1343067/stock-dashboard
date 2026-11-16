@@ -3,6 +3,7 @@
 
 import { computeStatus, type Tone } from "../lib/signals";
 import type { SeriesData, Timeframe } from "../lib/types";
+import { t } from "../lib/i18n";
 
 interface Props {
   data: SeriesData;
@@ -29,7 +30,7 @@ export default function StatusCards({ data, timeframe, redUp }: Props) {
   return (
     <section aria-labelledby="status-title">
       <h3 className="block-title" id="status-title">
-        現在的狀態 <small>{TF_NAME[timeframe]} · {date} 收盤</small>
+        {t("現在的狀態")}{" "}<small>{t("{0} · {1} 收盤", [t(TF_NAME[timeframe]), date])}</small>
       </h3>
       <div className="status-grid">
         {items.map((it) => (
@@ -41,7 +42,7 @@ export default function StatusCards({ data, timeframe, redUp }: Props) {
             <div className={`status-value num ${it.key === "ma" ? toneClass(it.tone, redUp) + "-text" : ""}`}>{it.value}</div>
             {it.gauge !== null ? (
               <>
-                <div className="gauge" role="img" aria-label={`${it.title} 位置 ${it.gauge.toFixed(0)}`}>
+                <div className="gauge" role="img" aria-label={t("{0} 位置 {1}", [it.title, it.gauge.toFixed(0)])}>
                   {it.key === "rsi" && (
                     <>
                       <span className="gauge-zone" style={{ left: 0, width: "30%", background: lowZone }} />
@@ -60,9 +61,9 @@ export default function StatusCards({ data, timeframe, redUp }: Props) {
                     </>
                   ) : (
                     <>
-                      <span>下軌</span>
-                      <span>中軌</span>
-                      <span>上軌</span>
+                      <span>{t("下軌")}</span>
+                      <span>{t("中軌")}</span>
+                      <span>{t("上軌")}</span>
                     </>
                   )}
                 </div>
@@ -73,7 +74,7 @@ export default function StatusCards({ data, timeframe, redUp }: Props) {
           </div>
         ))}
       </div>
-      <p className="hint">「偏多／偏空」「超買／超賣」只是描述指標狀態，不是買賣建議。</p>
+      <p className="hint">{t("「偏多／偏空」「超買／超賣」只是描述指標狀態，不是買賣建議。")}</p>
     </section>
   );
 }

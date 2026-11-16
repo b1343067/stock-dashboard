@@ -30,6 +30,7 @@ import {
   type PortfolioMode,
 } from "../lib/portfolioStore";
 import type { IndexData } from "../lib/types";
+import { t } from "../lib/i18n";
 
 interface Props {
   index: IndexData | null;
@@ -146,7 +147,7 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
     }
     if (editing === "new") {
       // 還在顯示範例時新增，先問要不要清掉範例，避免真實持股和範例混在一起
-      if (isSample && window.confirm("目前是範例持股。要先清除範例，再加入你的持股嗎？\n（按「取消」會保留範例一起顯示）")) {
+      if (isSample && window.confirm(t("目前是範例持股。要先清除範例，再加入你的持股嗎？\n（按「取消」會保留範例一起顯示）"))) {
         setHoldings([h]);
       } else {
         setHoldings((hs) => [...hs, h]);
@@ -175,14 +176,14 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
     a.click();
     URL.revokeObjectURL(url);
     setMessage({
-      text: `已匯出 ${holdings.length} 筆持股${transactions.length ? `、${transactions.length} 筆交易` : ""}`,
+      text: t("已匯出 {0} 筆持股{1}", [holdings.length, transactions.length ? t("、{0} 筆交易", [transactions.length]) : ""]),
       tone: "ok",
     });
   };
 
   const importFile = async (file: File) => {
     try {
-      if (file.size > 1_000_000) throw new Error("檔案太大（超過 1MB）");
+      if (file.size > 1_000_000) throw new Error(t("檔案太大（超過 1MB）"));
       const text = await file.text();
       const result = parseImport(text);
       const tx = parseTransactionsFile(text);
@@ -190,7 +191,7 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
       const ok =
         !hasData ||
         window.confirm(
-          `匯入 ${result.holdings.length} 筆持股${tx.transactions.length ? `、${tx.transactions.length} 筆交易` : ""}，會取代目前的資料。確定嗎？`,
+          t("匯入 {0} 筆持股{1}，會取代目前的資料。確定嗎？", [result.holdings.length, tx.transactions.length ? t("、{0} 筆交易", [tx.transactions.length]) : ""]),
         );
       if (!ok) return;
       setHoldings(result.holdings);
@@ -201,12 +202,12 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
       setIsSample(false);
       setEditing(null);
       setMessage({
-        text: `已匯入 ${result.holdings.length} 筆持股${tx.transactions.length ? `、${tx.transactions.length} 筆交易` : ""}${result.dropped + tx.dropped ? `（${result.dropped + tx.dropped} 筆格式錯誤已略過）` : ""}`,
+        text: t("已匯入 {0} 筆持股{1}{2}", [result.holdings.length, tx.transactions.length ? t("、{0} 筆交易", [tx.transactions.length]) : "", result.dropped + tx.dropped ? t("（{0} 筆格式錯誤已略過）", [result.dropped + tx.dropped]) : ""]),
         tone: "ok",
       });
     } catch (e) {
       setMessage({
-        text: `匯入失敗：${e instanceof Error ? e.message : String(e)}`,
+        text: t("匯入失敗：{0}", [e instanceof Error ? e.message : String(e)]),
         tone: "error",
       });
     }
@@ -222,15 +223,15 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
       {isSample && !isTx && (
         <div className="banner sample-banner" role="status">
           <span>
-            目前顯示的是<b>範例持股</b>
-            （隨意設定的數字，不是任何人的真實持股）。
+            {t("目前顯示的是")}<b>{t("範例持股")}</b>
+            {t("（隨意設定的數字，不是任何人的真實持股）。")}
           </span>
           <span className="banner-actions">
             <button type="button" className="btn-primary" onClick={clearSample}>
-              清除範例，開始輸入
+              {t("清除範例，開始輸入")}
             </button>
             <button type="button" className="btn-ghost" onClick={() => fileRef.current?.click()}>
-              匯入檔案
+              {t("匯入檔案")}
             </button>
           </span>
         </div>
@@ -238,18 +239,18 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
 
       <div className="card">
         <div className="screener-head">
-          <h2>投資組合</h2>
+          <h2>{t("投資組合")}</h2>
           <div className="toolbar">
             {!isTx && (
               <button type="button" className="btn-primary" onClick={() => setEditing("new")} disabled={editing === "new"}>
-                ＋ 新增持股
+                {t("＋ 新增持股")}
               </button>
             )}
             <button type="button" className="btn-ghost" onClick={exportFile} disabled={holdings.length === 0 && transactions.length === 0}>
-              匯出
+              {t("匯出")}
             </button>
             <button type="button" className="btn-ghost" onClick={() => fileRef.current?.click()}>
-              匯入
+              {t("匯入")}
             </button>
             <input
               ref={fileRef}
@@ -266,11 +267,11 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
         </div>
 
         <div className="mode-row">
-          <div className="segmented" role="radiogroup" aria-label="持股來源">
+          <div className="segmented" role="radiogroup" aria-label={t("持股來源")}>
             {(
               [
-                ["holdings", "直接輸入持股"],
-                ["transactions", "用交易紀錄計算"],
+                ["holdings", t("直接輸入持股")],
+                ["transactions", t("用交易紀錄計算")],
               ] as const
             ).map(([m, label]) => (
               <button
@@ -290,29 +291,29 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
           </div>
           <span className="muted small">
             {isTx
-              ? "持股的股數與平均成本由下方交易紀錄自動計算，並算出已實現損益、股利與 XIRR。"
-              : "只記目前持股與平均成本；想看已實現損益與年化報酬，可以改用交易紀錄。"}
+              ? t("持股的股數與平均成本由下方交易紀錄自動計算，並算出已實現損益、股利與 XIRR。")
+              : t("只記目前持股與平均成本；想看已實現損益與年化報酬，可以改用交易紀錄。")}
           </span>
         </div>
 
         {message && (
           <p className={`flash ${message.tone === "error" ? "error" : ""}`} role="status">
             {message.text}
-            <button type="button" className="icon-btn" aria-label="關閉訊息" onClick={() => setMessage(null)}>
+            <button type="button" className="icon-btn" aria-label={t("關閉訊息")} onClick={() => setMessage(null)}>
               ×
             </button>
           </p>
         )}
 
-        {indexError && <p className="error">報價讀取失敗：{indexError}（持股資料仍保存在瀏覽器）</p>}
+        {indexError && <p className="error">{t("報價讀取失敗：{0}（持股資料仍保存在瀏覽器）", [indexError])}</p>}
 
         <SummaryCards summary={summary} settings={settings} fx={fx} redUp={redUp} />
 
         <p className="hint">
-          {priceDate && `現價為 ${priceDate} 收盤價。`}
-          {usdtwd ? `台股以 USD/TWD ${usdtwd.toFixed(2)} 換算成美元後再加總。` : ""}
-          {summary.missingQuotes > 0 && ` ${summary.missingQuotes} 檔不在觀察清單、沒有報價，未計入總計。`}
-          {summary.missingFx && " 目前沒有匯率資料，台股未計入總計。"}
+          {priceDate && t("現價為 {0} 收盤價。", [priceDate])}
+          {usdtwd ? t("台股以 USD/TWD {0} 換算成美元後再加總。", [usdtwd.toFixed(2)]) : ""}
+          {summary.missingQuotes > 0 && t(" {0} 檔不在觀察清單、沒有報價，未計入總計。", [summary.missingQuotes])}
+          {summary.missingFx && t(" 目前沒有匯率資料，台股未計入總計。")}
         </p>
       </div>
 
@@ -331,9 +332,9 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
       )}
 
       <div className="card">
-        <h3 className="section-title">持股明細</h3>
+        <h3 className="section-title">{t("持股明細")}</h3>
         {isTx && summary.rows.length === 0 ? (
-          <p className="muted empty">目前沒有持股（新增買進交易後會出現在這裡）。</p>
+          <p className="muted empty">{t("目前沒有持股（新增買進交易後會出現在這裡）。")}</p>
         ) : (
           <HoldingsTable
             rows={summary.rows}
@@ -352,7 +353,7 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
           />
         )}
         <SettingsPanel key={settingsVersion} settings={settings} onChange={setSettings} />
-        <p className="hint">🔒 持股與交易紀錄只存在這個瀏覽器，不會上傳。換電腦或清除瀏覽資料前，請先「匯出」備份。</p>
+        <p className="hint">{t("🔒 持股與交易紀錄只存在這個瀏覽器，不會上傳。換電腦或清除瀏覽資料前，請先「匯出」備份。")}</p>
       </div>
 
       {isTx && (

@@ -13,6 +13,9 @@ export default defineConfig({
     // 預設封鎖 Service Worker：它會攔截網頁的請求，讓「模擬請求失敗」的測試失效。
     // 只有 PWA 離線測試（pwa.spec.ts）會打開它。
     serviceWorkers: "block",
+    // 網站第一次打開時依瀏覽器語言選中英文；測試的選擇器用中文，所以固定用繁體中文環境
+    // （英文版另外在 i18n.spec.ts 測）
+    locale: "zh-TW",
   },
   // 測試前自動啟動「打包後的網站」（要先 npm run build）
   webServer: {

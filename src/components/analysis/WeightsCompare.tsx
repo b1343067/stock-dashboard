@@ -2,6 +2,7 @@
 // 每檔兩條橫條：藍 = 目前、橘 = 建議，旁邊印出數字與差異，不只靠顏色辨識。
 
 import { fmtPct } from "../../lib/format";
+import { t } from "../../lib/i18n";
 
 interface Props {
   symbols: string[];
@@ -18,21 +19,21 @@ export default function WeightsCompare({ symbols, current, suggested, lo, hi }: 
     <div className="wc">
       <div className="wc-legend">
         <span>
-          <i className="swatch" style={{ background: "var(--s1)" }} /> 目前權重
+          <i className="swatch" style={{ background: "var(--s1)" }} /> {" "}{t("目前權重")}
         </span>
         <span>
-          <i className="swatch" style={{ background: "var(--s2)" }} /> 建議權重
+          <i className="swatch" style={{ background: "var(--s2)" }} /> {" "}{t("建議權重")}
         </span>
-        <span className="muted">限制 {lo * 100}%～{hi * 100}%（虛線）</span>
+        <span className="muted">{t("限制 {0}%～{1}%（虛線）", [lo * 100, hi * 100])}</span>
       </div>
       <table className="wc-table">
         <thead>
           <tr>
-            <th>股票</th>
-            <th className="wc-bar-col" aria-label="權重圖" />
-            <th className="num">目前</th>
-            <th className="num">建議</th>
-            <th className="num">差異</th>
+            <th>{t("股票")}</th>
+            <th className="wc-bar-col" aria-label={t("權重圖")} />
+            <th className="num">{t("目前")}</th>
+            <th className="num">{t("建議")}</th>
+            <th className="num">{t("差異")}</th>
           </tr>
         </thead>
         <tbody>
@@ -42,7 +43,7 @@ export default function WeightsCompare({ symbols, current, suggested, lo, hi }: 
               <tr key={s}>
                 <td className="wc-sym">{s}</td>
                 <td className="wc-bar-col">
-                  <div className="wc-bars" title={`${s}：目前 ${fmtPct(current[i] * 100, 1)} → 建議 ${fmtPct(suggested[i] * 100, 1)}`}>
+                  <div className="wc-bars" title={t("{0}：目前 {1} → 建議 {2}", [s, fmtPct(current[i] * 100, 1), fmtPct(suggested[i] * 100, 1)])}>
                     <span className="wc-limit" style={{ left: w(lo) }} />
                     <span className="wc-limit" style={{ left: w(hi) }} />
                     <span className="wc-bar" style={{ width: w(current[i]), background: "var(--s1)" }} />

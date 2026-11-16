@@ -71,12 +71,16 @@ def normalize_watchlist(raw: dict) -> dict:
                 print(f"  ⚠️ 代號 {symbol} 重複出現，只保留第一個")
                 continue
             seen.add(symbol)
-            tickers.append({
+            item = {
                 "symbol": symbol,
                 "name": str(t.get("name") or symbol).strip(),
                 "currency": t.get("currency") or infer_currency(symbol),
                 "category": cat,
-            })
+            }
+            # 選填：英文名稱（網站英文模式顯示用；沒填就用 name）
+            if isinstance(t.get("nameEn"), str) and t["nameEn"].strip():
+                item["nameEn"] = t["nameEn"].strip()
+            tickers.append(item)
         if cat not in categories:
             categories.append(cat)
     return {
@@ -131,6 +135,7 @@ def rebuild_index(watchlist: dict, fx: dict, risk_free: float | None = None, gen
         items.append({
             "symbol": payload["symbol"],
             "name": t["name"],
+            **({"nameEn": t["nameEn"]} if t.get("nameEn") else {}),
             "currency": payload.get("currency", t["currency"]),
             "category": t["category"],
             "lastDate": payload["lastDate"],
@@ -172,6 +177,8 @@ def build_screener(watchlist: dict, generated_at: str) -> dict:
             continue
         item = {k: payload[k] for k in ("symbol", "currency", "lastDate", "lastClose", "changePct")}
         item["name"] = t["name"]
+        if t.get("nameEn"):
+            item["nameEn"] = t["nameEn"]
         item["category"] = t["category"]
         for tf in ("daily", "weekly", "monthly"):
             series = payload[tf]

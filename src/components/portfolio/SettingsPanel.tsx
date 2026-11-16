@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PortfolioSettings } from "../../lib/portfolio";
+import { t } from "../../lib/i18n";
 
 interface Props {
   settings: PortfolioSettings;
@@ -18,11 +19,11 @@ const FIELDS: { key: Exclude<keyof PortfolioSettings, "displayCurrency">; label:
 export default function SettingsPanel({ settings, onChange }: Props) {
   return (
     <details className="settings-panel">
-      <summary>設定</summary>
+      <summary>{t("設定")}</summary>
       <div className="form-grid">
         {FIELDS.map((f) => (
           <label key={f.key} className="field">
-            <span>{f.label}</span>
+            <span>{t(f.label)}</span>
             <SettingInput
               value={settings[f.key]}
               min={f.min}
@@ -32,8 +33,8 @@ export default function SettingsPanel({ settings, onChange }: Props) {
           </label>
         ))}
         <div className="field">
-          <span>總計顯示幣別</span>
-          <div className="segmented" role="radiogroup" aria-label="顯示幣別">
+          <span>{t("總計顯示幣別")}</span>
+          <div className="segmented" role="radiogroup" aria-label={t("顯示幣別")}>
             {(["USD", "TWD"] as const).map((c) => (
               <button
                 key={c}
@@ -43,13 +44,13 @@ export default function SettingsPanel({ settings, onChange }: Props) {
                 className={settings.displayCurrency === c ? "active" : ""}
                 onClick={() => onChange({ ...settings, displayCurrency: c })}
               >
-                {c === "USD" ? "美元" : "台幣"}
+                {c === "USD" ? t("美元") : t("台幣")}
               </button>
             ))}
           </div>
         </div>
       </div>
-      <p className="hint">每檔短線部位也可以在「編輯」裡自訂停利停損 %，沒填就用這裡的預設值。</p>
+      <p className="hint">{t("每檔短線部位也可以在「編輯」裡自訂停利停損 %，沒填就用這裡的預設值。")}</p>
     </details>
   );
 }

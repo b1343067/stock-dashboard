@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { Page } from "../lib/route";
 import { NAV_ITEMS } from "./Header";
+import { t } from "../lib/i18n";
 
 // 只有出現在導覽列的頁面需要圖示（比較頁從看盤頁、市場總覽進入，不在導覽列）
 const ICONS: Partial<Record<Page, ReactNode>> = {
@@ -27,7 +28,7 @@ const ICONS: Partial<Record<Page, ReactNode>> = {
 
 export default function BottomNav({ page, chartHref }: { page: Page; chartHref: string }) {
   return (
-    <nav className="bottom-nav" aria-label="頁面（手機）">
+    <nav className="bottom-nav" aria-label={t("頁面（手機）")}>
       {NAV_ITEMS(chartHref).map(([p, , short, href]) => (
         <a key={p} href={href} className={page === p ? "active" : ""} aria-current={page === p ? "page" : undefined}>
           <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

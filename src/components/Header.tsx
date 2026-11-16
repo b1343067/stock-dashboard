@@ -6,6 +6,7 @@ import type { IndexData, TickerSummary } from "../lib/types";
 import { useStoredState } from "../lib/storage";
 import { ANALYSIS_HREF, MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, type Page } from "../lib/route";
 import { matchesQuery } from "../lib/watchlist";
+import { getLang, locale, setLang, t, useLang } from "../lib/i18n";
 
 interface Props {
   index: IndexData | null;
@@ -26,11 +27,11 @@ const THEME_LABEL: Record<ThemePref, string> = { auto: "跟隨系統", light: "�
 const NEXT: Record<ThemePref, ThemePref> = { auto: "light", light: "dark", dark: "auto" };
 
 export const NAV_ITEMS = (chartHref: string): [Page, string, string, string][] => [
-  ["market", "市場", "市場", MARKET_HREF],
-  ["chart", "看盤", "看盤", chartHref],
-  ["screener", "篩選器", "篩選", SCREENER_HREF],
-  ["portfolio", "投資組合", "組合", PORTFOLIO_HREF],
-  ["analysis", "組合分析", "分析", ANALYSIS_HREF],
+  ["market", t("市場"), t("市場"), MARKET_HREF],
+  ["chart", t("看盤"), t("看盤"), chartHref],
+  ["screener", t("篩選器"), t("篩選"), SCREENER_HREF],
+  ["portfolio", t("投資組合"), t("組合"), PORTFOLIO_HREF],
+  ["analysis", t("組合分析"), t("分析"), ANALYSIS_HREF],
 ];
 
 export default function Header({ index, redUp, onToggleRedUp, page, chartHref, onPickSymbol, alertCount, onOpenAlerts }: Props) {
@@ -47,16 +48,16 @@ export default function Header({ index, redUp, onToggleRedUp, page, chartHref, o
 
   return (
     <header className="header">
-      <a className="brand" href={MARKET_HREF} aria-label="投資看盤首頁（市場總覽）">
+      <a className="brand" href={MARKET_HREF} aria-label={t("投資看盤首頁（市場總覽）")}>
         <span className="brand-mark" aria-hidden="true">
           <svg width="15" height="15" viewBox="0 0 14 14">
             <path d="M2 10 L5.5 6 L8 8.5 L12 3" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
-        <span className="brand-name">投資看盤</span>
+        <span className="brand-name">{t("投資看盤")}</span>
       </a>
 
-      <nav className="tabs" aria-label="頁面">
+      <nav className="tabs" aria-label={t("頁面")}>
         {NAV_ITEMS(chartHref).map(([p, label, , href]) => (
           <a key={p} href={href} className={page === p ? "active" : ""} aria-current={page === p ? "page" : undefined}>
             {label}
@@ -67,13 +68,13 @@ export default function Header({ index, redUp, onToggleRedUp, page, chartHref, o
       <QuickSearch tickers={index?.tickers ?? []} onPick={onPickSymbol} />
 
       <div className="header-actions">
-        {updated && <span className="updated muted" title="資料更新時間（台北）">更新 {updated}</span>}
+        {updated && <span className="updated muted" title={t("資料更新時間（台北）")}>{t("更新 {0}", [updated])}</span>}
         <button
           type="button"
           className="hdr-btn bell-btn"
           onClick={onOpenAlerts}
-          title="價格提醒"
-          aria-label={alertCount ? `價格提醒：${alertCount} 個已觸發` : "價格提醒"}
+          title={t("價格提醒")}
+          aria-label={alertCount ? t("價格提醒：{0} 個已觸發", [alertCount]) : t("價格提醒")}
         >
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5.5 1.5 5.5h-13S5 12 5 8z" />
@@ -81,21 +82,40 @@ export default function Header({ index, redUp, onToggleRedUp, page, chartHref, o
           </svg>
           {alertCount > 0 && <span className="bell-badge num">{alertCount}</span>}
         </button>
-        <button type="button" className="hdr-btn updown-btn" onClick={onToggleRedUp} title="切換漲跌顏色" aria-label={redUp ? "目前紅漲綠跌，點擊切換" : "目前綠漲紅跌，點擊切換"}>
-          <span className={redUp ? "num-red" : "num-green"}>漲</span>
-          <span className={redUp ? "num-green" : "num-red"}>跌</span>
+        <button type="button" className="hdr-btn updown-btn" onClick={onToggleRedUp} title={t("切換漲跌顏色")} aria-label={redUp ? t("目前紅漲綠跌，點擊切換") : t("目前綠漲紅跌，點擊切換")}>
+          {/* 英文用 ▲▼（比 Up／Dn 窄，手機上頁首才放得下一行） */}
+          <span className={redUp ? "num-red" : "num-green"}>{getLang() === "en" ? "▲" : t("漲")}</span>
+          <span className={redUp ? "num-green" : "num-red"}>{getLang() === "en" ? "▼" : t("跌")}</span>
         </button>
+        <LangButton />
         <button
           type="button"
           className="hdr-btn"
           onClick={() => setTheme(NEXT[theme])}
-          title={`主題：${THEME_LABEL[theme]}（點擊切換）`}
-          aria-label={`主題：${THEME_LABEL[theme]}，點擊切換`}
+          title={t("主題：{0}（點擊切換）", [t(THEME_LABEL[theme])])}
+          aria-label={t("主題：{0}，點擊切換", [t(THEME_LABEL[theme])])}
         >
           <ThemeIcon theme={theme} />
         </button>
       </div>
     </header>
+  );
+}
+
+/** 語言切換：中文 ⇄ English（記在瀏覽器；切換後整個畫面重新顯示） */
+function LangButton() {
+  const lang = useLang();
+  return (
+    <button
+      type="button"
+      className="hdr-btn lang-btn"
+      onClick={() => setLang(lang === "zh" ? "en" : "zh")}
+      title={lang === "zh" ? "Switch to English" : "切換成中文"}
+      aria-label={lang === "zh" ? "Switch to English" : "切換成中文"}
+      lang={lang === "zh" ? "en" : "zh-Hant"}
+    >
+      {lang === "zh" ? "EN" : "中"}
+    </button>
   );
 }
 
@@ -133,8 +153,8 @@ function QuickSearch({ tickers, onPick }: { tickers: TickerSummary[]; onPick: (s
       <input
         ref={inputRef}
         type="search"
-        placeholder={`搜尋 ${tickers.length || ""} 檔代號或名稱`}
-        aria-label="快速搜尋股票"
+        placeholder={t("搜尋 {0} 檔代號或名稱", [tickers.length || ""])}
+        aria-label={t("快速搜尋股票")}
         value={q}
         onChange={(e) => {
           setQ(e.target.value);
@@ -153,12 +173,12 @@ function QuickSearch({ tickers, onPick }: { tickers: TickerSummary[]; onPick: (s
       <kbd className="qs-kbd" aria-hidden="true">/</kbd>
       {open && results.length > 0 && (
         <ul className="qs-list" role="listbox">
-          {results.map((t, i) => (
-            <li key={t.symbol} role="option" aria-selected={i === active}>
-              <button type="button" className={i === active ? "active" : ""} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(t.symbol)}>
-                <b>{t.symbol}</b>
-                <span className="muted">{t.name}</span>
-                {t.category && <span className="qs-cat">{t.category}</span>}
+          {results.map((tk, i) => (
+            <li key={tk.symbol} role="option" aria-selected={i === active}>
+              <button type="button" className={i === active ? "active" : ""} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(tk.symbol)}>
+                <b>{tk.symbol}</b>
+                <span className="muted">{tk.name}</span>
+                {tk.category && <span className="qs-cat">{t(tk.category)}</span>}
               </button>
             </li>
           ))}
@@ -193,7 +213,7 @@ function ThemeIcon({ theme }: { theme: ThemePref }) {
 function formatTaipei(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("zh-TW", {
+  return d.toLocaleString(locale(), {
     timeZone: "Asia/Taipei",
     month: "2-digit",
     day: "2-digit",

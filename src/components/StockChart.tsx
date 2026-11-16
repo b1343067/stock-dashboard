@@ -23,6 +23,7 @@ import {
 import type { OverlayKey, SeriesData, Timeframe } from "../lib/types";
 import { useThemeColors, type ChartColors } from "../lib/theme";
 import type { Drawing, Point } from "../lib/drawings";
+import { t, locale } from "../lib/i18n";
 
 interface Props {
   data: SeriesData;
@@ -116,7 +117,7 @@ export default function StockChart({
       crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: { borderVisible: false },
       timeScale: { borderVisible: false, rightOffset: 3 },
-      localization: { locale: "zh-TW", dateFormat: "yyyy-MM-dd" },
+      localization: { locale: locale(), dateFormat: "yyyy-MM-dd" },
     });
 
     const priceFormat = { type: "price" as const, precision, minMove: 1 / 10 ** precision };
@@ -220,7 +221,7 @@ export default function StockChart({
 
     chartRef.current = chart;
     // 趨勢外推：虛線、粗一點，最後一個點顯示價格標籤
-    const proj = mkLine(0, { lineWidth: 2, lineStyle: LineStyle.Dashed, lastValueVisible: true, title: "外推" });
+    const proj = mkLine(0, { lineWidth: 2, lineStyle: LineStyle.Dashed, lastValueVisible: true, title: t("外推") });
 
     seriesRef.current = { candle, volume, lines, macdHist, macd, signal, rsi, projection: proj };
 
@@ -404,11 +405,11 @@ export default function StockChart({
     <div className="chart-wrap">
       <div className="chart-legend" aria-live="polite">
         <span className="legend-date">{legend.time}</span>
-        <span>開 {f(legend.o)}</span>
-        <span>高 {f(legend.h)}</span>
-        <span>低 {f(legend.l)}</span>
+        <span>{t("開 {0}", [f(legend.o)])}</span>
+        <span>{t("高 {0}", [f(legend.h)])}</span>
+        <span>{t("低 {0}", [f(legend.l)])}</span>
         <span>
-          收 <b style={{ color: chgColor }}>{f(legend.c)}</b>
+          {t("收")}{" "}<b style={{ color: chgColor }}>{f(legend.c)}</b>
         </span>
         <span style={{ color: chgColor }}>
           {legend.chg >= 0 ? "+" : ""}
@@ -436,7 +437,7 @@ export default function StockChart({
         {showMacd && (
           <span className="pane-label" style={{ top: paneTops[0] }}>
             MACD(12,26,9) <i style={{ color: colors.macd }}>DIF {f(legend.macd, 3)}</i>{" "}
-            <i style={{ color: colors.signal }}>DEA {f(legend.signal, 3)}</i> <i>柱 {f(legend.hist, 3)}</i>
+            <i style={{ color: colors.signal }}>DEA {f(legend.signal, 3)}</i> <i>{t("柱 {0}", [f(legend.hist, 3)])}</i>
           </span>
         )}
         {showRsi && (

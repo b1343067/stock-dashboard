@@ -32,6 +32,7 @@ import { loadHoldings, loadSettings } from "../lib/portfolioStore";
 import { PORTFOLIO_HREF, chartHref } from "../lib/route";
 import { useStoredState } from "../lib/storage";
 import type { IndexData } from "../lib/types";
+import { t } from "../lib/i18n";
 
 const MARKET = "VOO";
 const W_LO = 0.05;
@@ -198,13 +199,13 @@ export default function AnalysisPage({ index, redUp }: Props) {
 
   // ---- 畫面 ----
 
-  if (!index) return <div className="card"><p className="muted empty">載入中…</p></div>;
+  if (!index) return <div className="card"><p className="muted empty">{t("載入中…")}</p></div>;
   if (held.length === 0) {
     return (
       <div className="card">
-        <h2>組合分析</h2>
+        <h2>{t("組合分析")}</h2>
         <p className="muted empty">
-          還沒有可分析的持股。請先到 <a href={PORTFOLIO_HREF}>投資組合</a> 輸入持股（需要在觀察清單內、有報價的股票）。
+          {t("還沒有可分析的持股。請先到")}{" "}<a href={PORTFOLIO_HREF}>{t("投資組合")}</a> {" "}{t("輸入持股（需要在觀察清單內、有報價的股票）。")}
         </p>
       </div>
     );
@@ -214,67 +215,65 @@ export default function AnalysisPage({ index, redUp }: Props) {
     <div className="analysis">
       {isSample && (
         <div className="banner" role="status">
-          目前分析的是<b>範例持股</b>。到 <a href={PORTFOLIO_HREF}>投資組合</a> 輸入自己的持股後，這裡會自動改用你的資料。
+          {t("目前分析的是")}<b>{t("範例持股")}</b>{t("。到")}{" "}<a href={PORTFOLIO_HREF}>{t("投資組合")}</a> {" "}{t("輸入自己的持股後，這裡會自動改用你的資料。")}
         </div>
       )}
 
       <div className="card">
         <div className="screener-head">
-          <h2>組合分析</h2>
-          <div className="segmented" role="radiogroup" aria-label="分析期間">
+          <h2>{t("組合分析")}</h2>
+          <div className="segmented" role="radiogroup" aria-label={t("分析期間")}>
             {(Object.keys(PERIOD_YEARS) as Period[]).map((p) => (
               <button key={p} type="button" role="radio" aria-checked={period === p} className={period === p ? "active" : ""} onClick={() => setPeriod(p)}>
-                近 {PERIOD_YEARS[p]} 年
+                {t("近 {0} 年", [PERIOD_YEARS[p]])}
               </button>
             ))}
           </div>
         </div>
         <div className="form-grid compact">
           <label className="field">
-            <span>無風險利率 %（空白 = {(rfAuto * 100).toFixed(2)}%{index.riskFree != null ? "，美國 13 週國庫券" : "，預設值"}）</span>
+            <span>{t("無風險利率 %（空白 = {0}%{1}）", [(rfAuto * 100).toFixed(2), index.riskFree != null ? t("，美國 13 週國庫券") : t("，預設值")])}</span>
             <input className="text-input" type="number" inputMode="decimal" step="0.01" value={rfInput} placeholder={(rfAuto * 100).toFixed(2)} onChange={(e) => setRfInput(e.target.value)} />
           </label>
           <label className="field">
-            <span>CAPM 市場預期報酬 %（空白 = 期間內 VOO 歷史年化{result ? ` ${(result.market.annReturn * 100).toFixed(1)}%` : ""}）</span>
-            <input className="text-input" type="number" inputMode="decimal" step="0.1" value={mktInput} placeholder="例如 8" onChange={(e) => setMktInput(e.target.value)} />
+            <span>{t("CAPM 市場預期報酬 %（空白 = 期間內 VOO 歷史年化{0}）", [result ? ` ${(result.market.annReturn * 100).toFixed(1)}%` : ""])}</span>
+            <input className="text-input" type="number" inputMode="decimal" step="0.1" value={mktInput} placeholder={t("例如 8")} onChange={(e) => setMktInput(e.target.value)} />
           </label>
         </div>
 
         {prices.loading ? (
-          <p className="muted empty">讀取價格資料中…</p>
+          <p className="muted empty">{t("讀取價格資料中…")}</p>
         ) : !result ? (
-          <p className="error">資料不足，無法分析（共同交易日少於 60 天，或讀不到 VOO）。</p>
+          <p className="error">{t("資料不足，無法分析（共同交易日少於 60 天，或讀不到 VOO）。")}</p>
         ) : (
           <>
             <p className="hint">
-              期間 {result.start} ～ {result.end}，共 {result.days} 個共同交易日；比較基準 {MARKET}。
-              {prices.failed.length > 0 && ` 讀取失敗、未納入：${prices.failed.join("、")}。`}
-              {prices.approxFx && " ⚠️ 尚無歷史匯率資料，台股暫以最新匯率換算（下次資料更新後會自動改用歷史匯率）。"}
+              {t("期間 {0} ～ {1}，共 {2} 個共同交易日；比較基準 {3}。{4}{5}", [result.start, result.end, result.days, MARKET, prices.failed.length > 0 && t(" 讀取失敗、未納入：{0}。", [prices.failed.join(t("、"))]), prices.approxFx && t(" ⚠️ 尚無歷史匯率資料，台股暫以最新匯率換算（下次資料更新後會自動改用歷史匯率）。")])}
             </p>
             <div className="summary-grid six">
-              <Stat label="加權 Beta" value={fmtFixed(result.weightedBeta, 2)} note={`${MARKET} = 1.00`} />
+              <Stat label={t("加權 Beta")} value={fmtFixed(result.weightedBeta, 2)} note={`${MARKET} = 1.00`} />
               <Stat
-                label="Jensen's Alpha（年化）"
+                label={t("Jensen's Alpha（年化）")}
                 value={fmtPct(result.alpha * 100, 2, true)}
                 cls={pnlClass(result.alpha, redUp)}
-                note="扣除市場風險後的超額報酬"
+                note={t("扣除市場風險後的超額報酬")}
               />
               <Stat
-                label="最大回撤"
+                label={t("最大回撤")}
                 value={fmtPct(result.portfolio.maxDrawdown * 100, 1)}
                 note={`${MARKET} ${fmtPct(result.market.maxDrawdown * 100, 1)}`}
               />
               <Stat
-                label="年化報酬"
+                label={t("年化報酬")}
                 value={fmtPct(result.portfolio.annReturn * 100, 1, true)}
                 cls={pnlClass(result.portfolio.annReturn, redUp)}
                 note={`${MARKET} ${fmtPct(result.market.annReturn * 100, 1, true)}`}
               />
-              <Stat label="年化波動度" value={fmtPct(result.portfolio.annVol * 100, 1)} note={`${MARKET} ${fmtPct(result.market.annVol * 100, 1)}`} />
-              <Stat label="夏普值" value={fmtFixed(result.portfolio.sharpe, 2)} note={`${MARKET} ${fmtFixed(result.market.sharpe, 2)}`} />
+              <Stat label={t("年化波動度")} value={fmtPct(result.portfolio.annVol * 100, 1)} note={`${MARKET} ${fmtPct(result.market.annVol * 100, 1)}`} />
+              <Stat label={t("夏普值")} value={fmtFixed(result.portfolio.sharpe, 2)} note={`${MARKET} ${fmtFixed(result.market.sharpe, 2)}`} />
             </div>
             <p className="hint">
-              以上用目前權重、每日維持固定比例計算，描述組合的風險特性；實際「買進持有」的結果請看下方回測。
+              {t("以上用目前權重、每日維持固定比例計算，描述組合的風險特性；實際「買進持有」的結果請看下方回測。")}
             </p>
           </>
         )}
@@ -282,18 +281,18 @@ export default function AnalysisPage({ index, redUp }: Props) {
 
       {result && (
         <div className="card">
-          <h3 className="section-title">個股指標</h3>
+          <h3 className="section-title">{t("個股指標")}</h3>
           <div className="table-scroll">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>股票</th>
-                  <th className="num">目前權重</th>
+                  <th>{t("股票")}</th>
+                  <th className="num">{t("目前權重")}</th>
                   <th className="num">Beta</th>
-                  <th className="num">Alpha（年化）</th>
-                  <th className="num">年化報酬</th>
-                  <th className="num">年化波動</th>
-                  <th className="num">CAPM 預期報酬</th>
+                  <th className="num">{t("Alpha（年化）")}</th>
+                  <th className="num">{t("年化報酬")}</th>
+                  <th className="num">{t("年化波動")}</th>
+                  <th className="num">{t("CAPM 預期報酬")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -316,27 +315,25 @@ export default function AnalysisPage({ index, redUp }: Props) {
             </table>
           </div>
           <p className="hint">
-            CAPM 預期報酬 = 無風險利率 {fmtPct(rf * 100, 2)} + Beta × （市場預期報酬 {fmtPct(result.marketExpected * 100, 1)} − 無風險利率）。
+            {t("CAPM 預期報酬 = 無風險利率 {0} + Beta × （市場預期報酬 {1} − 無風險利率）。", [fmtPct(rf * 100, 2), fmtPct(result.marketExpected * 100, 1)])}
           </p>
           <p className="hint">
-            Beta、Alpha、相關係數用「所選期間的日報酬、所有持股共同交易日」計算。財經網站常見的 Beta 多半是「5 年月報酬」，
-            期間與頻率不同，數字可能差很多；例如 BRK-B 在 2026 年和大盤的日報酬幾乎不連動，近 1 年 Beta 會明顯低於長期值。
-            切換「近 5 年」可以看到較長期的數字。
+            {t("Beta、Alpha、相關係數用「所選期間的日報酬、所有持股共同交易日」計算。財經網站常見的 Beta 多半是「5 年月報酬」， 期間與頻率不同，數字可能差很多；例如 BRK-B 在 2026 年和大盤的日報酬幾乎不連動，近 1 年 Beta 會明顯低於長期值。 切換「近 5 年」可以看到較長期的數字。")}
           </p>
         </div>
       )}
 
       {result && result.symbols.length >= 2 && (
         <div className="card">
-          <h3 className="section-title">相關係數熱力圖（日報酬）</h3>
+          <h3 className="section-title">{t("相關係數熱力圖（日報酬）")}</h3>
           <CorrelationHeatmap symbols={result.symbols} corr={result.corr} />
-          <p className="hint">相關係數越接近 1，兩檔越常同漲同跌，分散風險的效果越小。台股和美股交易時間不同，同一天的報酬並非同時發生，相關係數會偏低。</p>
+          <p className="hint">{t("相關係數越接近 1，兩檔越常同漲同跌，分散風險的效果越小。台股和美股交易時間不同，同一天的報酬並非同時發生，相關係數會偏低。")}</p>
         </div>
       )}
 
       {result && (
         <div className="card">
-          <h3 className="section-title">夏普值最佳化（每檔權重 {W_LO * 100}%～{W_HI * 100}%）</h3>
+          <h3 className="section-title">{t("夏普值最佳化（每檔權重 {0}%～{1}%）", [W_LO * 100, W_HI * 100])}</h3>
           {opt && opt.ok && currentPerf ? (
             <>
               <WeightsCompare symbols={result.symbols} current={currentW} suggested={opt.weights} lo={W_LO} hi={W_HI} />
@@ -345,20 +342,20 @@ export default function AnalysisPage({ index, redUp }: Props) {
                   <thead>
                     <tr>
                       <th />
-                      <th className="num">預期報酬（CAPM）</th>
-                      <th className="num">預期波動</th>
-                      <th className="num">夏普值</th>
+                      <th className="num">{t("預期報酬（CAPM）")}</th>
+                      <th className="num">{t("預期波動")}</th>
+                      <th className="num">{t("夏普值")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td>目前權重</td>
+                      <td>{t("目前權重")}</td>
                       <td className="num">{fmtPct(currentPerf.expReturn * 100, 2)}</td>
                       <td className="num">{fmtPct(currentPerf.vol * 100, 2)}</td>
                       <td className="num">{fmtFixed(currentPerf.sharpe, 3)}</td>
                     </tr>
                     <tr>
-                      <td>建議權重</td>
+                      <td>{t("建議權重")}</td>
                       <td className="num">{fmtPct(opt.expReturn * 100, 2)}</td>
                       <td className="num">{fmtPct(opt.vol * 100, 2)}</td>
                       <td className="num">
@@ -369,11 +366,11 @@ export default function AnalysisPage({ index, redUp }: Props) {
                 </table>
               </div>
               <p className="hint">
-                預期報酬用 CAPM 估計、風險用期間內的歷史共變異數。結果對假設很敏感（特別是市場預期報酬），只能當作參考方向，不是買賣建議。
+                {t("預期報酬用 CAPM 估計、風險用期間內的歷史共變異數。結果對假設很敏感（特別是市場預期報酬），只能當作參考方向，不是買賣建議。")}
               </p>
               {frontier && (
                 <>
-                  <h3 className="section-title frontier-title">效率前緣</h3>
+                  <h3 className="section-title frontier-title">{t("效率前緣")}</h3>
                   <FrontierChart
                     cloud={frontier.cloud}
                     frontier={frontier.line}
@@ -381,34 +378,33 @@ export default function AnalysisPage({ index, redUp }: Props) {
                     suggested={{ vol: opt.vol, ret: opt.expReturn, sharpe: opt.sharpe }}
                   />
                   <p className="hint">
-                    每個灰點是一組符合權重限制（{W_LO * 100}%～{W_HI * 100}%）的隨機組合；上緣的線是「同樣風險下預期報酬最高」的組合。
-                    目前組合離線越遠，代表在同樣風險下還有更有效率的配置。建議組合是線上夏普值最高的點。
+                    {t("每個灰點是一組符合權重限制（{0}%～{1}%）的隨機組合；上緣的線是「同樣風險下預期報酬最高」的組合。 目前組合離線越遠，代表在同樣風險下還有更有效率的配置。建議組合是線上夏普值最高的點。", [W_LO * 100, W_HI * 100])}
                   </p>
                 </>
               )}
             </>
           ) : (
-            <p className="muted empty">{opt?.reason ?? "無法最佳化"}</p>
+            <p className="muted empty">{opt?.reason ?? t("無法最佳化")}</p>
           )}
         </div>
       )}
 
       {result && (
         <div className="card">
-          <h3 className="section-title">回測：買進持有 vs {MARKET}</h3>
+          <h3 className="section-title">{t("回測：買進持有 vs {0}", [MARKET])}</h3>
           <div className="form-grid compact">
             <label className="field">
-              <span>起始日（最早 {firstDate}）</span>
+              <span>{t("起始日（最早 {0}）", [firstDate])}</span>
               <input className="text-input" type="date" min={firstDate} max={lastDate} value={start} onChange={(e) => setBtStart(e.target.value)} />
             </label>
             <div className="field">
-              <span>買進時的權重</span>
-              <div className="segmented" role="radiogroup" aria-label="回測權重">
+              <span>{t("買進時的權重")}</span>
+              <div className="segmented" role="radiogroup" aria-label={t("回測權重")}>
                 {(
                   [
-                    ["current", "目前權重"],
-                    ["suggested", "建議權重"],
-                    ["equal", "等權重"],
+                    ["current", t("目前權重")],
+                    ["suggested", t("建議權重")],
+                    ["equal", t("等權重")],
                   ] as [WeightSource, string][]
                 ).map(([k, label]) => (
                   <button
@@ -435,17 +431,17 @@ export default function AnalysisPage({ index, redUp }: Props) {
                   <thead>
                     <tr>
                       <th />
-                      <th className="num">累積報酬</th>
-                      <th className="num">年化報酬</th>
-                      <th className="num">最大回撤</th>
-                      <th className="num">夏普值</th>
-                      <th className="num">期末價值</th>
+                      <th className="num">{t("累積報酬")}</th>
+                      <th className="num">{t("年化報酬")}</th>
+                      <th className="num">{t("最大回撤")}</th>
+                      <th className="num">{t("夏普值")}</th>
+                      <th className="num">{t("期末價值")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(
                       [
-                        ["組合", bt.ps, "var(--s1)"],
+                        [t("組合"), bt.ps, "var(--s1)"],
                         [MARKET, bt.bs, "var(--s2)"],
                       ] as const
                     ).map(([name, st, color]) => (
@@ -466,12 +462,11 @@ export default function AnalysisPage({ index, redUp }: Props) {
                 </table>
               </div>
               <p className="hint">
-                {bt.time[0]} 用 {fmtMoney(INITIAL, "USD", 0)} 依權重一次買進，之後不再調整（不再平衡）。價格已含除權息調整（等同股利再投入），未計手續費與稅。
-                最大回撤滑鼠移上去可看起訖日期。
+                {t("{0} 用 {1} 依權重一次買進，之後不再調整（不再平衡）。價格已含除權息調整（等同股利再投入），未計手續費與稅。 最大回撤滑鼠移上去可看起訖日期。", [bt.time[0], fmtMoney(INITIAL, "USD", 0)])}
               </p>
             </>
           ) : (
-            <p className="muted empty">起始日太接近最後一天，資料不足。</p>
+            <p className="muted empty">{t("起始日太接近最後一天，資料不足。")}</p>
           )}
         </div>
       )}

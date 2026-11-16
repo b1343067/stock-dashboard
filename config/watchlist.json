@@ -1,5 +1,5 @@
 {
-  "_說明": "觀察清單。新增股票：在對應分類的 tickers 裡加一行 { \"symbol\": \"代號\", \"name\": \"名稱\" }；新增分類：在 groups 裡加一個 { \"name\": \"分類名稱\", \"tickers\": [...] }。代號用 Yahoo Finance 格式：美股直接寫代號、台股上市加 .TW、上櫃加 .TWO、代號裡的點改成 -（例如 BRK-B）。幣別會依代號自動判斷，不用填。改完 commit 推到 main，GitHub Actions 會自動抓新股票的資料。",
+  "_說明": "觀察清單。新增股票：在對應分類的 tickers 裡加一行 { \"symbol\": \"代號\", \"name\": \"名稱\" }；新增分類：在 groups 裡加一個 { \"name\": \"分類名稱\", \"tickers\": [...] }。代號用 Yahoo Finance 格式：美股直接寫代號、台股上市加 .TW、上櫃加 .TWO、代號裡的點改成 -（例如 BRK-B）。幣別會依代號自動判斷，不用填。名稱是中文的可以另外加 \"nameEn\": \"英文名稱\"（網站英文模式顯示用，選填）。改完 commit 推到 main，GitHub Actions 會自動抓新股票的資料。",
   "fx": { "USDTWD": "TWD=X" },
   "riskFree": "^IRX",
   "groups": [
@@ -7,22 +7,22 @@
       "name": "大盤與債券",
       "tickers": [
         { "symbol": "VOO", "name": "Vanguard S&P 500 ETF" },
-        { "symbol": "QQQ", "name": "Invesco 那斯達克 100 ETF" },
-        { "symbol": "VT", "name": "Vanguard 全世界股票 ETF" },
-        { "symbol": "VXUS", "name": "Vanguard 美國以外股票 ETF" },
-        { "symbol": "SGOV", "name": "iShares 0-3 個月美國國庫券 ETF" },
-        { "symbol": "BND", "name": "Vanguard 總體債券 ETF" },
-        { "symbol": "GLD", "name": "SPDR 黃金 ETF" }
+        { "symbol": "QQQ", "name": "Invesco 那斯達克 100 ETF", "nameEn": "Invesco QQQ (Nasdaq-100)" },
+        { "symbol": "VT", "name": "Vanguard 全世界股票 ETF", "nameEn": "Vanguard Total World Stock ETF" },
+        { "symbol": "VXUS", "name": "Vanguard 美國以外股票 ETF", "nameEn": "Vanguard Total International Stock ETF" },
+        { "symbol": "SGOV", "name": "iShares 0-3 個月美國國庫券 ETF", "nameEn": "iShares 0-3 Month Treasury Bond ETF" },
+        { "symbol": "BND", "name": "Vanguard 總體債券 ETF", "nameEn": "Vanguard Total Bond Market ETF" },
+        { "symbol": "GLD", "name": "SPDR 黃金 ETF", "nameEn": "SPDR Gold Shares" }
       ]
     },
     {
       "name": "產業 ETF",
       "tickers": [
-        { "symbol": "XLV", "name": "醫療保健類股 ETF" },
-        { "symbol": "XLP", "name": "必需消費類股 ETF" },
-        { "symbol": "XLE", "name": "能源類股 ETF" },
-        { "symbol": "SMH", "name": "VanEck 半導體 ETF" },
-        { "symbol": "VNQ", "name": "Vanguard 房地產 ETF" }
+        { "symbol": "XLV", "name": "醫療保健類股 ETF", "nameEn": "Health Care Select Sector SPDR" },
+        { "symbol": "XLP", "name": "必需消費類股 ETF", "nameEn": "Consumer Staples Select Sector SPDR" },
+        { "symbol": "XLE", "name": "能源類股 ETF", "nameEn": "Energy Select Sector SPDR" },
+        { "symbol": "SMH", "name": "VanEck 半導體 ETF", "nameEn": "VanEck Semiconductor ETF" },
+        { "symbol": "VNQ", "name": "Vanguard 房地產 ETF", "nameEn": "Vanguard Real Estate ETF" }
       ]
     },
     {
@@ -36,7 +36,7 @@
         { "symbol": "NVDA", "name": "NVIDIA" },
         { "symbol": "AMD", "name": "Advanced Micro Devices" },
         { "symbol": "AVGO", "name": "Broadcom" },
-        { "symbol": "TSM", "name": "台積電 ADR" },
+        { "symbol": "TSM", "name": "台積電 ADR", "nameEn": "TSMC ADR" },
         { "symbol": "PLTR", "name": "Palantir" },
         { "symbol": "ORCL", "name": "Oracle" },
         { "symbol": "INTC", "name": "Intel" }
@@ -90,11 +90,11 @@
     {
       "name": "台股",
       "tickers": [
-        { "symbol": "0050.TW", "name": "元大台灣50" },
-        { "symbol": "006208.TW", "name": "富邦台50" },
-        { "symbol": "2330.TW", "name": "台積電" },
-        { "symbol": "2317.TW", "name": "鴻海" },
-        { "symbol": "2454.TW", "name": "聯發科" }
+        { "symbol": "0050.TW", "name": "元大台灣50", "nameEn": "Yuanta Taiwan 50" },
+        { "symbol": "006208.TW", "name": "富邦台50", "nameEn": "Fubon Taiwan 50" },
+        { "symbol": "2330.TW", "name": "台積電", "nameEn": "TSMC" },
+        { "symbol": "2317.TW", "name": "鴻海", "nameEn": "Hon Hai (Foxconn)" },
+        { "symbol": "2454.TW", "name": "聯發科", "nameEn": "MediaTek" }
       ]
     }
   ]

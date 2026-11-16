@@ -2,6 +2,7 @@
 // 顏色：發散色（藍 = 正相關、紅 = 負相關、灰 = 接近 0），顏色深淺代表強弱。
 // 每格都印出數字，所以不靠顏色也能讀；滑鼠移上去有完整說明。
 
+import { t } from "../../lib/i18n";
 interface Props {
   symbols: string[];
   corr: number[][];
@@ -17,8 +18,8 @@ function cellColor(r: number): string {
 
 function describe(r: number): string {
   const a = Math.abs(r);
-  const strength = a >= 0.7 ? "高度" : a >= 0.4 ? "中度" : a >= 0.2 ? "低度" : "幾乎無";
-  return a < 0.2 ? "幾乎無相關" : `${strength}${r > 0 ? "正" : "負"}相關`;
+  const strength = a >= 0.7 ? t("高度") : a >= 0.4 ? t("中度") : a >= 0.2 ? t("低度") : t("幾乎無");
+  return a < 0.2 ? t("幾乎無相關") : t("{0}{1}相關", [strength, r > 0 ? t("正") : t("負")]);
 }
 
 export default function CorrelationHeatmap({ symbols, corr }: Props) {
@@ -28,7 +29,7 @@ export default function CorrelationHeatmap({ symbols, corr }: Props) {
       <div
         className="heatmap"
         role="table"
-        aria-label="相關係數矩陣"
+        aria-label={t("相關係數矩陣")}
         style={{ gridTemplateColumns: `auto repeat(${n}, minmax(44px, 1fr))` }}
       >
         <div role="row" className="hm-row-contents">
@@ -53,7 +54,7 @@ export default function CorrelationHeatmap({ symbols, corr }: Props) {
                   role="cell"
                   className={`hm-cell${strong ? " strong" : ""}${i === j ? " diag" : ""}`}
                   style={{ background: cellColor(r) }}
-                  title={i === j ? a : `${a} × ${b}：${r.toFixed(2)}（${describe(r)}）`}
+                  title={i === j ? a : t("{0} × {1}：{2}（{3}）", [a, b, r.toFixed(2), describe(r)])}
                 >
                   {i === j ? "—" : r.toFixed(2)}
                 </span>
@@ -63,9 +64,9 @@ export default function CorrelationHeatmap({ symbols, corr }: Props) {
         ))}
       </div>
       <div className="hm-legend" aria-hidden="true">
-        <span>−1 負相關</span>
+        <span>{t("−1 負相關")}</span>
         <span className="hm-scale" />
-        <span>+1 正相關</span>
+        <span>{t("+1 正相關")}</span>
       </div>
     </div>
   );

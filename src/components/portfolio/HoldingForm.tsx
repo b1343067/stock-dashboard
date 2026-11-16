@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { guessCurrency, newHoldingId, type Holding, type HoldingType, type PortfolioSettings } from "../../lib/portfolio";
+import { t } from "../../lib/i18n";
 
 interface Props {
   /** 編輯時傳入原本的持股；新增時為 undefined */
@@ -35,11 +36,11 @@ export default function HoldingForm({ initial, symbols, settings, onSubmit, onCa
     const nCost = Number(cost);
     const nTp = tp.trim() === "" ? null : Number(tp);
     const nSl = sl.trim() === "" ? null : Number(sl);
-    if (!sym) return setError("請輸入股票代號");
-    if (!Number.isFinite(nShares) || nShares <= 0) return setError("股數必須大於 0");
-    if (!Number.isFinite(nCost) || nCost <= 0) return setError("成本必須大於 0");
-    if (nTp !== null && (!Number.isFinite(nTp) || nTp <= 0)) return setError("停利 % 必須大於 0");
-    if (nSl !== null && (!Number.isFinite(nSl) || nSl <= 0 || nSl >= 100)) return setError("停損 % 必須介於 0～100");
+    if (!sym) return setError(t("請輸入股票代號"));
+    if (!Number.isFinite(nShares) || nShares <= 0) return setError(t("股數必須大於 0"));
+    if (!Number.isFinite(nCost) || nCost <= 0) return setError(t("成本必須大於 0"));
+    if (nTp !== null && (!Number.isFinite(nTp) || nTp <= 0)) return setError(t("停利 % 必須大於 0"));
+    if (nSl !== null && (!Number.isFinite(nSl) || nSl <= 0 || nSl >= 100)) return setError(t("停損 % 必須介於 0～100"));
     onSubmit({
       id: initial?.id ?? newHoldingId(),
       symbol: sym,
@@ -59,16 +60,16 @@ export default function HoldingForm({ initial, symbols, settings, onSubmit, onCa
         submit();
       }}
     >
-      <h3 className="section-title">{initial ? `編輯 ${initial.symbol}` : "新增持股"}</h3>
+      <h3 className="section-title">{initial ? t("編輯 {0}", [initial.symbol]) : t("新增持股")}</h3>
       <div className="form-grid">
         <label className="field">
-          <span>股票代號</span>
+          <span>{t("股票代號")}</span>
           <input
             className="text-input"
             list={listId}
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
-            placeholder="例如 VOO、0050.TW"
+            placeholder={t("例如 VOO、0050.TW")}
             autoCapitalize="characters"
             autoComplete="off"
             autoFocus={!initial}
@@ -83,28 +84,28 @@ export default function HoldingForm({ initial, symbols, settings, onSubmit, onCa
           </datalist>
           {sym && (
             <small className={known ? "muted" : "warn-text"}>
-              {known ? `${known.name} · ${known.currency}` : "不在觀察清單，沒有報價（可加入 config/watchlist.json）"}
+              {known ? `${known.name} · ${known.currency}` : t("不在觀察清單，沒有報價（可加入 config/watchlist.json）")}
             </small>
           )}
         </label>
 
         <label className="field">
-          <span>股數</span>
+          <span>{t("股數")}</span>
           <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={shares} disabled={metaOnly} onChange={(e) => setShares(e.target.value)} />
         </label>
 
         <label className="field">
-          <span>平均成本（每股，{currency}）</span>
+          <span>{t("平均成本（每股，{0}）", [currency])}</span>
           <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={cost} disabled={metaOnly} onChange={(e) => setCost(e.target.value)} />
-          {metaOnly && <small className="muted">股數與成本由交易紀錄計算</small>}
+          {metaOnly && <small className="muted">{t("股數與成本由交易紀錄計算")}</small>}
         </label>
 
         <div className="field">
-          <span>類型</span>
-          <div className="segmented" role="radiogroup" aria-label="類型">
-            {(["core", "short"] as const).map((t) => (
-              <button key={t} type="button" role="radio" aria-checked={type === t} className={type === t ? "active" : ""} onClick={() => setType(t)}>
-                {t === "core" ? "核心" : "短線"}
+          <span>{t("類型")}</span>
+          <div className="segmented" role="radiogroup" aria-label={t("類型")}>
+            {(["core", "short"] as const).map((k) => (
+              <button key={k} type="button" role="radio" aria-checked={type === k} className={type === k ? "active" : ""} onClick={() => setType(k)}>
+                {k === "core" ? t("核心") : t("短線")}
               </button>
             ))}
           </div>
@@ -113,11 +114,11 @@ export default function HoldingForm({ initial, symbols, settings, onSubmit, onCa
         {type === "short" && (
           <>
             <label className="field">
-              <span>停利 %（空白 = 預設 {settings.defaultTpPct}%）</span>
+              <span>{t("停利 %（空白 = 預設 {0}%）", [settings.defaultTpPct])}</span>
               <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={tp} placeholder={String(settings.defaultTpPct)} onChange={(e) => setTp(e.target.value)} />
             </label>
             <label className="field">
-              <span>停損 %（空白 = 預設 {settings.defaultSlPct}%）</span>
+              <span>{t("停損 %（空白 = 預設 {0}%）", [settings.defaultSlPct])}</span>
               <input className="text-input" type="number" inputMode="decimal" min="0" max="99" step="any" value={sl} placeholder={String(settings.defaultSlPct)} onChange={(e) => setSl(e.target.value)} />
             </label>
           </>
@@ -131,10 +132,10 @@ export default function HoldingForm({ initial, symbols, settings, onSubmit, onCa
       )}
       <div className="form-actions">
         <button type="submit" className="btn-primary">
-          {initial ? "儲存" : "新增"}
+          {initial ? t("儲存") : t("新增")}
         </button>
         <button type="button" className="btn-ghost" onClick={onCancel}>
-          取消
+          {t("取消")}
         </button>
       </div>
     </form>

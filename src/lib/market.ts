@@ -2,6 +2,7 @@
 // 全部只用 index.json 已經有的資料（最新漲跌、最近 30 天收盤），不用另外下載各股檔案。
 
 import type { TickerSummary } from "./types";
+import { t } from "./i18n";
 
 /** 「今日」用最新一天漲跌；「近 30 天」用 30 天前到現在的漲跌 */
 export type Period = "day" | "month";
@@ -68,7 +69,7 @@ export function categoryStats(tickers: TickerSummary[], categories: string[], pe
   for (const ticker of tickers) {
     const change = periodChange(ticker, period);
     if (change === null) continue;
-    const c = ticker.category || "其他";
+    const c = ticker.category || t("其他");
     if (!map.has(c)) map.set(c, []);
     map.get(c)!.push({ ticker, change });
   }

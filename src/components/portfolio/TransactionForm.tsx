@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { guessCurrency } from "../../lib/portfolio";
 import { TX_LABEL, newTxId, type Transaction, type TxType } from "../../lib/transactions";
+import { t } from "../../lib/i18n";
 
 interface Props {
   symbols: { symbol: string; name: string; currency: string }[];
@@ -29,20 +30,20 @@ export default function TransactionForm({ symbols, today, onSubmit, onCancel }: 
 
   const submit = () => {
     const n = (v: string) => (v.trim() === "" ? 0 : Number(v));
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return setError("請選擇日期");
-    if (date > today) return setError("日期不能在未來");
-    if (!sym) return setError("請輸入股票代號");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return setError(t("請選擇日期"));
+    if (date > today) return setError(t("日期不能在未來"));
+    if (!sym) return setError(t("請輸入股票代號"));
     const f = n(fee);
-    if (!Number.isFinite(f) || f < 0) return setError("手續費不能是負數");
+    if (!Number.isFinite(f) || f < 0) return setError(t("手續費不能是負數"));
     if (type === "dividend") {
       const a = n(amount);
-      if (!Number.isFinite(a) || a <= 0) return setError("股利金額必須大於 0");
+      if (!Number.isFinite(a) || a <= 0) return setError(t("股利金額必須大於 0"));
       onSubmit({ id: newTxId(), date, symbol: sym, type, shares: 0, price: 0, fee: 0, amount: a });
     } else {
       const s = n(shares);
       const p = n(price);
-      if (!Number.isFinite(s) || s <= 0) return setError("股數必須大於 0");
-      if (!Number.isFinite(p) || p <= 0) return setError("價格必須大於 0");
+      if (!Number.isFinite(s) || s <= 0) return setError(t("股數必須大於 0"));
+      if (!Number.isFinite(p) || p <= 0) return setError(t("價格必須大於 0"));
       onSubmit({ id: newTxId(), date, symbol: sym, type, shares: s, price: p, fee: f, amount: 0 });
     }
     // 送出後保留日期與代號，方便連續輸入同一檔的多筆交易
@@ -61,30 +62,30 @@ export default function TransactionForm({ symbols, today, onSubmit, onCancel }: 
         submit();
       }}
     >
-      <h3 className="section-title">新增交易</h3>
+      <h3 className="section-title">{t("新增交易")}</h3>
       <div className="form-grid">
         <div className="field">
-          <span>種類</span>
-          <div className="segmented" role="radiogroup" aria-label="交易種類">
-            {(Object.keys(TX_LABEL) as TxType[]).map((t) => (
-              <button key={t} type="button" role="radio" aria-checked={type === t} className={type === t ? "active" : ""} onClick={() => setType(t)}>
-                {TX_LABEL[t]}
+          <span>{t("種類")}</span>
+          <div className="segmented" role="radiogroup" aria-label={t("交易種類")}>
+            {(Object.keys(TX_LABEL) as TxType[]).map((k) => (
+              <button key={k} type="button" role="radio" aria-checked={type === k} className={type === k ? "active" : ""} onClick={() => setType(k)}>
+                {t(TX_LABEL[k])}
               </button>
             ))}
           </div>
         </div>
         <label className="field">
-          <span>日期</span>
+          <span>{t("日期")}</span>
           <input className="text-input" type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} />
         </label>
         <label className="field">
-          <span>股票代號</span>
+          <span>{t("股票代號")}</span>
           <input
             className="text-input"
             list={listId}
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
-            placeholder="例如 VOO、0050.TW"
+            placeholder={t("例如 VOO、0050.TW")}
             autoCapitalize="characters"
             autoComplete="off"
           />
@@ -97,27 +98,27 @@ export default function TransactionForm({ symbols, today, onSubmit, onCancel }: 
           </datalist>
           {sym && (
             <small className={known ? "muted" : "warn-text"}>
-              {known ? `${known.name} · ${known.currency}` : "不在觀察清單，沒有報價（可加入 config/watchlist.json）"}
+              {known ? `${known.name} · ${known.currency}` : t("不在觀察清單，沒有報價（可加入 config/watchlist.json）")}
             </small>
           )}
         </label>
         {type === "dividend" ? (
           <label className="field">
-            <span>實領股利（{currency}，扣稅後）</span>
+            <span>{t("實領股利（{0}，扣稅後）", [currency])}</span>
             <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </label>
         ) : (
           <>
             <label className="field">
-              <span>股數</span>
+              <span>{t("股數")}</span>
               <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={shares} onChange={(e) => setShares(e.target.value)} />
             </label>
             <label className="field">
-              <span>成交價（每股，{currency}）</span>
+              <span>{t("成交價（每股，{0}）", [currency])}</span>
               <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={price} onChange={(e) => setPrice(e.target.value)} />
             </label>
             <label className="field">
-              <span>手續費＋稅（{currency}，可空白）</span>
+              <span>{t("手續費＋稅（{0}，可空白）", [currency])}</span>
               <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={fee} onChange={(e) => setFee(e.target.value)} />
             </label>
           </>
@@ -130,10 +131,10 @@ export default function TransactionForm({ symbols, today, onSubmit, onCancel }: 
       )}
       <div className="form-actions">
         <button type="submit" className="btn-primary">
-          新增
+          {t("新增")}
         </button>
         <button type="button" className="btn-ghost" onClick={onCancel}>
-          完成
+          {t("完成")}
         </button>
       </div>
     </form>
