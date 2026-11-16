@@ -83,7 +83,11 @@ export type ConditionKind =
   // 均線交叉、成交量
   | "maCrossUp"
   | "maCrossDown"
-  | "volSpike";
+  | "volSpike"
+  // 事件型：股價「剛」突破／跌破均線、RSI 急跌（危險訊號通知用，也可以在網頁篩選）
+  | "priceCrossUpMa"
+  | "priceCrossDownMa"
+  | "rsiDrop";
 
 export type Band = "upper" | "middle" | "lower";
 export type MaPeriod = 10 | 20 | 50 | 200;
@@ -138,6 +142,9 @@ export const KIND_META: Record<
   maCrossUp: { label: "均線黃金交叉", params: ["ma", "ma2", "n"] },
   maCrossDown: { label: "均線死亡交叉", params: ["ma", "ma2", "n"] },
   volSpike: { label: "成交量放大", params: ["value"], unit: "倍（相對前 20 根平均）" },
+  priceCrossUpMa: { label: "股價剛突破均線", params: ["ma", "n"] },
+  priceCrossDownMa: { label: "股價剛跌破均線", params: ["ma", "n"] },
+  rsiDrop: { label: "RSI 急跌", params: ["value", "n"], unit: "點以上" },
 };
 
 export const KIND_ORDER = Object.keys(KIND_META) as ConditionKind[];
@@ -178,6 +185,9 @@ export function makeCondition(kind: ConditionKind = "rsiBelow", tf: Timeframe = 
     maCrossUp: { ma: 50, ma2: 200, n: 5 },
     maCrossDown: { ma: 50, ma2: 200, n: 5 },
     volSpike: { value: 2 },
+    priceCrossUpMa: { ma: 200, n: 1 },
+    priceCrossDownMa: { ma: 200, n: 1 },
+    rsiDrop: { value: 15, n: 3 },
   };
   return { id: newId(), kind, tf, value: 30, n: 5, band: "upper", ma: 50, ma2: 200, ...defaults[kind] };
 }
@@ -344,6 +354,24 @@ export function evaluateCondition(ticker: ScreenerTicker, c: Condition): CondRes
       return { matched: k >= 0, detail: k >= 0 ? t("{0}交叉", [ago(k, c.tf)]) : t("未交叉") };
     }
 
+    case "priceCrossUpMa":
+    case "priceCrossDownMa": {
+      // 和「站上／跌破均線」不同：這裡要「最近 N 根內剛發生穿越」，才是一個事件
+      const ma = s[`ma${c.ma}` as const];
+      const k = c.kind === "priceCrossUpMa" ? findCrossUp(s.close, ma, n) : findCrossDown(s.close, ma, n);
+      return { matched: k >= 0, detail: k >= 0 ? t("{0}穿越 MA{1}", [ago(k, c.tf), c.ma]) : t("未發生") };
+    }
+
+    case "rsiDrop": {
+      // RSI 急轉直下：最近 N 根內的最高 RSI，到現在跌了至少 X 點（例如 3 天從 72 跌到 50）
+      if (!isNum(rsi)) return { matched: false, detail: t("RSI 無資料") };
+      const window = s.rsi.slice(Math.max(0, last - n), last).filter(isNum);
+      if (window.length === 0) return { matched: false, detail: t("RSI 無資料") };
+      const peak = Math.max(...window);
+      const drop = Math.round((peak - rsi) * 10) / 10;
+      return { matched: drop >= value, detail: t("RSI {0} → {1}（{2}）", [peak.toFixed(1), rsi.toFixed(1), drop > 0 ? `-${drop.toFixed(1)}` : "+0"]) };
+    }
+
     case "volSpike": {
       // 最新一根的成交量 ÷ 前 20 根的平均（不含最新這根，否則爆量會把平均拉高）
       const v = s.volume;
@@ -419,6 +447,12 @@ export function describeCondition(c: Condition): string {
       return t("{0} MA{1} 向下跌破 MA{2}{3}", [tf, c.ma, c.ma2, within]);
     case "volSpike":
       return t("{0} 成交量達前 20 根平均的 {1} 倍以上", [tf, c.value]);
+    case "priceCrossUpMa":
+      return t("{0} 股價突破 MA{1}{2}", [tf, c.ma, within]);
+    case "priceCrossDownMa":
+      return t("{0} 股價跌破 MA{1}{2}", [tf, c.ma, within]);
+    case "rsiDrop":
+      return t("{0} RSI 在 {1} {2}內急跌 {3} 點以上", [tf, c.n, t(TF_UNIT[c.tf]), c.value]);
   }
 }
 

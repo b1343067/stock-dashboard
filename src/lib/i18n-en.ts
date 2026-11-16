@@ -625,4 +625,13 @@ export const EN: Record<string, string> = {
   "📋 複製成通知規則": "📋 Copy as notification rule",
   "已複製。貼到儲存庫的 config/notify.json 的 rules 裡，每天早上就會把符合的股票送到 Discord。": "Copied. Paste it into \"rules\" in the repository's config/notify.json, and matching stocks will be sent to Discord every morning.",
   "無法自動複製，請手動複製下面的內容：": "Couldn't copy automatically. Please copy the text below:",
+  "RSI 急跌": "RSI sharp drop",
+  "RSI {0} → {1}（{2}）": "RSI {0} → {1} ({2})",
+  "{0} RSI 在 {1} {2}內急跌 {3} 點以上": "{0} RSI drops {3}+ points within {1} {2}",
+  "{0} 股價突破 MA{1}{2}": "{0} price crosses above MA{1}{2}",
+  "{0} 股價跌破 MA{1}{2}": "{0} price crosses below MA{1}{2}",
+  "{0}穿越 MA{1}": "Crossed MA{1} ({0})",
+  "股價剛突破均線": "Price just crossed above MA",
+  "股價剛跌破均線": "Price just crossed below MA",
+  "點以上": "points or more",
 };

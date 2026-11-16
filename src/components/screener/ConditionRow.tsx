@@ -122,7 +122,7 @@ export default function ConditionRow({ index, condition: c, onChange, onRemove, 
             min={LIMITS.value.min}
             max={LIMITS.value.max}
             onChange={(v) => onChange({ ...c, value: v })}
-            ariaLabel={meta.noTf || c.kind === "volSpike" ? t("數值") : t("RSI 門檻")}
+            ariaLabel={meta.noTf || c.kind === "volSpike" || c.kind === "rsiDrop" ? t("數值") : t("RSI 門檻")}
           />
           {c.kind === "rsiRebound" ? t("以下回升") : (meta.unit ?? "")}
         </label>

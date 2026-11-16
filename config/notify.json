@@ -1,27 +1,41 @@
 {
-  "_說明": "每日篩選通知（Discord）的規則。每天早上資料更新後，依這些規則篩選，把符合的股票送到 Discord。條件格式和網站篩選器相同：在篩選器頁設好條件，按「複製成通知規則」，貼到 rules 裡。category 可填分類名稱（例如「科技」）或 all。onlyWhenMatched = true 時，沒有任何股票符合就不送。⚠️ 這個檔案是公開的，只放篩選條件，不要放持股。",
+  "_說明": "每日 Discord 通知的設定。每天早上資料更新後送出：🚨 特別注意（有大事才送）、📊 市場摘要、👀 我關注的股票、⚠️ 危險訊號、✅ 偏多訊號（0 檔的不列）。⚠️ 這個檔案是公開的：只放關注清單與條件，不要放持股數量或成本。",
+  "_欄位": {
+    "benchmarks": "市場摘要列出的大盤指標",
+    "exclude": "不想在通知裡看到的股票（排行、訊號都略過）",
+    "topMovers": "漲幅／跌幅各列幾名（0 = 不列）",
+    "watch": "我關注的股票：每天列出狀態；單日漲跌超過 bigMovePct %、距 52 週高低點 near52wPct % 以內、出現危險訊號時會「特別注意」",
+    "priceAlerts": "價位提醒，例如 { \"symbol\": \"NVDA\", \"below\": 150 }、{ \"symbol\": \"TSLA\", \"above\": 500 }；收盤價穿越時通知（停在價位上方不會天天通知）",
+    "danger": "危險訊號規則（掃全部觀察清單）",
+    "rules": "偏多訊號規則（掃全部觀察清單）。條件格式和網站篩選器相同：在篩選器設好條件，按「📋 複製成通知規則」貼過來"
+  },
   "siteUrl": "https://stock-dashboard-peach-sigma.vercel.app/",
-  "onlyWhenMatched": true,
+  "benchmarks": ["VOO", "QQQ", "VT"],
+  "exclude": ["0050.TW"],
+  "topMovers": 3,
+  "watch": ["NVDA", "TSLA", "AAPL", "MSFT"],
+  "bigMovePct": 5,
+  "near52wPct": 1,
+  "priceAlerts": [],
+  "danger": [
+    { "name": "MACD 死亡交叉", "conditions": [{ "kind": "macdDeath", "tf": "daily", "n": 1 }] },
+    { "name": "50／200 日線死亡交叉", "conditions": [{ "kind": "maCrossDown", "tf": "daily", "ma": 50, "ma2": 200, "n": 3 }] },
+    { "name": "RSI 急轉直下", "conditions": [{ "kind": "rsiDrop", "tf": "daily", "value": 15, "n": 3 }] },
+    { "name": "跌破 200 日線", "conditions": [{ "kind": "priceCrossDownMa", "tf": "daily", "ma": 200, "n": 1 }] },
+    { "name": "跌破布林下軌", "conditions": [{ "kind": "bbBreakDown", "tf": "daily", "band": "lower", "n": 1 }] }
+  ],
   "rules": [
     {
       "name": "超賣反彈",
-      "mode": "and",
-      "category": "all",
       "conditions": [
         { "kind": "rsiRebound", "tf": "daily", "value": 30, "n": 5 },
         { "kind": "macdGolden", "tf": "daily", "n": 10 }
       ]
     },
-    {
-      "name": "長線黃金交叉（50 日線穿越 200 日線）",
-      "mode": "and",
-      "category": "all",
-      "conditions": [{ "kind": "maCrossUp", "tf": "daily", "ma": 50, "ma2": 200, "n": 3 }]
-    },
+    { "name": "50／200 日線黃金交叉", "conditions": [{ "kind": "maCrossUp", "tf": "daily", "ma": 50, "ma2": 200, "n": 3 }] },
+    { "name": "突破 200 日線", "conditions": [{ "kind": "priceCrossUpMa", "tf": "daily", "ma": 200, "n": 1 }] },
     {
       "name": "爆量上漲",
-      "mode": "and",
-      "category": "all",
       "conditions": [
         { "kind": "volSpike", "tf": "daily", "value": 2 },
         { "kind": "maAbove", "tf": "daily", "ma": 20 }

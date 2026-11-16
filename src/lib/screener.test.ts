@@ -219,3 +219,18 @@ describe("均線交叉與成交量條件", () => {
     expect(sanitizeConditions([{ kind: "maCrossUp", ma2: 7 }])[0].ma2).toBe(200);
   });
 });
+
+describe("事件型條件：剛突破／跌破均線、RSI 急跌", () => {
+  it("股價最近 N 根內剛跌破 MA200", () => {
+    const s = series({ close: [110, 105, 95], ma200: [100, 100, 100] });
+    expect(evaluateCondition(ticker(s), cond("priceCrossDownMa", { ma: 200, n: 1 })).matched).toBe(true);
+    expect(evaluateCondition(ticker(s), cond("priceCrossUpMa", { ma: 200, n: 3 })).matched).toBe(false);
+  });
+  it("RSI 3 根內從 72 跌到 50 → 急跌 22 點", () => {
+    const s = series({ close: [1, 1, 1, 1], rsi: [60, 72, 65, 50] });
+    expect(evaluateCondition(ticker(s), cond("rsiDrop", { value: 15, n: 3 }))).toEqual({ matched: true, detail: "RSI 72.0 → 50.0（-22.0）" });
+    expect(evaluateCondition(ticker(s), cond("rsiDrop", { value: 25, n: 3 })).matched).toBe(false);
+    // 只看最近 1 根：從 65 跌到 50 = 15 點
+    expect(evaluateCondition(ticker(s), cond("rsiDrop", { value: 15, n: 1 })).matched).toBe(true);
+  });
+});

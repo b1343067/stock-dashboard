@@ -11,7 +11,7 @@
 
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildMessages, buildState, evaluateRules, sanitizeNotifyConfig, type NotifyState } from "../src/lib/notify";
+import { buildMessages, buildState, sanitizeNotifyConfig, type DiscordMessage, type NotifyState } from "../src/lib/notify";
 import type { ScreenerData } from "../src/lib/screener";
 
 const ROOT = join(__dirname, "..");
@@ -33,9 +33,9 @@ function writeJsonAtomic(path: string, data: unknown): void {
   renameSync(tmp, path);
 }
 
-async function postDiscord(url: string, content: string): Promise<void> {
+async function postDiscord(url: string, msg: DiscordMessage): Promise<void> {
   // allowed_mentions 空白：訊息裡就算出現 @everyone 也不會真的標記所有人
-  const body = JSON.stringify({ username: "投資看盤", content, allowed_mentions: { parse: [] } });
+  const body = JSON.stringify({ username: "投資看盤", content: msg.content, embeds: msg.embeds, allowed_mentions: { parse: [] } });
   for (let attempt = 1; attempt <= 3; attempt++) {
     const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
     if (res.ok) return;
@@ -49,7 +49,7 @@ async function postDiscord(url: string, content: string): Promise<void> {
 
 async function main(): Promise<void> {
   const cfg = sanitizeNotifyConfig(readJson(join(ROOT, "config", "notify.json")));
-  if (cfg.rules.length === 0) return console.log("config/notify.json 沒有有效的規則，不通知。");
+  if (!readJson(join(ROOT, "config", "notify.json"))) return console.log("沒有 config/notify.json，不通知。");
 
   const data = readJson<ScreenerData>(join(DATA, "screener.json"));
   if (!data || !Array.isArray(data.tickers) || data.tickers.length === 0) return console.log("沒有 screener.json，不通知。");
@@ -64,9 +64,11 @@ async function main(): Promise<void> {
     return console.log(`${dataDate} 的資料已經通知過了（例如推程式碼觸發的重跑），這次不送。`);
   }
 
-  const results = evaluateRules(data, cfg.rules, previous);
-  for (const r of results) console.log(`規則「${r.rule.name}」：${r.matches.map((m) => m.ticker.symbol).join(", ") || "無"}`);
-  const messages = buildMessages(results, cfg, dataDate);
+  const messages = buildMessages(data, cfg, dataDate, previous);
+  // 執行記錄（公開）只印出訊息內容；設定檔本來就是公開的，這裡沒有任何私人資料
+  const preview = messages
+    .map((m) => [m.content, ...m.embeds.map((e) => `【${e.title}】\n${e.description}`)].join("\n"))
+    .join("\n---\n");
 
   const url = process.env.DISCORD_WEBHOOK_URL?.trim();
   if (!url && process.env.NOTIFY_STRICT === "1") throw new Error("沒有設定 DISCORD_WEBHOOK_URL（GitHub → Settings → Secrets and variables → Actions）");
@@ -74,15 +76,14 @@ async function main(): Promise<void> {
     throw new Error("DISCORD_WEBHOOK_URL 看起來不是 Discord 的 Webhook 網址（應該是 https://discord.com/api/webhooks/… 開頭）");
   }
   if (!url) {
-    console.log("沒有設定 DISCORD_WEBHOOK_URL，只印出訊息：\n" + messages.join("\n---\n"));
-  } else if (messages.length === 0) {
-    console.log("今天沒有符合的股票，不送訊息。");
+    console.log("沒有設定 DISCORD_WEBHOOK_URL，只印出訊息：\n" + preview);
   } else {
+    console.log(preview);
     for (const m of messages) await postDiscord(url, m);
     console.log(`已送出 ${messages.length} 則 Discord 訊息。`);
   }
   // 送出成功（或不需要送）才更新紀錄；送失敗時保留舊紀錄，明天會再當成新的通知
-  writeJsonAtomic(STATE_PATH, buildState(results, dataDate));
+  writeJsonAtomic(STATE_PATH, buildState(dataDate, data, cfg));
 }
 
 main().catch((e: unknown) => {
