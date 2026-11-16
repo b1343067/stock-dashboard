@@ -6,6 +6,7 @@
 import numpy as np
 import pandas as pd
 
+from data_quality import to_exchange_dates, validate_daily
 from indicators import bollinger, macd, resample_ohlcv, rsi_wilder
 
 
@@ -50,6 +51,28 @@ def main() -> None:
     assert wk["Close"].iloc[-1] == close.iloc[-1], "週線最後收盤應等於日線最後收盤"
     assert wk.index[-1] == idx[-1], "週線日期應為最後實際交易日"
     assert wk["Volume"].sum() == 500
+
+    # ---- 日期與時區（避免台股、美股差一天）----
+    # 台股：台北 2026-11-13（週五）00:00 = UTC 2026-11-12 16:00
+    tw_utc = pd.DataFrame({"Close": [100.0]}, index=pd.DatetimeIndex(["2026-11-12 16:00"], tz="UTC"))
+    assert str(to_exchange_dates(tw_utc, "0050.TW").index[0].date()) == "2026-11-13", "UTC 時間要換成台北日期"
+    tw_local = pd.DataFrame({"Close": [100.0]}, index=pd.DatetimeIndex(["2026-11-13"], tz="Asia/Taipei"))
+    assert str(to_exchange_dates(tw_local, "0050.TW").index[0].date()) == "2026-11-13"
+    # 美股：紐約 2026-11-13 00:00 = UTC 2026-11-13 05:00
+    us_utc = pd.DataFrame({"Close": [100.0]}, index=pd.DatetimeIndex(["2026-11-13 05:00"], tz="UTC"))
+    assert str(to_exchange_dates(us_utc, "BRK-B").index[0].date()) == "2026-11-13", "代號含 - 也要正確"
+
+    # ---- 資料檢查 ----
+    good = pd.DataFrame({"Open": close, "High": close + 1, "Low": close - 1, "Close": close}, index=idx)
+    assert validate_daily(good) == []
+    bad = good.copy()
+    bad.index = bad.index + pd.Timedelta(days=1)  # 週五 → 週六
+    assert any("週末" in p for p in validate_daily(bad)), "錯開一天要被抓到"
+    dup = pd.concat([good, good.iloc[[-1]]])
+    assert any("重複" in p for p in validate_daily(dup))
+    wrong = good.copy()
+    wrong.iloc[10, wrong.columns.get_loc("Close")] = wrong["High"].iloc[10] * 2
+    assert any("高低" in p for p in validate_daily(wrong))
 
     print(f"全部通過（RSI 與參考實作最大差異 {diff:.6f}）")
 

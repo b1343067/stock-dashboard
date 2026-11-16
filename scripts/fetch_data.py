@@ -27,6 +27,7 @@ import pandas as pd
 import yfinance as yf
 
 from data_io import FX_PATH, load_watchlist, rebuild_index, ticker_path, write_json_atomic
+from data_quality import to_exchange_dates, validate_daily
 from indicators import build_ticker_payload
 
 HISTORY_PERIOD = "10y"   # 抓 10 年，月線的均線才算得出來
@@ -41,7 +42,8 @@ def download_daily(symbol: str) -> pd.DataFrame | None:
             # auto_adjust=True：價格已含除權息調整，K 線和指標才會連續
             df = yf.Ticker(symbol).history(period=HISTORY_PERIOD, interval="1d", auto_adjust=True)
             if df is not None and len(df) >= MIN_ROWS and df["Close"].notna().sum() >= MIN_ROWS:
-                return df
+                # 明確換成「交易所當地日期」，避免時區造成台股、美股差一天
+                return to_exchange_dates(df, symbol)
             print(f"  [{symbol}] 第 {attempt} 次：資料筆數不足（{0 if df is None else len(df)} 筆）")
         except Exception as e:  # yfinance 的錯誤種類很多，這裡統一處理
             print(f"  [{symbol}] 第 {attempt} 次失敗：{e}")
@@ -62,7 +64,8 @@ def fetch_fx(fx_config: dict) -> tuple[dict, dict]:
             close = df["Close"].dropna()
             if len(close) > 0:
                 latest[name] = round(float(close.iloc[-1]), 4)
-                close.index = pd.DatetimeIndex(close.index).tz_localize(None).normalize()
+                # 匯率以台北日期為準（和台股對齊）
+                close = to_exchange_dates(close.to_frame(), "TWD.TW")["Close"]
                 history[name] = {
                     "time": [d.strftime("%Y-%m-%d") for d in close.index],
                     "close": [round(float(v), 4) for v in close],
@@ -101,6 +104,11 @@ def main() -> int:
         if df is None:
             failed.append(symbol)
             print(f"  [{symbol}] 放棄，保留前一天的檔案")
+            continue
+        problems = validate_daily(df.dropna(subset=["Close"]), MIN_ROWS)
+        if problems:
+            failed.append(symbol)
+            print(f"  [{symbol}] 資料異常：{'；'.join(problems)}，保留前一天的檔案")
             continue
         try:
             payload = build_ticker_payload(df, {**t, "sample": False})

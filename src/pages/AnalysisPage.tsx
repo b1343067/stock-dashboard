@@ -307,6 +307,11 @@ export default function AnalysisPage({ index, redUp }: Props) {
           <p className="hint">
             CAPM 預期報酬 = 無風險利率 {fmtPct(rf * 100, 2)} + Beta × （市場預期報酬 {fmtPct(result.marketExpected * 100, 1)} − 無風險利率）。
           </p>
+          <p className="hint">
+            Beta、Alpha、相關係數用「所選期間的日報酬、所有持股共同交易日」計算。財經網站常見的 Beta 多半是「5 年月報酬」，
+            期間與頻率不同，數字可能差很多；例如 BRK-B 在 2026 年和大盤的日報酬幾乎不連動，近 1 年 Beta 會明顯低於長期值。
+            切換「近 5 年」可以看到較長期的數字。
+          </p>
         </div>
       )}
 
