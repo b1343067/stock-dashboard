@@ -5,6 +5,7 @@
 // 環境變數：
 //   DISCORD_WEBHOOK_URL  Discord 頻道的 Webhook 網址（存在 GitHub Secrets；沒設定就只印出訊息、不送）
 //   NOTIFY_FORCE=1       同一天的資料已經通知過也再送一次（測試用）
+//   NOTIFY_STRICT=1      失敗時結束碼 1（「測試 Discord 通知」用，讓失敗在 Actions 顯示紅色）
 //
 // 安全設計：任何錯誤都只印出來、結束碼 0，不會讓每日資料更新失敗。
 
@@ -68,6 +69,10 @@ async function main(): Promise<void> {
   const messages = buildMessages(results, cfg, dataDate);
 
   const url = process.env.DISCORD_WEBHOOK_URL?.trim();
+  if (!url && process.env.NOTIFY_STRICT === "1") throw new Error("沒有設定 DISCORD_WEBHOOK_URL（GitHub → Settings → Secrets and variables → Actions）");
+  if (url && !/^https:\/\/((ptb\.|canary\.)?discord\.com|discordapp\.com)\/api\/webhooks\//.test(url)) {
+    throw new Error("DISCORD_WEBHOOK_URL 看起來不是 Discord 的 Webhook 網址（應該是 https://discord.com/api/webhooks/… 開頭）");
+  }
   if (!url) {
     console.log("沒有設定 DISCORD_WEBHOOK_URL，只印出訊息：\n" + messages.join("\n---\n"));
   } else if (messages.length === 0) {
@@ -82,4 +87,5 @@ async function main(): Promise<void> {
 
 main().catch((e: unknown) => {
   console.log(`通知失敗（不影響資料更新）：${e instanceof Error ? e.message : String(e)}`);
+  if (process.env.NOTIFY_STRICT === "1") process.exit(1);
 });

@@ -1,0 +1,36 @@
+# 測試 Discord 通知：不重抓股價，直接用 data 分支上最新的資料跑一次篩選並送出
+# （每日自動通知在「更新股價資料」裡；這個只在 Actions 頁面手動按 Run workflow 時執行）
+name: 測試 Discord 通知
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 取得程式碼
+        uses: actions/checkout@v4
+
+      - name: 下載最新資料（data 分支）
+        run: bash scripts/pull-data.sh
+
+      - name: 安裝 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安裝套件
+        run: npm ci --no-audit --no-fund
+
+      - name: 送出通知（強制，即使今天已經通知過）
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          NOTIFY_FORCE: "1"
+          NOTIFY_STRICT: "1"
+        run: npx vite-node scripts/notify.ts

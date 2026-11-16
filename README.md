@@ -90,7 +90,7 @@ K 線畫圖工具（看盤頁 K 線上方）：
 - 設定步驟：
   1. Discord 頻道 → 編輯頻道 → 整合 → Webhook → 新增 Webhook → 複製 Webhook 網址
   2. GitHub 儲存庫 → Settings → Secrets and variables → Actions → New repository secret，名稱 `DISCORD_WEBHOOK_URL`，值貼上網址
-  3. 到 Actions →「更新股價資料」→ Run workflow 試跑一次（沒設定網址時只會在執行記錄裡印出訊息）
+  3. 到 Actions →「測試 Discord 通知」→ Run workflow：不重抓股價，用目前的資料馬上送一次（失敗會顯示紅色並說明原因）
 - ⚠️ `config/notify.json` 是公開的，只放篩選條件；Webhook 網址一定要放在 Secrets，不可以寫進檔案
 
 加到手機主畫面（PWA）：
