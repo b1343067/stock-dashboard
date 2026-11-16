@@ -20,8 +20,19 @@ else
 fi
 BRANCH="${DATA_BRANCH:-data}"
 DEST="public/data"
+# 先查出 data 分支「現在」的 commit 編號，再用編號下載。
+# 為什麼？用分支名稱下載時，GitHub 的下載伺服器可能給幾分鐘前的快取版本（實際遇過：剛更新完資料，
+# Vercel 建置卻下載到舊資料）。commit 編號對應的內容永遠不變，就不會有快取過期的問題。
+SHA="$(git ls-remote "https://github.com/${REPO}.git" "refs/heads/${BRANCH}" 2>/dev/null | cut -f1 || true)"
+if [[ -n "$SHA" ]]; then
+  REF="$SHA"
+  echo "data 分支目前的 commit：${SHA:0:7}"
+else
+  REF="refs/heads/${BRANCH}"   # 查不到就退回用分支名稱（可能拿到稍舊的快取，但總比失敗好）
+  echo "（查不到 commit 編號，改用分支名稱下載）"
+fi
 # DATA_URL 可以覆蓋下載網址（測試用）
-URL="${DATA_URL:-https://codeload.github.com/${REPO}/tar.gz/refs/heads/${BRANCH}}"
+URL="${DATA_URL:-https://codeload.github.com/${REPO}/tar.gz/${REF}}"
 
 echo "下載資料：${REPO}@${BRANCH} → ${DEST}"
 TMP="$(mktemp -d)"
