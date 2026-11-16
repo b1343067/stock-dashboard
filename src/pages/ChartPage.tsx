@@ -5,12 +5,15 @@ import StockChart from "../components/StockChart";
 import Watchlist from "../components/Watchlist";
 import StatusCards from "../components/StatusCards";
 import ChartToolbar from "../components/ChartToolbar";
+import DrawingTools from "../components/DrawingTools";
+import FundamentalsCard from "../components/FundamentalsCard";
+import { drawingKey, handleClick, sanitizeDrawings, type DrawMode, type Drawing, type Point } from "../lib/drawings";
 import TrendCard, { TREND_HORIZON, TREND_LOOKBACK } from "../components/TrendCard";
 import { extrapolate, nextTradingDays } from "../lib/trend";
 import { loadTicker } from "../lib/data";
 import { fmtFixed, pnlClass } from "../lib/format";
 import { compareHref, type Route } from "../lib/route";
-import { useStoredState } from "../lib/storage";
+import { readStorage, useStoredState, writeStorage } from "../lib/storage";
 import type { IndexData, OverlayKey, TickerData, Timeframe } from "../lib/types";
 
 // 預設：K 線＋MA20／50／200；布林、MACD、RSI 收起來（使用者展開後會記住）
@@ -66,6 +69,55 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
       cancelled = true;
     };
   }, [symbol]);
+
+  // ---- 畫圖工具 ----
+  // 每檔股票、每個週期各自一份。不用 useStoredState，因為它的 key 換了（換股票）時不會重新讀取。
+  const dKey = symbol ? drawingKey(symbol, route.timeframe) : null;
+  const [drawStore, setDrawStore] = useState<Record<string, Drawing[]>>({});
+  const drawings = useMemo(
+    () => (dKey ? (drawStore[dKey] ?? sanitizeDrawings(readStorage<unknown>(dKey, []))) : []),
+    [dKey, drawStore],
+  );
+  const [drawMode, setDrawMode] = useState<DrawMode>("none");
+  const [pending, setPending] = useState<Point | null>(null);
+  const saveDrawings = useCallback(
+    (list: Drawing[]) => {
+      if (!dKey) return;
+      setDrawStore((m) => ({ ...m, [dKey]: list }));
+      writeStorage(dKey, list);
+    },
+    [dKey],
+  );
+  // 換股票或週期：取消畫到一半的線
+  useEffect(() => {
+    setPending(null);
+    setDrawMode("none");
+  }, [dKey]);
+  // Esc 取消畫圖
+  useEffect(() => {
+    if (drawMode === "none") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setDrawMode("none");
+        setPending(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [drawMode]);
+  const onChartClick = useCallback(
+    (p: Point) => {
+      const r = handleClick(drawings, drawMode, pending, p);
+      setPending(r.pending);
+      if (r.done) {
+        saveDrawings(r.drawings);
+        setDrawMode("none"); // 畫完一條就回到一般模式，避免不小心一直加線
+      }
+    },
+    [drawings, drawMode, pending, saveDrawings],
+  );
 
   const select = useCallback((s: string) => navigate(s, route.timeframe), [route.timeframe, navigate]);
 
@@ -177,6 +229,19 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
             overlays={overlays}
             onOverlays={setOverlays}
           />
+          <DrawingTools
+            mode={drawMode}
+            onMode={(m) => {
+              setDrawMode(m);
+              setPending(null);
+            }}
+            count={drawings.length}
+            waiting={pending !== null}
+            onUndo={() => saveDrawings(drawings.slice(0, -1))}
+            onClear={() => {
+              if (window.confirm(`刪除 ${symbol ?? ""} ${route.timeframe === "daily" ? "日線" : route.timeframe === "weekly" ? "週線" : "月線"}上畫的 ${drawings.length} 條線？`)) saveDrawings([]);
+            }}
+          />
           {tickerError ? (
             <p className="error chart-placeholder">此股票資料讀取失敗：{tickerError}</p>
           ) : series ? (
@@ -186,6 +251,9 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
               overlays={overlays}
               redUp={redUp}
               projection={showTrend ? projection : null}
+              drawings={drawings}
+              pendingPoint={pending}
+              onChartClick={drawMode === "none" ? undefined : onChartClick}
             />
           ) : (
             <div className="chart-placeholder muted">{loading || !index ? "載入中…" : "請選擇股票"}</div>
@@ -193,6 +261,8 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
         </div>
 
         {series && <StatusCards data={series} timeframe={route.timeframe} redUp={redUp} />}
+
+        {shown && quote && <FundamentalsCard data={shown.fundamentals} close={quote.close} currency={shown.currency} sample={shown.sample} />}
 
         {shown && projection && (
           <TrendCard

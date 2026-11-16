@@ -25,7 +25,18 @@ export interface ScreenerSeries {
   bbLower: (number | null)[];
 }
 
+/** 篩選器用的基本面（screener.json；舊資料沒有） */
+export interface ScreenerFundamentals {
+  pe: number | null;
+  forwardPe: number | null;
+  pb: number | null;
+  dividendYield: number | null;
+  high52w: number | null;
+  low52w: number | null;
+}
+
 export interface ScreenerTicker {
+  fundamentals?: ScreenerFundamentals;
   symbol: string;
   name: string;
   /** 分類；舊資料可能沒有 */
@@ -59,7 +70,12 @@ export type ConditionKind =
   | "bbBreakUp"
   | "bbBreakDown"
   | "maAbove"
-  | "maBelow";
+  | "maBelow"
+  // 基本面條件（加碼 B）：和日／週／月線無關
+  | "peBelow"
+  | "yieldAbove"
+  | "near52High"
+  | "near52Low";
 
 export type Band = "upper" | "middle" | "lower";
 export type MaPeriod = 10 | 20 | 50 | 200;
@@ -91,7 +107,10 @@ export interface ScreenerPreset {
 }
 
 /** 每種條件在畫面上要顯示哪些參數 */
-export const KIND_META: Record<ConditionKind, { label: string; params: ("value" | "n" | "band" | "ma")[] }> = {
+export const KIND_META: Record<
+  ConditionKind,
+  { label: string; params: ("value" | "n" | "band" | "ma")[]; /** 基本面條件不分週期 */ noTf?: boolean; unit?: string }
+> = {
   rsiAbove: { label: "RSI 高於", params: ["value"] },
   rsiBelow: { label: "RSI 低於", params: ["value"] },
   rsiRebound: { label: "RSI 從低檔回升", params: ["value", "n"] },
@@ -102,6 +121,10 @@ export const KIND_META: Record<ConditionKind, { label: string; params: ("value" 
   bbBreakDown: { label: "股價跌破布林", params: ["band", "n"] },
   maAbove: { label: "股價站上均線", params: ["ma"] },
   maBelow: { label: "股價跌破均線", params: ["ma"] },
+  peBelow: { label: "本益比低於", params: ["value"], noTf: true, unit: "倍" },
+  yieldAbove: { label: "殖利率高於", params: ["value"], noTf: true, unit: "%" },
+  near52High: { label: "接近 52 週高點（差距在）", params: ["value"], noTf: true, unit: "% 以內" },
+  near52Low: { label: "接近 52 週低點（差距在）", params: ["value"], noTf: true, unit: "% 以內" },
 };
 
 export const KIND_ORDER = Object.keys(KIND_META) as ConditionKind[];
@@ -135,6 +158,10 @@ export function makeCondition(kind: ConditionKind = "rsiBelow", tf: Timeframe = 
     bbBreakDown: { band: "lower", n: 3 },
     maAbove: { ma: 50 },
     maBelow: { ma: 50 },
+    peBelow: { value: 20 },
+    yieldAbove: { value: 3 },
+    near52High: { value: 5 },
+    near52Low: { value: 10 },
   };
   return { id: newId(), kind, tf, value: 30, n: 5, band: "upper", ma: 50, ...defaults[kind] };
 }
@@ -192,8 +219,40 @@ function bandSeries(s: ScreenerSeries, band: Band) {
   return band === "upper" ? s.bbUpper : band === "middle" ? s.bbMiddle : s.bbLower;
 }
 
+/** 基本面條件：用 screener.json 的 fundamentals，不看週期 */
+function evaluateFundamental(ticker: ScreenerTicker, c: Condition): CondResult {
+  const f = ticker.fundamentals;
+  const value = clamp(c.value, LIMITS.value.min, LIMITS.value.max);
+  if (!f) return { matched: false, detail: "無基本面資料" };
+  const close = ticker.lastClose;
+  switch (c.kind) {
+    case "peBelow":
+      // 沒有本益比（ETF、虧損）一律不符合，避免把虧損公司當成「便宜」
+      if (!isNum(f.pe)) return { matched: false, detail: "無本益比" };
+      return { matched: f.pe < value, detail: `本益比 ${f.pe.toFixed(1)}` };
+    case "yieldAbove": {
+      const y = isNum(f.dividendYield) ? f.dividendYield : 0;
+      return { matched: y > value, detail: `殖利率 ${y.toFixed(2)}%` };
+    }
+    case "near52High": {
+      if (!isNum(f.high52w) || f.high52w <= 0) return { matched: false, detail: "無 52 週資料" };
+      // 距高點還差幾 %（0 = 就在高點）；四捨五入到 0.01，避免 4.9999…／5.0000…1 這種浮點誤差讓剛好 5% 判斷錯
+      const gap = Math.round((1 - close / f.high52w) * 10000) / 100;
+      return { matched: gap <= value, detail: gap <= 0 ? "創 52 週新高" : `距高點 ${gap.toFixed(1)}%` };
+    }
+    case "near52Low": {
+      if (!isNum(f.low52w) || f.low52w <= 0) return { matched: false, detail: "無 52 週資料" };
+      const gap = Math.round((close / f.low52w - 1) * 10000) / 100; // 比低點高幾 %
+      return { matched: gap <= value, detail: gap <= 0 ? "創 52 週新低" : `高於低點 ${gap.toFixed(1)}%` };
+    }
+    default:
+      return { matched: false, detail: "" };
+  }
+}
+
 /** 判斷單一條件 */
 export function evaluateCondition(ticker: ScreenerTicker, c: Condition): CondResult {
+  if (KIND_META[c.kind].noTf) return evaluateFundamental(ticker, c);
   const s = ticker[c.tf];
   if (!s || s.close.length === 0) return { matched: false, detail: "無資料" };
   const last = s.close.length - 1;
@@ -259,6 +318,8 @@ export function evaluateCondition(ticker: ScreenerTicker, c: Condition): CondRes
       const detail = `距 MA${c.ma} ${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`;
       return { matched: c.kind === "maAbove" ? close > ma : close < ma, detail };
     }
+    default:
+      return { matched: false, detail: "" };
   }
 }
 
@@ -306,6 +367,14 @@ export function describeCondition(c: Condition): string {
       return `${tf} 股價站上 MA${c.ma}`;
     case "maBelow":
       return `${tf} 股價跌破 MA${c.ma}`;
+    case "peBelow":
+      return `本益比低於 ${c.value} 倍`;
+    case "yieldAbove":
+      return `殖利率高於 ${c.value}%`;
+    case "near52High":
+      return `距 52 週高點 ${c.value}% 以內`;
+    case "near52Low":
+      return `距 52 週低點 ${c.value}% 以內`;
   }
 }
 
@@ -364,6 +433,11 @@ export const BUILTIN_PRESETS: ScreenerPreset[] = [
     name: "過熱警示（RSI>70 或突破布林上軌）",
     mode: "or",
     conditions: [makeCondition("rsiAbove", "daily"), { ...makeCondition("bbBreakUp", "daily"), band: "upper", n: 3 }],
+  },
+  {
+    name: "高殖利率且本益比合理",
+    mode: "and",
+    conditions: [makeCondition("yieldAbove"), makeCondition("peBelow")],
   },
   {
     name: "週線轉強",

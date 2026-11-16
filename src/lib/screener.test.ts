@@ -157,3 +157,39 @@ describe("sanitizeConditions", () => {
     expect(sanitizeConditions("oops")).toEqual([]);
   });
 });
+
+describe("基本面條件（加碼 B）", () => {
+  const withFund = (f: Partial<NonNullable<ScreenerTicker["fundamentals"]>>, close = 95): ScreenerTicker => ({
+    ...ticker(series({ close: [close] })),
+    fundamentals: { pe: null, forwardPe: null, pb: null, dividendYield: null, high52w: null, low52w: null, ...f },
+  });
+
+  it("本益比低於：沒有本益比（ETF／虧損）不算便宜", () => {
+    expect(evaluateCondition(withFund({ pe: 15 }), cond("peBelow", { value: 20 })).matched).toBe(true);
+    expect(evaluateCondition(withFund({ pe: 25 }), cond("peBelow", { value: 20 })).matched).toBe(false);
+    expect(evaluateCondition(withFund({ pe: null }), cond("peBelow", { value: 20 })).detail).toBe("無本益比");
+  });
+
+  it("殖利率高於：沒配息視為 0%", () => {
+    expect(evaluateCondition(withFund({ dividendYield: 4.2 }), cond("yieldAbove", { value: 3 })).matched).toBe(true);
+    expect(evaluateCondition(withFund({ dividendYield: null }), cond("yieldAbove", { value: 3 }))).toEqual({ matched: false, detail: "殖利率 0.00%" });
+  });
+
+  it("接近 52 週高點／低點", () => {
+    // 收盤 95、高點 100 → 差 5%
+    expect(evaluateCondition(withFund({ high52w: 100 }), cond("near52High", { value: 5 })).matched).toBe(true);
+    expect(evaluateCondition(withFund({ high52w: 100 }), cond("near52High", { value: 4 })).matched).toBe(false);
+    expect(evaluateCondition(withFund({ high52w: 100 }, 100), cond("near52High", { value: 1 })).detail).toBe("創 52 週新高");
+    // 收盤 95、低點 90 → 高於低點 5.6%
+    expect(evaluateCondition(withFund({ low52w: 90 }), cond("near52Low", { value: 10 })).matched).toBe(true);
+    expect(evaluateCondition(withFund({ low52w: 90 }), cond("near52Low", { value: 5 })).matched).toBe(false);
+  });
+
+  it("舊資料沒有 fundamentals → 不符合但不出錯", () => {
+    expect(evaluateCondition(ticker(series({ close: [1] })), cond("peBelow"))).toEqual({ matched: false, detail: "無基本面資料" });
+  });
+
+  it("sanitizeConditions 認得新種類", () => {
+    expect(sanitizeConditions([{ kind: "yieldAbove", value: 4 }])[0]).toMatchObject({ kind: "yieldAbove", value: 4 });
+  });
+});

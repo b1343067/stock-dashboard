@@ -53,6 +53,8 @@
 - `lib/format.ts`：`fmtMoney`／`fmtPct`／`fmtFixed`／`pnlClass`（漲跌顏色跟著 redUp）
 - 看盤：`pages/ChartPage.tsx`（報價標頭）、`components/StockChart.tsx`（lightweight-charts v5；MACD／RSI 窗格展開才建立；趨勢外推虛線）、`components/StatusCards.tsx`＋`lib/signals.ts`（白話狀態卡）、`components/TrendCard.tsx`、`components/Sparkline.tsx`（觀察清單迷你走勢，資料來自 `index.json` 的 `spark`）
 - 頁首：`components/Header.tsx`（分頁、快速搜尋、提醒鈴鐺、紅漲綠跌、深淺色）、`components/BottomNav.tsx`（手機，5 個分頁）
+- 畫圖工具：`lib/drawings.ts`（`handleClick`、`sanitizeDrawings`、key `drawings:代號:週期`）、`components/DrawingTools.tsx`；StockChart 用**容器的原生 click 事件**＋`coordinateToLogical`／`coordinateToPrice` 換算（`chart.subscribeClick` 連點時會被當成雙擊而漏掉），並忽略拖曳（移動 > 5px）；畫的線 `autoscaleInfoProvider: () => null` 不影響 Y 軸。ChartPage 不用 `useStoredState`（key 隨股票變動時它不會重讀）
+- 基本面：`scripts/fundamentals.py`（`price_stats` 從日線算 52 週高低與 TTM 殖利率；`clean_info` 讀 `Ticker.info`；`merge_fundamentals` 抓不到時沿用上次與 `infoDate`；`FETCH_INFO=0` 可跳過）；前端 `lib/fundamentals.ts`、`components/FundamentalsCard.tsx`；篩選器基本面條件 `peBelow`／`yieldAbove`／`near52High`／`near52Low`（`KIND_META.noTf`，不顯示週期）
 - 走勢比較：`pages/ComparePage.tsx`＋`lib/compare.ts`（`normalize`／`compareStats`／`parseSymbols`），路由 `#/compare/A,B`（route.symbol 放逗號字串），最多 4 檔；線色 `--s1`～`--s4`（已用驗證工具檢查，淺色背景下黃綠對比 < 3:1，所以一定要有直接標籤＋表格）
 - 效率前緣：`analytics.ts` 的 `simulatePortfolios`（固定種子亂數＋投影到 5%～45%）、`frontierEnvelope`；`components/analysis/FrontierChart.tsx`（SVG，標籤依兩點相對位置擺放避免重疊）
 - PWA：`public/manifest.webmanifest`、`public/icons/`、`public/sw.js`（手寫：頁面與 /data 網路優先、/assets 快取優先；**改快取策略時要改 cache 名稱版本**）；main.tsx 只在 PROD 註冊；App 有離線提示
@@ -72,9 +74,9 @@
 
 ## 資料格式
 
-- `public/data/<代號>.json`：`{symbol,name,currency,sample,lastDate,lastClose,changePct,daily,weekly,monthly}`，每個週期為欄位導向物件：`time,open,high,low,close,volume,ma10,ma20,ma50,ma200,rsi,macd,signal,hist,bbUpper,bbMiddle,bbLower`。日線保留最近 1260 筆（指標先用完整 10 年算再截斷），週／月線保留全部。
+- `public/data/<代號>.json`：`{symbol,name,currency,sample,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?}`（fundamentals 見 `types.ts` 的 `Fundamentals`），每個週期為欄位導向物件：`time,open,high,low,close,volume,ma10,ma20,ma50,ma200,rsi,macd,signal,hist,bbUpper,bbMiddle,bbLower`。日線保留最近 1260 筆（指標先用完整 10 年算再截斷），週／月線保留全部。
 - `public/data/index.json`：`{generatedAt,sample,fx:{USDTWD},riskFree,categories:[...],tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,sample,spark:[最近 30 天收盤]}]}`（riskFree 為年化小數，抓不到沿用上次）
-- `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly}]}`，每週期只有 time/close/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
+- `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?:{pe,forwardPe,pb,dividendYield,high52w,low52w}}]}`，每週期只有 time/close/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
 - `public/data/fx.json`：`{USDTWD:{time,close}}`；沒有時分析頁用最新匯率近似並提示
 
 ### localStorage key（都有 `stockdash:` 前綴）
@@ -82,6 +84,7 @@
 - 篩選器：`screener:current`（目前條件＋AND/OR＋分類範圍 `category`）、`screener:presets`（我的組合）
 - 分析：`analysis:period`、`analysis:source`
 - 介面：`overlays`（含 ma10/20/50/200、bb、macd、rsi）、`showTrend`、`redUp`、`theme`、`watchlist:collapsed`、`market:period`
+- 畫圖：`drawings:<代號>:<daily|weekly|monthly>`（`[{id,type:"hline",price}|{id,type:"trend",p1:{time,price},p2}]`，最多 50 條）
 - 價格提醒：`alerts:list`（`[{id,symbol,kind,value,repeat,createdAt,ackDate,disabled}]`）
 
 ## 視覺設計（改版後，使用者選定）
@@ -91,7 +94,7 @@
 - 字體：英文與標題 Manrope、數字 Inter（`.num` 或 `var(--font-mono)`，等寬數字），用 `@fontsource-variable` 打包，不用 CDN；中文用系統字體
 - 均線顏色刻意避開紫色（MA10 黃、MA20 橘、MA50 天藍、MA200 粉），以免和主色混淆
 - 密度中等：卡片圓角 16px、內距 14～16px、基準字級 14.5px；不要回到太擠（小字＋細線）或太空的設計
-- 看盤頁：報價標頭 → K 線（MACD／RSI 預設收起來，`overlays.macd`／`overlays.rsi`）→「現在的狀態」卡片（`lib/signals.ts`）→ 趨勢外推
+- 看盤頁：報價標頭 → K 線（MACD／RSI 預設收起來，`overlays.macd`／`overlays.rsi`）→「現在的狀態」卡片（`lib/signals.ts`）→ 基本面 → 趨勢外推
 - 手機：頁首分頁改成底部導覽列（`BottomNav`，z-index 要高於圖表），觀察清單是一排可滑動的卡片，工具列左右滑動不換行
 - 頁首快速搜尋按 `/` 聚焦、Enter 跳到該股票
 
@@ -113,7 +116,7 @@
 - [x] 全站改版：紫藍主色、深淺色、K 線指標收合、白話狀態卡、手機底部導覽、快速搜尋
 - [x] 市場總覽首頁、價格提醒
 - [x] 加碼 A：多檔走勢比較、效率前緣圖、PWA（離線瀏覽）
-- [ ] 加碼 B：K 線畫圖工具、基本面資料（使用者已同意，等「繼續」）
+- [x] 加碼 B：K 線畫圖工具、基本面資料
 - [ ] 加碼 C：交易紀錄制投資組合（已實現損益、股利、XIRR）、英文版（使用者已同意，等「繼續」）
 - [x] 資料品質：自動修正小問題＋status.json；資料搬到 data 分支（main 不再每天變大）
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
@@ -122,7 +125,7 @@
 - BRK-B 在 2026 年和 VOO 的日報酬幾乎不連動（近 1 年 Beta≈0.08、相關≈0.07；2022 年 0.76／0.81；5 年日報酬 Beta≈0.58）。已確認日期對齊與計算正確，是資料本身的結果
 
 ### 之後可做（使用者尚未決定）
-- 篩選器新條件（均線交叉、52 週新高低、成交量）
+- 篩選器新條件（均線交叉、成交量；52 週新高低已在加碼 B 完成）
 - 篩選結果 Telegram 通知、英文版
 
 ### 舊作業（reference/old_streamlit_app.py，尚未取得）要修正的點：全部完成

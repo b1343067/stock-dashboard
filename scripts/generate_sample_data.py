@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from data_io import INDEX_PATH, load_watchlist, read_json, rebuild_index, ticker_path, write_json_atomic
+from fundamentals import clean_info, merge_fundamentals, price_stats
 from indicators import build_ticker_payload
 
 YEARS = 10
@@ -46,10 +47,27 @@ def fake_ohlcv(symbol: str, end: pd.Timestamp) -> pd.DataFrame:
     low = np.minimum(open_, close) * (1 - np.abs(rng.normal(0, vol / 2, n)))
     volume = rng.integers(1_000_000, 50_000_000, n)
 
+    # 每季配一次息（約 0～3% 年殖利率），讓殖利率欄位有東西可以顯示
+    dividends = np.zeros(n)
+    quarterly_rate = rng.uniform(0, 0.03) / 4
+    dividends[np.arange(40, n, 63)] = close[np.arange(40, n, 63)] * quarterly_rate
+
     return pd.DataFrame(
-        {"Open": open_, "High": high, "Low": low, "Close": close, "Volume": volume},
+        {"Open": open_, "High": high, "Low": low, "Close": close, "Volume": volume, "Dividends": dividends},
         index=dates,
     )
+
+
+def fake_info(symbol: str) -> dict:
+    """範例的本益比、市值等（數字是亂數，只是讓畫面有東西；ETF 一樣給，畫面不受影響）"""
+    rng = np.random.default_rng(zlib.crc32(("info" + symbol).encode()))
+    return clean_info({
+        "trailingPE": rng.uniform(8, 60),
+        "forwardPE": rng.uniform(8, 45),
+        "priceToBook": rng.uniform(1, 15),
+        "marketCap": rng.uniform(5e9, 3e12),
+        "sector": "範例產業",
+    })
 
 
 def main() -> None:
@@ -61,7 +79,8 @@ def main() -> None:
         if missing_only and ticker_path(t["symbol"]).exists():
             continue
         df = fake_ohlcv(t["symbol"], end)
-        payload = build_ticker_payload(df, {**t, "sample": True})
+        fund = merge_fundamentals(price_stats(df), fake_info(t["symbol"]), None, str(end.date()))
+        payload = build_ticker_payload(df, {**t, "sample": True, "fundamentals": fund})
         write_json_atomic(ticker_path(t["symbol"]), payload)
         print(f"{t['symbol']}: {payload['lastDate']} 收盤 {payload['lastClose']}")
     if missing_only:

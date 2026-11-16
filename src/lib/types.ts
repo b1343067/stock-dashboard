@@ -26,7 +26,33 @@ export interface SeriesData {
 }
 
 /** public/data/<代號>.json */
+/**
+ * 基本面（加碼 B，scripts/fundamentals.py 產生）。舊的資料檔沒有這個欄位。
+ * 52 週高低、殖利率每天從日線算；本益比等來自 Yahoo，抓不到時沿用上次（infoDate 是那次的日期）。
+ * ETF 沒有本益比、產業等欄位 → null。
+ */
+export interface Fundamentals {
+  high52w: number | null;
+  low52w: number | null;
+  /** 近 12 個月殖利率（%），例如 1.35 = 1.35% */
+  dividendYield: number | null;
+  /** 近 12 個月每股配息合計（原幣） */
+  dividendTtm: number | null;
+  pe: number | null;
+  forwardPe: number | null;
+  pb: number | null;
+  /** 市值（原幣） */
+  marketCap: number | null;
+  sector: string | null;
+  industry: string | null;
+  /** "EQUITY"、"ETF" 等 */
+  quoteType: string | null;
+  infoDate: string | null;
+}
+
 export interface TickerData {
+  /** 基本面；舊資料可能沒有 */
+  fundamentals?: Fundamentals;
   symbol: string;
   name: string;
   currency: "USD" | "TWD" | string;

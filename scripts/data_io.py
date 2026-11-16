@@ -26,6 +26,7 @@ SPARK_DAYS = 30
 # 篩選器每個週期保留最近幾根 K 棒（條件最多看「最近 20 根」，再多留一些緩衝）
 SCREENER_BARS = 30
 # 篩選器需要的欄位（不含開高低量，讓檔案小一點）
+SCREENER_FUNDAMENTALS = ("pe", "forwardPe", "pb", "dividendYield", "high52w", "low52w")
 SCREENER_FIELDS = (
     "time", "close", "ma10", "ma20", "ma50", "ma200",
     "rsi", "macd", "signal", "hist", "bbUpper", "bbMiddle", "bbLower",
@@ -175,6 +176,10 @@ def build_screener(watchlist: dict, generated_at: str) -> dict:
         for tf in ("daily", "weekly", "monthly"):
             series = payload[tf]
             item[tf] = {f: series[f][-SCREENER_BARS:] for f in SCREENER_FIELDS}
+        # 基本面條件（本益比、殖利率、52 週高低）用；舊檔案沒有就不放
+        fund = payload.get("fundamentals")
+        if isinstance(fund, dict):
+            item["fundamentals"] = {k: fund.get(k) for k in SCREENER_FUNDAMENTALS}
         items.append(item)
     screener = {"generatedAt": generated_at, "bars": SCREENER_BARS, "tickers": items}
     write_json_atomic(SCREENER_PATH, screener)

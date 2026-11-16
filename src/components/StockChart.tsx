@@ -15,12 +15,14 @@ import {
   LineStyle,
   createChart,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
   type MouseEventParams,
   type Time,
 } from "lightweight-charts";
 import type { OverlayKey, SeriesData, Timeframe } from "../lib/types";
 import { useThemeColors, type ChartColors } from "../lib/theme";
+import type { Drawing, Point } from "../lib/drawings";
 
 interface Props {
   data: SeriesData;
@@ -32,6 +34,12 @@ interface Props {
   precision?: number;
   /** 短期趨勢外推的虛線（第一個點是最後一根收盤，接著是未來的交易日）；只在日線顯示 */
   projection?: { time: string; value: number }[] | null;
+  /** 使用者畫的線（趨勢線、水平線） */
+  drawings?: Drawing[];
+  /** 趨勢線已點的第一個點（顯示一個小圓點提示） */
+  pendingPoint?: Point | null;
+  /** 有選畫圖工具時才傳：點 K 線那一格時回報點到的日期與價格 */
+  onChartClick?: (p: Point) => void;
 }
 
 // 各週期一開始顯示多少根 K 棒
@@ -63,8 +71,23 @@ function upDown(c: ChartColors, redUp: boolean) {
   return redUp ? { up: c.red, down: c.green } : { up: c.green, down: c.red };
 }
 
-export default function StockChart({ data, timeframe, overlays, redUp, precision = 2, projection = null }: Props) {
+export default function StockChart({
+  data,
+  timeframe,
+  overlays,
+  redUp,
+  precision = 2,
+  projection = null,
+  drawings = [],
+  pendingPoint = null,
+  onChartClick,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // 點擊事件只在建立圖表時訂閱一次，所以用 ref 拿「最新的」資料與回呼，避免拿到舊的
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const clickRef = useRef(onChartClick);
+  clickRef.current = onChartClick;
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<SeriesRefs | null>(null);
   const colors = useThemeColors();
@@ -153,6 +176,34 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     };
     chart.subscribeCrosshairMove(onMove);
 
+    // 畫圖：把點擊位置換成「第幾根 K 棒的日期」＋「價格」
+    // 用瀏覽器原生的 click 事件，不用 chart.subscribeClick：後者在連續點擊時會被當成「雙擊」而漏掉一下。
+    // 日期用 logical（第幾根）去查，因為點在 K 棒之間的空白也要能畫。
+    // 拖曳圖表（平移）放開時瀏覽器也會送出 click，所以記住按下的位置，移動超過 5px 就不算點擊
+    let down = { x: 0, y: 0 };
+    const onDown = (e: PointerEvent) => {
+      down = { x: e.clientX, y: e.clientY };
+    };
+    const onClick = (e: MouseEvent) => {
+      const cb = clickRef.current;
+      if (!cb) return;
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      if (y > chart.paneSize(0).height) return; // 只有 K 線那一格能畫（MACD／RSI 的座標不是價格）
+      const logical = chart.timeScale().coordinateToLogical(x);
+      if (logical === null) return;
+      const d = dataRef.current;
+      const i = Math.round(logical);
+      if (i < 0 || i >= d.time.length) return; // 點在最右邊空白處（還沒有資料的日子）不算
+      const price = candle.coordinateToPrice(y);
+      if (price === null || !Number.isFinite(price)) return;
+      cb({ time: d.time[i], price: Math.round(price * 10 ** precision) / 10 ** precision });
+    };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("click", onClick);
+
     // 量出第 1、2 格的位置，讓 MACD / RSI 標籤貼在各自窗格的左上角
     const measure = () => {
       // 標籤是放在外層 .chart-wrap 裡，所以要用外層的頂端當基準（上方還有圖例）
@@ -176,6 +227,8 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     return () => {
       ro.disconnect();
       chart.unsubscribeCrosshairMove(onMove);
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("click", onClick);
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -261,6 +314,63 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     for (const k of ["bbUpper", "bbMiddle", "bbLower"] as const) s.lines[k].applyOptions({ visible: overlays.bb });
   }, [overlays, macdPane, rsiPane]);
 
+  // ---- 5. 使用者畫的線 ----
+  // 每次變動就整批刪掉重畫（最多 50 條，很快）；圖表重建（展開 MACD／RSI）後也要重畫
+  useEffect(() => {
+    const chart = chartRef.current;
+    const s = seriesRef.current;
+    if (!chart || !s) return;
+    const color = colors.accent;
+    const created = { priceLines: [] as IPriceLine[], series: [] as ISeriesApi<"Line">[] };
+    const idx = new Map(data.time.map((t, i) => [t, i]));
+    const last = data.time.length - 1;
+    const lineOpts = {
+      color,
+      lineWidth: 2 as const,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      autoscaleInfoProvider: () => null, // 畫的線不影響 Y 軸範圍，避免延伸線把 K 線壓扁
+    };
+    for (const d of drawings) {
+      if (d.type === "hline") {
+        created.priceLines.push(
+          s.candle.createPriceLine({ price: d.price, color, lineWidth: 2, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "" }),
+        );
+      } else {
+        const i1 = idx.get(d.p1.time);
+        const i2 = idx.get(d.p2.time);
+        if (i1 === undefined || i2 === undefined || i1 === i2) continue; // 資料更新後舊日期不在範圍內就先不畫
+        const pts = [
+          { time: d.p1.time as Time, value: d.p1.price },
+          { time: d.p2.time as Time, value: d.p2.price },
+        ];
+        // 往右延伸到最新一根：同樣的斜率（以「每根 K 棒」為單位），方便看現在價格在線的上方還是下方
+        if (i2 < last) {
+          const slope = (d.p2.price - d.p1.price) / (i2 - i1);
+          pts.push({ time: data.time[last] as Time, value: d.p2.price + slope * (last - i2) });
+        }
+        const line = chart.addSeries(LineSeries, lineOpts, 0);
+        line.setData(pts);
+        created.series.push(line);
+      }
+    }
+    if (pendingPoint && idx.has(pendingPoint.time)) {
+      const dot = chart.addSeries(LineSeries, { ...lineOpts, pointMarkersVisible: true, pointMarkersRadius: 5 }, 0);
+      dot.setData([{ time: pendingPoint.time as Time, value: pendingPoint.price }]);
+      created.series.push(dot);
+    }
+    return () => {
+      // 圖表已經被重建（chart.remove）時，這些物件也跟著消失，刪除會丟錯，所以包 try
+      try {
+        for (const pl of created.priceLines) s.candle.removePriceLine(pl);
+        for (const x of created.series) chart.removeSeries(x);
+      } catch {
+        /* 忽略 */
+      }
+    };
+  }, [drawings, pendingPoint, data, colors, macdPane, rsiPane]);
+
   // 圖例：顯示滑鼠指到（或最新）那一根的數值
   const legend = useMemo(() => {
     const n = data.time.length;
@@ -316,7 +426,11 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
         )}
       </div>
       {/* 高度依展開的窗格數調整（見 styles.css 的 .panes-0／1／2） */}
-      <div className={`chart-canvas panes-${(showMacd ? 1 : 0) + (showRsi ? 1 : 0)}`} ref={containerRef} />
+      <div
+        className={`chart-canvas panes-${(showMacd ? 1 : 0) + (showRsi ? 1 : 0)}${onChartClick ? " drawing" : ""}`}
+        ref={containerRef}
+        data-drawings={drawings.length}
+      />
       {/* 下方兩格的標籤，用絕對定位疊在圖上 */}
       <div className="pane-labels" aria-hidden="true">
         {showMacd && (

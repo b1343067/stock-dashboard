@@ -1075,3 +1075,35 @@ a.chip { text-decoration: none; }
   .brand-name { font-size: 16px; }
   .quote-last { font-size: 30px; }
 }
+
+/* ---- K 線畫圖工具 ---- */
+.draw-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 6px; }
+.draw-tools .chip:disabled { opacity: 0.45; cursor: default; }
+.chip.draw-on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.draw-hint { margin-left: 4px; }
+.chart-canvas.drawing { cursor: crosshair; }
+@media (max-width: 860px) {
+  .draw-tools { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 0 4px 2px; }
+  .draw-tools > * { flex: 0 0 auto; }
+}
+
+/* ---- 基本面卡片 ---- */
+.fund-card .section-title { display: flex; align-items: center; gap: 8px; }
+.fund-sector { font-size: 11px; font-weight: 700; }
+.fund-range { margin: 4px 0 16px; }
+.fund-range-labels { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.fund-range-labels b { font-weight: 700; }
+.fund-bar { position: relative; height: 6px; border-radius: 999px; margin: 8px 0 6px; background: var(--border-2); }
+.fund-dot {
+  position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: var(--accent-strong); border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--accent-strong);
+}
+.fund-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.fund-grid > div { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); min-width: 0; }
+.fund-grid dt { font-size: 12px; color: var(--text-3); font-weight: 700; }
+.fund-grid dd { margin: 0; }
+.fund-grid dd.num { font-size: 20px; font-weight: 700; margin: 4px 0 2px; }
+@media (max-width: 1100px) { .fund-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .fund-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cond-tf-none { padding: 0 6px; white-space: nowrap; }

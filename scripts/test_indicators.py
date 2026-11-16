@@ -91,6 +91,29 @@ def main() -> None:
     shifted, notes2 = repair_daily(bad)
     assert any("週末" in p for p in validate_daily(shifted)), "大量週末日期要被拒絕"
 
+    # ---- 基本面（加碼 B）----
+    from fundamentals import clean_info, merge_fundamentals, price_stats
+    fidx = pd.bdate_range("2025-01-01", "2026-11-13")
+    px = pd.DataFrame({"High": 110.0, "Low": 90.0, "Close": 100.0, "Dividends": 0.0}, index=fidx)
+    px.loc[fidx[10], "High"] = 999.0                       # 一年多以前的高點不算
+    px.loc[fidx[-30], "High"] = 120.0
+    px.loc[fidx[-60], "Dividends"] = 1.0                   # 近 12 個月配息 1 + 0.5
+    px.loc[fidx[-200], "Dividends"] = 0.5
+    px.loc[fidx[20], "Dividends"] = 5.0                    # 一年多以前的配息不算
+    st = price_stats(px)
+    assert st["high52w"] == 120.0 and st["low52w"] == 90.0, st
+    assert st["dividendYield"] == 1.5 and st["dividendTtm"] == 1.5, st
+    assert price_stats(px.drop(columns=["Dividends"]))["dividendYield"] is None, "沒有配息欄位 → null"
+    info = clean_info({"trailingPE": 25.123, "forwardPE": -3, "priceToBook": float("nan"), "marketCap": 1.5e12, "sector": "Technology"})
+    assert info["pe"] == 25.12 and info["forwardPe"] is None and info["pb"] is None and info["marketCap"] == 1_500_000_000_000
+    assert clean_info(None) == {} and clean_info({"foo": 1}) == {}, "抓不到或沒有欄位 → 空"
+    prev = {"pe": 30.0, "sector": "Tech", "infoDate": "2026-11-01"}
+    kept = merge_fundamentals(st, {}, prev, "2026-11-14")
+    assert kept["pe"] == 30.0 and kept["infoDate"] == "2026-11-01", "info 抓不到時沿用上次的值與日期"
+    fresh = merge_fundamentals(st, info, prev, "2026-11-14")
+    assert fresh["pe"] == 25.12 and fresh["infoDate"] == "2026-11-14" and fresh["high52w"] == 120.0
+    assert merge_fundamentals(st, {}, None, "2026-11-14")["pe"] is None
+
     print(f"全部通過（RSI 與參考實作最大差異 {diff:.6f}）")
 
 

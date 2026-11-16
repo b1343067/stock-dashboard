@@ -22,6 +22,8 @@ export interface ChartColors {
   s2: string;
   s3: string;
   s4: string;
+  /** 主色（使用者畫的線用這個顏色，和均線區分） */
+  accent: string;
 }
 
 function read(): ChartColors {
@@ -46,6 +48,7 @@ function read(): ChartColors {
     s2: v("--s2"),
     s3: v("--s3"),
     s4: v("--s4"),
+    accent: v("--accent"),
   };
 }
 

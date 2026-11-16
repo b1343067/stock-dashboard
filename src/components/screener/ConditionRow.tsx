@@ -27,7 +27,8 @@ interface Props {
 }
 
 export default function ConditionRow({ index, condition: c, onChange, onRemove, hitCount }: Props) {
-  const params = KIND_META[c.kind].params;
+  const meta = KIND_META[c.kind];
+  const params = meta.params;
   const unit = TF_UNIT[c.tf];
   // 「連續縮短 N 根」和「最近 N 天內」文字不同
   const nLabel = c.kind === "histShrink" ? "連續" : "最近";
@@ -39,17 +40,18 @@ export default function ConditionRow({ index, condition: c, onChange, onRemove, 
         {index + 1}
       </span>
 
-      <select
-        aria-label="週期"
-        value={c.tf}
-        onChange={(e) => onChange({ ...c, tf: e.target.value as Timeframe })}
-      >
-        {(Object.keys(TF_LABEL) as Timeframe[]).map((tf) => (
-          <option key={tf} value={tf}>
-            {TF_LABEL[tf]}
-          </option>
-        ))}
-      </select>
+      {/* 基本面條件不分日／週／月，所以不顯示週期 */}
+      {meta.noTf ? (
+        <span className="cond-tf-none muted small">基本面</span>
+      ) : (
+        <select aria-label="週期" value={c.tf} onChange={(e) => onChange({ ...c, tf: e.target.value as Timeframe })}>
+          {(Object.keys(TF_LABEL) as Timeframe[]).map((tf) => (
+            <option key={tf} value={tf}>
+              {TF_LABEL[tf]}
+            </option>
+          ))}
+        </select>
+      )}
 
       <select
         aria-label="條件"
@@ -57,11 +59,20 @@ export default function ConditionRow({ index, condition: c, onChange, onRemove, 
         value={c.kind}
         onChange={(e) => onChange(changeKind(c, e.target.value as ConditionKind))}
       >
-        {KIND_ORDER.map((k) => (
-          <option key={k} value={k}>
-            {KIND_META[k].label}
-          </option>
-        ))}
+        <optgroup label="技術指標">
+          {KIND_ORDER.filter((k) => !KIND_META[k].noTf).map((k) => (
+            <option key={k} value={k}>
+              {KIND_META[k].label}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="基本面">
+          {KIND_ORDER.filter((k) => KIND_META[k].noTf).map((k) => (
+            <option key={k} value={k}>
+              {KIND_META[k].label}
+            </option>
+          ))}
+        </optgroup>
       </select>
 
       {params.includes("band") && (
@@ -96,9 +107,9 @@ export default function ConditionRow({ index, condition: c, onChange, onRemove, 
             min={LIMITS.value.min}
             max={LIMITS.value.max}
             onChange={(v) => onChange({ ...c, value: v })}
-            ariaLabel="RSI 門檻"
+            ariaLabel={meta.noTf ? "數值" : "RSI 門檻"}
           />
-          {c.kind === "rsiRebound" ? "以下回升" : ""}
+          {c.kind === "rsiRebound" ? "以下回升" : (meta.unit ?? "")}
         </label>
       )}
 

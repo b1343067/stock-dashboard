@@ -6,7 +6,8 @@
   2. 分批（每批 BATCH_SIZE 檔）用 yfinance 抓 10 年日線，批次之間稍微休息，避免被 Yahoo 限流
   3. 計算指標（日／週／月線），寫成 public/data/<代號>.json
   4. 抓 USD/TWD 匯率（最新值 + 歷史，歷史寫進 public/data/fx.json）與無風險利率
-  5. 重建 public/data/index.json、screener.json
+  5. 基本面：52 週高低、殖利率從日線算；本益比等從 Ticker.info 讀（抓不到沿用上次）
+  6. 重建 public/data/index.json、screener.json
 
 安全機制：
   - 每檔失敗會自動重試（間隔越來越長）；全部跑完後，下載失敗的再統一重試一輪
@@ -28,8 +29,9 @@ import time
 import pandas as pd
 import yfinance as yf
 
-from data_io import FX_PATH, STATUS_PATH, load_watchlist, rebuild_index, ticker_path, write_json_atomic
+from data_io import FX_PATH, STATUS_PATH, load_watchlist, read_json, rebuild_index, ticker_path, write_json_atomic
 from data_quality import repair_daily, to_exchange_dates, validate_daily
+from fundamentals import clean_info, merge_fundamentals, price_stats
 from indicators import build_ticker_payload
 
 HISTORY_PERIOD = "10y"   # 抓 10 年，月線的均線才算得出來
@@ -104,6 +106,21 @@ def fetch_risk_free(symbol: str | None) -> float | None:
     return None
 
 
+def fetch_info(symbol: str) -> dict:
+    """
+    讀 Ticker.info（本益比、市值等）。只試一次：這些數字一天變化不大，
+    抓不到就沿用上一次的值，不值得為它多等、增加被限流的機會。
+    設 FETCH_INFO=0 可以整個跳過（例如 Yahoo 限流嚴重時）。
+    """
+    if os.environ.get("FETCH_INFO", "1") == "0":
+        return {}
+    try:
+        return clean_info(yf.Ticker(symbol).info)
+    except Exception as e:
+        print(f"  [{symbol}] 基本面讀取失敗（沿用上次）：{e}")
+        return {}
+
+
 # 每檔的更新結果（最後寫進 public/data/status.json，不用登入 GitHub 也能看到哪檔失敗、為什麼）
 STATUS: dict[str, dict] = {}
 
@@ -131,7 +148,11 @@ def process_symbol(t: dict) -> str:
             print(f"  [{symbol}] 資料異常：{'；'.join(problems)}，保留前一天的檔案")
             STATUS[symbol] = {"result": "invalid", "reason": "；".join(problems), "repaired": notes}
             return "invalid"
-        payload = build_ticker_payload(df, {**t, "sample": False})
+        # 基本面：失敗不影響價格資料，最多就是沿用上一次的數字
+        previous = (read_json(ticker_path(symbol)) or {}).get("fundamentals")
+        today = pd.Timestamp(df.index[-1]).strftime("%Y-%m-%d")
+        fundamentals = merge_fundamentals(price_stats(df), fetch_info(symbol), previous, today)
+        payload = build_ticker_payload(df, {**t, "sample": False, "fundamentals": fundamentals})
         write_json_atomic(ticker_path(symbol), payload)
         print(f"  [{symbol}] 完成，最後日期 {payload['lastDate']} 收盤 {payload['lastClose']}")
         STATUS[symbol] = {"result": "ok", "lastDate": payload["lastDate"], "rows": len(df), "repaired": notes}
