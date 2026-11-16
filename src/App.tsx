@@ -10,6 +10,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import BottomNav from "./components/BottomNav";
+import AlertBanner from "./components/AlertBanner";
 // 各頁面「用到才下載」（程式碼分割）：打開看盤頁時不會下載組合分析的程式，首次載入比較快。
 // lightweight-charts 也會被拆成獨立檔案，只有需要畫圖的頁面才載入。
 const MarketPage = lazy(() => import("./pages/MarketPage"));
@@ -17,8 +18,12 @@ const ChartPage = lazy(() => import("./pages/ChartPage"));
 const ScreenerPage = lazy(() => import("./pages/ScreenerPage"));
 const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
 const AnalysisPage = lazy(() => import("./pages/AnalysisPage"));
+// 提醒面板只有打開時才需要
+const AlertsPanel = lazy(() => import("./components/AlertsPanel"));
 import { loadIndex } from "./lib/data";
 import { checkFreshness } from "./lib/freshness";
+import { alertState } from "./lib/alerts";
+import { useAlertQuotes, useAlerts } from "./lib/alertsStore";
 import { chartHref, useHashRoute } from "./lib/route";
 import { useStoredState } from "./lib/storage";
 import type { IndexData, Timeframe } from "./lib/types";
@@ -52,6 +57,15 @@ export default function App() {
   // 資料過期檢查（Actions 連續失敗時提醒）
   const freshness = useMemo(() => (index ? checkFreshness(index.tickers.map((t) => t.lastDate)) : null), [index]);
 
+  // 價格提醒：每次打開網站（或資料更新後）用最新資料檢查
+  const alerts = useAlerts();
+  const quotes = useAlertQuotes(index, alerts);
+  const triggered = useMemo(() => alerts.filter((a) => alertState(a, quotes[a.symbol]) === "triggered"), [alerts, quotes]);
+  // 提醒面板：null = 關閉；prefill = 從看盤頁「＋提醒」打開時帶入股票與現價
+  const [alertPanel, setAlertPanel] = useState<null | { prefill: { symbol: string; price: number } | null }>(null);
+  const openAlerts = useCallback((prefill: { symbol: string; price: number } | null = null) => setAlertPanel({ prefill }), []);
+  const closeAlerts = useCallback(() => setAlertPanel(null), []);
+
   const navigate = useCallback(
     (symbol: string, timeframe: Timeframe) => setRoute({ symbol, timeframe }),
     [setRoute],
@@ -66,7 +80,11 @@ export default function App() {
         page={route.page}
         chartHref={lastChart}
         onPickSymbol={(s) => navigate(s, route.page === "chart" ? route.timeframe : "daily")}
+        alertCount={triggered.length}
+        onOpenAlerts={() => openAlerts()}
       />
+
+      <AlertBanner triggered={triggered} quotes={quotes} onOpen={() => openAlerts()} />
 
       {freshness?.stale && !index?.sample && (
         <div className="banner" role="alert">
@@ -92,13 +110,26 @@ export default function App() {
           ) : route.page === "analysis" ? (
             <AnalysisPage index={index} redUp={redUp} />
           ) : (
-            <ChartPage index={index} indexError={indexError} route={route} navigate={navigate} redUp={redUp} />
+            <ChartPage
+              index={index}
+              indexError={indexError}
+              route={route}
+              navigate={navigate}
+              redUp={redUp}
+              onAddAlert={(symbol, price) => openAlerts({ symbol, price })}
+            />
           )}
         </Suspense>
       </main>
 
       <Footer />
       <BottomNav page={route.page} chartHref={lastChart} />
+
+      {alertPanel && (
+        <Suspense fallback={null}>
+          <AlertsPanel tickers={index?.tickers ?? []} quotes={quotes} prefill={alertPanel.prefill} onClose={closeAlerts} />
+        </Suspense>
+      )}
     </div>
   );
 }

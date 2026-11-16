@@ -30,6 +30,8 @@ interface Props {
   route: Route;
   navigate: (symbol: string, timeframe: Timeframe) => void;
   redUp: boolean;
+  /** 「＋提醒」：打開價格提醒面板並帶入這檔股票與現價 */
+  onAddAlert: (symbol: string, price: number) => void;
 }
 
 /** 成交量縮寫：12,345,678 → 12.3M */
@@ -40,7 +42,7 @@ function fmtVolume(v: number): string {
   return String(v);
 }
 
-export default function ChartPage({ index, indexError, route, navigate, redUp }: Props) {
+export default function ChartPage({ index, indexError, route, navigate, redUp, onAddAlert }: Props) {
   const [ticker, setTicker] = useState<TickerData | null>(null);
   const [tickerError, setTickerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -118,7 +120,14 @@ export default function ChartPage({ index, indexError, route, navigate, redUp }:
               {summary?.category && <span className="badge">{summary.category}</span>}
               {shown && <span>{shown.currency}</span>}
             </div>
-            <h2 className="quote-symbol chart-title">{shown?.symbol ?? symbol ?? "—"}</h2>
+            <div className="quote-title-row">
+              <h2 className="quote-symbol chart-title">{shown?.symbol ?? symbol ?? "—"}</h2>
+              {shown && quote && (
+                <button type="button" className="chip" onClick={() => onAddAlert(shown.symbol, quote.close)} title="這檔股票到某個價格時提醒我">
+                  🔔 ＋ 提醒
+                </button>
+              )}
+            </div>
             {quote && (
               <div className="quote-price">
                 <span className="num quote-last">{fmtFixed(quote.close, 2)}</span>

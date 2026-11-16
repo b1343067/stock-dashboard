@@ -16,6 +16,9 @@ interface Props {
   chartHref: string;
   /** 從搜尋框選到某一檔 */
   onPickSymbol: (symbol: string) => void;
+  /** 已觸發、還沒確認的價格提醒數量（鈴鐺上的數字） */
+  alertCount: number;
+  onOpenAlerts: () => void;
 }
 
 type ThemePref = "auto" | "light" | "dark";
@@ -30,7 +33,7 @@ export const NAV_ITEMS = (chartHref: string): [Page, string, string, string][] =
   ["analysis", "組合分析", "分析", ANALYSIS_HREF],
 ];
 
-export default function Header({ index, redUp, onToggleRedUp, page, chartHref, onPickSymbol }: Props) {
+export default function Header({ index, redUp, onToggleRedUp, page, chartHref, onPickSymbol, alertCount, onOpenAlerts }: Props) {
   const [theme, setTheme] = useStoredState<ThemePref>("theme", "auto");
 
   // 把主題寫到 <html data-theme="...">，CSS 會依此切換顏色
@@ -65,6 +68,19 @@ export default function Header({ index, redUp, onToggleRedUp, page, chartHref, o
 
       <div className="header-actions">
         {updated && <span className="updated muted" title="資料更新時間（台北）">更新 {updated}</span>}
+        <button
+          type="button"
+          className="hdr-btn bell-btn"
+          onClick={onOpenAlerts}
+          title="價格提醒"
+          aria-label={alertCount ? `價格提醒：${alertCount} 個已觸發` : "價格提醒"}
+        >
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5.5 1.5 5.5h-13S5 12 5 8z" />
+            <path d="M8.5 16.5a1.6 1.6 0 0 0 3 0" strokeLinecap="round" />
+          </svg>
+          {alertCount > 0 && <span className="bell-badge num">{alertCount}</span>}
+        </button>
         <button type="button" className="hdr-btn updown-btn" onClick={onToggleRedUp} title="切換漲跌顏色" aria-label={redUp ? "目前紅漲綠跌，點擊切換" : "目前綠漲紅跌，點擊切換"}>
           <span className={redUp ? "num-red" : "num-green"}>漲</span>
           <span className={redUp ? "num-green" : "num-red"}>跌</span>

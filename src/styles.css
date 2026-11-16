@@ -824,6 +824,56 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
 .heat-tile.strong { color: #fff; }
 .heat-tile:hover { outline: 2px solid var(--text); outline-offset: -2px; }
 
+/* ---------- 價格提醒 ---------- */
+.bell-btn { position: relative; }
+.bell-badge {
+  position: absolute; top: -5px; right: -5px;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--accent-strong); color: var(--accent-ink);
+  font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+}
+.quote-title-row { display: flex; align-items: center; gap: 10px; }
+.alert-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--accent-soft); color: var(--text); }
+.alert-banner-list { flex: 1; min-width: 0; }
+.alert-banner-list a { color: var(--accent); font-weight: 700; text-decoration: none; }
+.alert-banner-actions { display: flex; gap: 8px; }
+
+.sheet-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(10, 12, 20, 0.45); display: flex; justify-content: flex-end; }
+.sheet {
+  width: min(460px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 18px 18px 28px;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.25);
+  animation: sheet-in 0.18s ease-out;
+}
+.sheet:focus { outline: none; }
+@keyframes sheet-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.sheet-head h2 { font-size: 18px; font-weight: 800; }
+.alert-form { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.alert-form .text-input { width: 100%; }
+.alert-cond { display: flex; align-items: center; gap: 8px; }
+.alert-cond select { flex: 1 1 auto; min-width: 0; }
+.alert-cond .num-input { width: 96px; flex: 0 0 auto; }
+.alert-unit { white-space: nowrap; }
+.alert-submit { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.alert-submit .btn-primary { min-width: 96px; }
+.alert-error { margin: 0; }
+.ack-all { margin-top: 12px; width: 100%; }
+.alert-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.alert-item { display: flex; align-items: center; gap: 8px; padding: 10px 6px 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+.alert-item.state-triggered { border-color: var(--accent); background: var(--accent-soft); }
+.alert-item.state-disabled { opacity: 0.6; }
+.alert-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.alert-main a { color: var(--text); font-weight: 700; text-decoration: none; }
+.alert-main a:hover { color: var(--accent); }
+.alert-state { font-size: 11px; font-weight: 800; padding: 1px 8px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); white-space: nowrap; }
+.alert-state.state-triggered { background: var(--accent-strong); color: var(--accent-ink); }
+
 /* ---------- 手機版 ---------- */
 @media (max-width: 860px) {
   .app { padding: 0 14px; }
@@ -915,6 +965,13 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
   .chart-canvas.panes-2 { height: 540px; }
 
   .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+  /* 提醒面板改從下方滑出 */
+  .sheet-backdrop { align-items: flex-end; }
+  .sheet { height: auto; max-height: 88vh; border-left: 0; border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  @keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .alert-banner-actions { width: 100%; }
+  .alert-banner-actions button { flex: 1; }
 
   /* 市場總覽 */
   .bench-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

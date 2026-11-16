@@ -42,7 +42,7 @@
 
 ### 前端（`src/`）
 - `App.tsx`：外殼（Header 分頁、資料過期／範例資料 banner、Footer），依 `route.page` 以 `React.lazy` 載入 `pages/` 的頁面
-- `lib/route.ts`：hash 路由 `#/代號/週期`（daily|weekly|monthly）、`#/screener`、`#/portfolio`、`#/analysis`；`chartHref()` 產生看圖連結
+- `lib/route.ts`：hash 路由：空白或 `#/market`（市場總覽，預設首頁）、`#/代號/週期`（daily|weekly|monthly；`#//daily` = 選第一檔）、`#/screener`、`#/portfolio`、`#/analysis`；`chartHref()` 產生看圖連結（測試在 route.test.ts）
 - `lib/types.ts`：**JSON 格式的 TypeScript 定義，改 Python 輸出時必須同步修改**
 - `lib/data.ts`：讀 JSON（帶快取、驗證）：`loadIndex`、`loadTicker`、`loadScreener`、`loadFxHistory`（沒有檔案回傳 null）
 - `lib/freshness.ts`：`checkFreshness()`，最新資料落後 3 個平日以上就在頁首提醒
@@ -52,7 +52,9 @@
 - `lib/theme.ts`：從 CSS 變數讀圖表顏色；顏色只在 `styles.css` 的 `:root` 定義（`--s1`／`--s2` 類別色、`--div-*` 發散色，已用資料視覺化指引的驗證工具檢查過）
 - `lib/format.ts`：`fmtMoney`／`fmtPct`／`fmtFixed`／`pnlClass`（漲跌顏色跟著 redUp）
 - 看盤：`pages/ChartPage.tsx`（報價標頭）、`components/StockChart.tsx`（lightweight-charts v5；MACD／RSI 窗格展開才建立；趨勢外推虛線）、`components/StatusCards.tsx`＋`lib/signals.ts`（白話狀態卡）、`components/TrendCard.tsx`、`components/Sparkline.tsx`（觀察清單迷你走勢，資料來自 `index.json` 的 `spark`）
-- 頁首：`components/Header.tsx`（分頁、快速搜尋、紅漲綠跌、深淺色）、`components/BottomNav.tsx`（手機）
+- 頁首：`components/Header.tsx`（分頁、快速搜尋、提醒鈴鐺、紅漲綠跌、深淺色）、`components/BottomNav.tsx`（手機，5 個分頁）
+- 市場總覽：`pages/MarketPage.tsx`＋`lib/market.ts`（`periodChange`／`breadth`／`topMovers`／`categoryStats`／`heatIntensity`）；只用 index.json（含 spark 算 30 天漲跌），**首頁不可下載個股檔案**（E2E 檢查）
+- 價格提醒：`lib/alerts.ts`（條件、`evaluateAlert`、`alertState`、`acknowledge`）、`lib/alertsStore.ts`（`useSyncExternalStore` 共用狀態、`useAlertQuotes`：只有 RSI 提醒時才載入 screener.json）、`components/AlertsPanel.tsx`（lazy，桌機右側／手機底部滑出）、`components/AlertBanner.tsx`；App 統一計算 triggered
 - 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合）、`pages/ScreenerPage.tsx`、`components/screener/`
 - 投資組合：`lib/portfolio.ts`（`computePortfolio`、`toUsd`、`stopStatus`、`sanitizeHoldings`、`parseImport`／`buildExport`、`sampleHoldings`）、`lib/portfolioStore.ts`（讀 localStorage，分析頁共用）、`pages/PortfolioPage.tsx`、`components/portfolio/`
 - 組合分析：`lib/analytics.ts`（`convertToUsd`、`alignSeries`、`analyze`、`maxSharpe`、`buyAndHold`、`backtestStats`）、`pages/AnalysisPage.tsx`、`components/analysis/`
@@ -75,7 +77,8 @@
 - 投資組合：`portfolio:holdings`、`portfolio:settings`、`portfolio:isSample`（沒有 holdings key 時顯示範例持股）
 - 篩選器：`screener:current`（目前條件＋AND/OR＋分類範圍 `category`）、`screener:presets`（我的組合）
 - 分析：`analysis:period`、`analysis:source`
-- 介面：`overlays`（含 ma10/20/50/200、bb、macd、rsi）、`showTrend`、`redUp`、`theme`、`watchlist:collapsed`
+- 介面：`overlays`（含 ma10/20/50/200、bb、macd、rsi）、`showTrend`、`redUp`、`theme`、`watchlist:collapsed`、`market:period`
+- 價格提醒：`alerts:list`（`[{id,symbol,kind,value,repeat,createdAt,ackDate,disabled}]`）
 
 ## 視覺設計（改版後，使用者選定）
 
@@ -104,6 +107,7 @@
 - [x] 第四階段 組合分析＋短期趨勢外推
 - [x] 優化：README 截圖與徽章、E2E 測試進 CI、程式碼分割、資料過期提醒
 - [x] 全站改版：紫藍主色、深淺色、K 線指標收合、白話狀態卡、手機底部導覽、快速搜尋
+- [x] 市場總覽首頁、價格提醒
 - [x] 資料品質：自動修正小問題＋status.json；資料搬到 data 分支（main 不再每天變大）
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
 
