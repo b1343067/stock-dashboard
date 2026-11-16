@@ -329,10 +329,18 @@ export interface PortfolioFile {
   exportedAt: string;
   holdings: Holding[];
   settings: PortfolioSettings;
+  /** 加碼 C：交易紀錄與模式（舊版匯出檔沒有） */
+  transactions?: unknown[];
+  mode?: "holdings" | "transactions";
 }
 
-export function buildExport(holdings: Holding[], settings: PortfolioSettings, now = new Date()): PortfolioFile {
-  return { app: "stock-dashboard", version: EXPORT_VERSION, exportedAt: now.toISOString(), holdings, settings };
+export function buildExport(
+  holdings: Holding[],
+  settings: PortfolioSettings,
+  now = new Date(),
+  extra: { transactions?: unknown[]; mode?: "holdings" | "transactions" } = {},
+): PortfolioFile {
+  return { app: "stock-dashboard", version: EXPORT_VERSION, exportedAt: now.toISOString(), holdings, settings, ...extra };
 }
 
 /** 解析匯入的檔案內容。格式不對會丟出中文錯誤訊息。 */
@@ -344,7 +352,9 @@ export function parseImport(text: string): { holdings: Holding[]; settings: Port
     throw new Error("檔案不是有效的 JSON");
   }
   // 也接受「只有持股陣列」的簡單格式
-  const obj = Array.isArray(data) ? { holdings: data } : (data as Partial<PortfolioFile>);
+  const raw: Partial<PortfolioFile> = Array.isArray(data) ? { holdings: data as Holding[] } : (data as Partial<PortfolioFile>);
+  // 只有交易紀錄、沒有持股的檔案也可以（交易紀錄模式匯出的）
+  const obj = raw && typeof raw === "object" && !Array.isArray(raw.holdings) && Array.isArray(raw.transactions) ? { ...raw, holdings: [] } : raw;
   if (!obj || typeof obj !== "object" || !Array.isArray(obj.holdings)) {
     throw new Error("找不到持股資料（holdings）");
   }

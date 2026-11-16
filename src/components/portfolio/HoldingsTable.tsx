@@ -9,7 +9,8 @@ interface Props {
   redUp: boolean;
   alertPct: number;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  /** 交易紀錄模式下持股由交易計算，不能直接刪除 → 不傳 */
+  onDelete?: (id: string) => void;
 }
 
 const STATUS_LABEL: Record<StopStatus, string> = {
@@ -111,15 +112,17 @@ export default function HoldingsTable({ rows, redUp, alertPct, onEdit, onDelete 
                   <button type="button" className="btn-ghost btn-sm" onClick={() => onEdit(h.id)}>
                     編輯
                   </button>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label={`刪除 ${h.symbol}`}
-                    title="刪除"
-                    onClick={() => window.confirm(`確定刪除 ${h.symbol}？`) && onDelete(h.id)}
-                  >
-                    ×
-                  </button>
+                  {onDelete && (
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label={`刪除 ${h.symbol}`}
+                      title="刪除"
+                      onClick={() => window.confirm(`確定刪除 ${h.symbol}？`) && onDelete(h.id)}
+                    >
+                      ×
+                    </button>
+                  )}
                 </td>
               </tr>
             );

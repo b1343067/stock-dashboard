@@ -12,16 +12,23 @@ import HoldingForm from "../components/portfolio/HoldingForm";
 import HoldingsTable from "../components/portfolio/HoldingsTable";
 import SettingsPanel from "../components/portfolio/SettingsPanel";
 import SummaryCards from "../components/portfolio/SummaryCards";
-import {
-  buildExport,
-  computePortfolio,
-  parseImport,
-  type Holding,
-  type PortfolioSettings,
-  type Quote,
-} from "../lib/portfolio";
+import TransactionsPanel from "../components/portfolio/TransactionsPanel";
+import { loadFxHistory } from "../lib/data";
+import { buildLedger, parseTransactionsFile, positionsToHoldings, sampleTransactions, type Transaction } from "../lib/transactions";
+import { buildExport, computePortfolio, parseImport, type Holding, type PortfolioSettings, type Quote } from "../lib/portfolio";
 import { writeStorage } from "../lib/storage";
-import { KEY_HOLDINGS, KEY_SAMPLE, KEY_SETTINGS, loadHoldings, loadSettings } from "../lib/portfolioStore";
+import {
+  KEY_HOLDINGS,
+  KEY_MODE,
+  KEY_SAMPLE,
+  KEY_SETTINGS,
+  KEY_TX,
+  loadMode,
+  loadSettings,
+  loadStoredHoldings,
+  loadTransactions,
+  type PortfolioMode,
+} from "../lib/portfolioStore";
 import type { IndexData } from "../lib/types";
 
 interface Props {
@@ -31,13 +38,23 @@ interface Props {
 }
 
 export default function PortfolioPage({ index, indexError, redUp }: Props) {
-  const [initial] = useState(loadHoldings);
+  const [initial] = useState(loadStoredHoldings);
+  // 加碼 C：持股來源。transactions = 由交易紀錄計算（holdings 只拿來存類型與停利停損設定）
+  const [mode, setMode] = useState<PortfolioMode>(loadMode);
+  const [transactions, setTransactions] = useState<Transaction[]>(loadTransactions);
+  const [fxHistory, setFxHistory] = useState<{
+    time: string[];
+    close: number[];
+  } | null>(null);
   const [holdings, setHoldings] = useState<Holding[]>(initial.holdings);
   const [isSample, setIsSample] = useState(initial.isSample);
   const [settings, setSettings] = useState<PortfolioSettings>(loadSettings);
   // 表單狀態：null = 關閉、"new" = 新增、其他 = 正在編輯的持股 id
   const [editing, setEditing] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ text: string; tone: "ok" | "error" } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    tone: "ok" | "error";
+  } | null>(null);
   // 匯入後讓設定面板重新讀取數值
   const [settingsVersion, setSettingsVersion] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -51,20 +68,58 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
   useEffect(() => {
     writeStorage(KEY_SETTINGS, settings);
   }, [settings]);
+  useEffect(() => {
+    writeStorage(KEY_MODE, mode);
+  }, [mode]);
+  useEffect(() => {
+    writeStorage(KEY_TX, transactions);
+  }, [transactions]);
+  // 歷史匯率：只有交易紀錄模式需要（台股每筆交易依當天匯率換算）；讀不到就用最新匯率
+  useEffect(() => {
+    if (mode !== "transactions") return;
+    let cancelled = false;
+    loadFxHistory()
+      .then((h) => {
+        if (!cancelled) setFxHistory(h?.USDTWD ?? null);
+      })
+      .catch(() => {
+        /* 沒有歷史匯率不影響其他功能 */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
+
+  const isTx = mode === "transactions";
+  // 交易紀錄模式：股數與平均成本由交易計算；類型與停利停損沿用同代號的持股設定（範例持股不算）
+  const effectiveHoldings = useMemo(
+    () => (isTx ? positionsToHoldings(buildLedger(transactions).positions, isSample ? [] : holdings) : holdings),
+    [isTx, transactions, holdings, isSample],
+  );
 
   // 從 index.json 整理出「代號 → 現價」
   const quotes = useMemo(() => {
     const q: Record<string, Quote> = {};
     for (const t of index?.tickers ?? []) {
-      q[t.symbol] = { price: t.lastClose, currency: t.currency, name: t.name, date: t.lastDate };
+      q[t.symbol] = {
+        price: t.lastClose,
+        currency: t.currency,
+        name: t.name,
+        date: t.lastDate,
+      };
     }
     return q;
   }, [index]);
   const fx = useMemo(() => index?.fx ?? {}, [index]);
-  const summary = useMemo(() => computePortfolio(holdings, quotes, fx, settings), [holdings, quotes, fx, settings]);
+  const summary = useMemo(() => computePortfolio(effectiveHoldings, quotes, fx, settings), [effectiveHoldings, quotes, fx, settings]);
 
   const symbols = useMemo(
-    () => (index?.tickers ?? []).map((t) => ({ symbol: t.symbol, name: t.name, currency: t.currency })),
+    () =>
+      (index?.tickers ?? []).map((t) => ({
+        symbol: t.symbol,
+        name: t.name,
+        currency: t.currency,
+      })),
     [index],
   );
 
@@ -77,6 +132,18 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
   };
 
   const saveHolding = (h: Holding) => {
+    if (isTx) {
+      // 交易紀錄模式只存「類型、停利停損」設定（依代號），股數成本以交易為準
+      const base = isSample ? [] : holdings;
+      setHoldings(
+        base.some((x) => x.symbol === h.symbol)
+          ? base.map((x) => (x.symbol === h.symbol ? { ...x, type: h.type, tpPct: h.tpPct, slPct: h.slPct } : x))
+          : [...base, h],
+      );
+      setIsSample(false);
+      setEditing(null);
+      return;
+    }
     if (editing === "new") {
       // 還在顯示範例時新增，先問要不要清掉範例，避免真實持股和範例混在一起
       if (isSample && window.confirm("目前是範例持股。要先清除範例，再加入你的持股嗎？\n（按「取消」會保留範例一起顯示）")) {
@@ -92,8 +159,13 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
   };
 
   const exportFile = () => {
-    const data = buildExport(holdings, settings);
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const data = buildExport(holdings, settings, new Date(), {
+      transactions,
+      mode,
+    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     const d = new Date();
@@ -102,39 +174,56 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
     a.download = `my-portfolio-${stamp}.json`; // 檔名符合 .gitignore，不小心放進專案也不會被 commit
     a.click();
     URL.revokeObjectURL(url);
-    setMessage({ text: `已匯出 ${holdings.length} 筆持股`, tone: "ok" });
+    setMessage({
+      text: `已匯出 ${holdings.length} 筆持股${transactions.length ? `、${transactions.length} 筆交易` : ""}`,
+      tone: "ok",
+    });
   };
 
   const importFile = async (file: File) => {
     try {
       if (file.size > 1_000_000) throw new Error("檔案太大（超過 1MB）");
-      const result = parseImport(await file.text());
-      const ok = holdings.length === 0 || isSample || window.confirm(`匯入 ${result.holdings.length} 筆持股，會取代目前的 ${holdings.length} 筆。確定嗎？`);
+      const text = await file.text();
+      const result = parseImport(text);
+      const tx = parseTransactionsFile(text);
+      const hasData = (holdings.length > 0 && !isSample) || transactions.length > 0;
+      const ok =
+        !hasData ||
+        window.confirm(
+          `匯入 ${result.holdings.length} 筆持股${tx.transactions.length ? `、${tx.transactions.length} 筆交易` : ""}，會取代目前的資料。確定嗎？`,
+        );
       if (!ok) return;
       setHoldings(result.holdings);
+      setTransactions(tx.transactions);
+      if (tx.mode) setMode(tx.mode);
       setSettings(result.settings);
       setSettingsVersion((v) => v + 1);
       setIsSample(false);
       setEditing(null);
       setMessage({
-        text: `已匯入 ${result.holdings.length} 筆持股${result.dropped ? `（${result.dropped} 筆格式錯誤已略過）` : ""}`,
+        text: `已匯入 ${result.holdings.length} 筆持股${tx.transactions.length ? `、${tx.transactions.length} 筆交易` : ""}${result.dropped + tx.dropped ? `（${result.dropped + tx.dropped} 筆格式錯誤已略過）` : ""}`,
         tone: "ok",
       });
     } catch (e) {
-      setMessage({ text: `匯入失敗：${e instanceof Error ? e.message : String(e)}`, tone: "error" });
+      setMessage({
+        text: `匯入失敗：${e instanceof Error ? e.message : String(e)}`,
+        tone: "error",
+      });
     }
   };
 
-  const editingHolding = editing && editing !== "new" ? holdings.find((h) => h.id === editing) : undefined;
+  const editingHolding = editing && editing !== "new" ? effectiveHoldings.find((h) => h.id === editing) : undefined;
+  const today = localDate();
   const priceDate = index?.tickers[0]?.lastDate;
   const usdtwd = fx.USDTWD;
 
   return (
     <div className="portfolio">
-      {isSample && (
+      {isSample && !isTx && (
         <div className="banner sample-banner" role="status">
           <span>
-            目前顯示的是<b>範例持股</b>（隨意設定的數字，不是任何人的真實持股）。
+            目前顯示的是<b>範例持股</b>
+            （隨意設定的數字，不是任何人的真實持股）。
           </span>
           <span className="banner-actions">
             <button type="button" className="btn-primary" onClick={clearSample}>
@@ -151,10 +240,12 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
         <div className="screener-head">
           <h2>投資組合</h2>
           <div className="toolbar">
-            <button type="button" className="btn-primary" onClick={() => setEditing("new")} disabled={editing === "new"}>
-              ＋ 新增持股
-            </button>
-            <button type="button" className="btn-ghost" onClick={exportFile} disabled={holdings.length === 0}>
+            {!isTx && (
+              <button type="button" className="btn-primary" onClick={() => setEditing("new")} disabled={editing === "new"}>
+                ＋ 新增持股
+              </button>
+            )}
+            <button type="button" className="btn-ghost" onClick={exportFile} disabled={holdings.length === 0 && transactions.length === 0}>
               匯出
             </button>
             <button type="button" className="btn-ghost" onClick={() => fileRef.current?.click()}>
@@ -172,6 +263,36 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
               }}
             />
           </div>
+        </div>
+
+        <div className="mode-row">
+          <div className="segmented" role="radiogroup" aria-label="持股來源">
+            {(
+              [
+                ["holdings", "直接輸入持股"],
+                ["transactions", "用交易紀錄計算"],
+              ] as const
+            ).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={mode === m}
+                className={mode === m ? "active" : ""}
+                onClick={() => {
+                  setMode(m);
+                  setEditing(null);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <span className="muted small">
+            {isTx
+              ? "持股的股數與平均成本由下方交易紀錄自動計算，並算出已實現損益、股利與 XIRR。"
+              : "只記目前持股與平均成本；想看已實現損益與年化報酬，可以改用交易紀錄。"}
+          </span>
         </div>
 
         {message && (
@@ -200,6 +321,7 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
           <HoldingForm
             key={editing ?? "none"}
             initial={editingHolding}
+            metaOnly={isTx}
             symbols={symbols}
             settings={settings}
             onSubmit={saveHolding}
@@ -210,20 +332,50 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
 
       <div className="card">
         <h3 className="section-title">持股明細</h3>
-        <HoldingsTable
-          rows={summary.rows}
-          redUp={redUp}
-          alertPct={settings.alertPct}
-          onEdit={(id) => setEditing(id)}
-          onDelete={(id) => {
-            const rest = holdings.filter((h) => h.id !== id);
-            setHoldings(rest);
-            if (rest.length === 0) setIsSample(false); // 範例都刪光了就不再顯示範例提示
-          }}
-        />
+        {isTx && summary.rows.length === 0 ? (
+          <p className="muted empty">目前沒有持股（新增買進交易後會出現在這裡）。</p>
+        ) : (
+          <HoldingsTable
+            rows={summary.rows}
+            redUp={redUp}
+            alertPct={settings.alertPct}
+            onEdit={(id) => setEditing(id)}
+            onDelete={
+              isTx
+                ? undefined
+                : (id) => {
+                    const rest = holdings.filter((h) => h.id !== id);
+                    setHoldings(rest);
+                    if (rest.length === 0) setIsSample(false); // 範例都刪光了就不再顯示範例提示
+                  }
+            }
+          />
+        )}
         <SettingsPanel key={settingsVersion} settings={settings} onChange={setSettings} />
-        <p className="hint">🔒 持股只存在這個瀏覽器，不會上傳。換電腦或清除瀏覽資料前，請先「匯出」備份。</p>
+        <p className="hint">🔒 持股與交易紀錄只存在這個瀏覽器，不會上傳。換電腦或清除瀏覽資料前，請先「匯出」備份。</p>
       </div>
+
+      {isTx && (
+        <TransactionsPanel
+          transactions={transactions}
+          onAdd={(t) => setTransactions((ts) => [...ts, t])}
+          onDelete={(id) => setTransactions((ts) => ts.filter((t) => t.id !== id))}
+          onLoadSample={() => setTransactions(sampleTransactions())}
+          quotes={quotes}
+          fx={fx}
+          fxHistory={fxHistory}
+          settings={settings}
+          redUp={redUp}
+          symbols={symbols}
+          today={today}
+          priceDate={priceDate ?? today}
+        />
+      )}
     </div>
   );
+}
+
+/** 今天的日期（使用者當地時間），YYYY-MM-DD */
+function localDate(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }

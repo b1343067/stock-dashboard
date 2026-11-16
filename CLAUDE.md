@@ -62,6 +62,7 @@
 - 價格提醒：`lib/alerts.ts`（條件、`evaluateAlert`、`alertState`、`acknowledge`）、`lib/alertsStore.ts`（`useSyncExternalStore` 共用狀態、`useAlertQuotes`：只有 RSI 提醒時才載入 screener.json）、`components/AlertsPanel.tsx`（lazy，桌機右側／手機底部滑出）、`components/AlertBanner.tsx`；App 統一計算 triggered
 - 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合）、`pages/ScreenerPage.tsx`、`components/screener/`
 - 投資組合：`lib/portfolio.ts`（`computePortfolio`、`toUsd`、`stopStatus`、`sanitizeHoldings`、`parseImport`／`buildExport`、`sampleHoldings`）、`lib/portfolioStore.ts`（讀 localStorage，分析頁共用）、`pages/PortfolioPage.tsx`、`components/portfolio/`
+- 交易紀錄（加碼 C）：`lib/transactions.ts`（`buildLedger` 移動平均成本法、`positionsToHoldings`、`xirr` 牛頓＋二分、`positionStats`、`totals` 台股每筆依當天 `fxAt` 匯率換美元、`sanitizeTransactions`、`sampleTransactions`）、`components/portfolio/TransactionsPanel.tsx`／`TransactionForm.tsx`；`portfolioStore.loadHoldings()` 依 `portfolio:mode` 回傳交易計算出的持股（分析頁共用），交易模式下 `portfolio:holdings` 只當「類型／停利停損」設定用（HoldingForm `metaOnly`）
 - 組合分析：`lib/analytics.ts`（`convertToUsd`、`alignSeries`、`analyze`、`maxSharpe`、`buyAndHold`、`backtestStats`）、`pages/AnalysisPage.tsx`、`components/analysis/`
 - 趨勢外推：`lib/trend.ts`（線性回歸、`nextTradingDays`、`backtestAccuracy`）。**`NYSE_HOLIDAYS` 寫死到 2027 年，每年要補下一年**
 
@@ -80,7 +81,7 @@
 - `public/data/fx.json`：`{USDTWD:{time,close}}`；沒有時分析頁用最新匯率近似並提示
 
 ### localStorage key（都有 `stockdash:` 前綴）
-- 投資組合：`portfolio:holdings`、`portfolio:settings`、`portfolio:isSample`（沒有 holdings key 時顯示範例持股）
+- 投資組合：`portfolio:holdings`、`portfolio:settings`、`portfolio:isSample`（沒有 holdings key 時顯示範例持股）、`portfolio:mode`（holdings｜transactions）、`portfolio:transactions`（`[{id,date,symbol,type:buy|sell|dividend,shares,price,fee,amount}]`）
 - 篩選器：`screener:current`（目前條件＋AND/OR＋分類範圍 `category`）、`screener:presets`（我的組合）
 - 分析：`analysis:period`、`analysis:source`
 - 介面：`overlays`（含 ma10/20/50/200、bb、macd、rsi）、`showTrend`、`redUp`、`theme`、`watchlist:collapsed`、`market:period`
@@ -117,16 +118,18 @@
 - [x] 市場總覽首頁、價格提醒
 - [x] 加碼 A：多檔走勢比較、效率前緣圖、PWA（離線瀏覽）
 - [x] 加碼 B：K 線畫圖工具、基本面資料
-- [ ] 加碼 C：交易紀錄制投資組合（已實現損益、股利、XIRR）、英文版（使用者已同意，等「繼續」）
+- [x] 加碼 C-1：交易紀錄制投資組合（已實現損益、股利、XIRR）
+- [ ] 加碼 C-2：英文版（進行中）
 - [x] 資料品質：自動修正小問題＋status.json；資料搬到 data 分支（main 不再每天變大）
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
 
 ### 已知事實（不要當成 bug 重查）
+- 手機版（≤860px）`.table-scroll` 是 `overflow: visible`（持股表要變卡片）；其他寬表格要在手機可左右滑動時，需針對容器另外設 `overflow-x: auto`（例：`.tx-panel .table-scroll`）
 - BRK-B 在 2026 年和 VOO 的日報酬幾乎不連動（近 1 年 Beta≈0.08、相關≈0.07；2022 年 0.76／0.81；5 年日報酬 Beta≈0.58）。已確認日期對齊與計算正確，是資料本身的結果
 
 ### 之後可做（使用者尚未決定）
 - 篩選器新條件（均線交叉、成交量；52 週新高低已在加碼 B 完成）
-- 篩選結果 Telegram 通知、英文版
+- 篩選結果 Telegram 通知
 
 ### 舊作業（reference/old_streamlit_app.py，尚未取得）要修正的點：全部完成
 1. RSI 用 Wilder（ewm alpha=1/14） 2. 新增布林通道 3. 台股先換美元 4. 「AI 預測」→「短期趨勢外推」＋歷史準確度 5. 回測從起始日買進持有 6. 預設持倉改範例資料

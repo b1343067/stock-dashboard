@@ -11,9 +11,11 @@ interface Props {
   settings: PortfolioSettings;
   onSubmit: (h: Holding) => void;
   onCancel: () => void;
+  /** 交易紀錄模式：股數與成本由交易計算，只能改類型與停利停損 */
+  metaOnly?: boolean;
 }
 
-export default function HoldingForm({ initial, symbols, settings, onSubmit, onCancel }: Props) {
+export default function HoldingForm({ initial, symbols, settings, onSubmit, onCancel, metaOnly = false }: Props) {
   const listId = useId();
   // 輸入框的值先用字串存，送出時才轉數字（避免打字到一半就被改掉）
   const [symbol, setSymbol] = useState(initial?.symbol ?? "");
@@ -70,6 +72,7 @@ export default function HoldingForm({ initial, symbols, settings, onSubmit, onCa
             autoCapitalize="characters"
             autoComplete="off"
             autoFocus={!initial}
+            disabled={metaOnly}
           />
           <datalist id={listId}>
             {symbols.map((s) => (
@@ -87,12 +90,13 @@ export default function HoldingForm({ initial, symbols, settings, onSubmit, onCa
 
         <label className="field">
           <span>股數</span>
-          <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={shares} onChange={(e) => setShares(e.target.value)} />
+          <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={shares} disabled={metaOnly} onChange={(e) => setShares(e.target.value)} />
         </label>
 
         <label className="field">
           <span>平均成本（每股，{currency}）</span>
-          <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={cost} onChange={(e) => setCost(e.target.value)} />
+          <input className="text-input" type="number" inputMode="decimal" min="0" step="any" value={cost} disabled={metaOnly} onChange={(e) => setCost(e.target.value)} />
+          {metaOnly && <small className="muted">股數與成本由交易紀錄計算</small>}
         </label>
 
         <div className="field">
