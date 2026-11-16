@@ -6,7 +6,7 @@
 import numpy as np
 import pandas as pd
 
-from data_quality import to_exchange_dates, validate_daily
+from data_quality import repair_daily, to_exchange_dates, validate_daily
 from indicators import bollinger, macd, resample_ohlcv, rsi_wilder
 
 
@@ -73,6 +73,23 @@ def main() -> None:
     wrong = good.copy()
     wrong.iloc[10, wrong.columns.get_loc("Close")] = wrong["High"].iloc[10] * 2
     assert any("高低" in p for p in validate_daily(wrong))
+
+    # ---- 自動修正小問題（006208.TW 一直抓不到的原因之一）----
+    glitch = good.copy()
+    glitch.iloc[5, glitch.columns.get_loc("High")] = glitch["Close"].iloc[5] * 0.9   # 最高價比收盤還低
+    glitch.iloc[6, glitch.columns.get_loc("Low")] = 0                                 # 最低價是 0
+    glitch.iloc[7, glitch.columns.get_loc("Close")] = float("nan")                    # 收盤價空白
+    last = glitch.index[-1]
+    sat = last + pd.Timedelta(days=(5 - last.dayofweek) % 7 or 7)                      # 下一個週六（補班日）
+    glitch.loc[sat] = glitch.iloc[-1]
+    fixed, notes = repair_daily(glitch)
+    assert validate_daily(fixed) == [], f"修正後應該沒有問題：{validate_daily(fixed)}"
+    assert len(fixed) == len(good) - 1, "刪掉空白收盤和週六兩筆"
+    assert fixed["High"].iloc[5] >= fixed["Close"].iloc[5] and fixed["Low"].iloc[6] > 0
+    assert any("高低價" in n for n in notes) and any("週末" in n for n in notes)
+    # 大量週末日期（時區錯開）不修，交給檢查拒絕
+    shifted, notes2 = repair_daily(bad)
+    assert any("週末" in p for p in validate_daily(shifted)), "大量週末日期要被拒絕"
 
     print(f"全部通過（RSI 與參考實作最大差異 {diff:.6f}）")
 

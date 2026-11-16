@@ -28,8 +28,8 @@ import time
 import pandas as pd
 import yfinance as yf
 
-from data_io import FX_PATH, load_watchlist, rebuild_index, ticker_path, write_json_atomic
-from data_quality import to_exchange_dates, validate_daily
+from data_io import FX_PATH, STATUS_PATH, load_watchlist, rebuild_index, ticker_path, write_json_atomic
+from data_quality import repair_daily, to_exchange_dates, validate_daily
 from indicators import build_ticker_payload
 
 HISTORY_PERIOD = "10y"   # 抓 10 年，月線的均線才算得出來
@@ -104,12 +104,16 @@ def fetch_risk_free(symbol: str | None) -> float | None:
     return None
 
 
+# 每檔的更新結果（最後寫進 public/data/status.json，不用登入 GitHub 也能看到哪檔失敗、為什麼）
+STATUS: dict[str, dict] = {}
+
+
 def process_symbol(t: dict) -> str:
     """
-    抓一檔、檢查、計算、寫檔。回傳結果：
+    抓一檔、修正小問題、檢查、計算、寫檔。回傳結果：
       "ok"        成功
       "download"  下載失敗（之後會再重試一輪）
-      "invalid"   資料異常或計算失敗（不重試，保留舊檔）
+      "invalid"   資料有嚴重問題或計算失敗（不重試，保留舊檔）
     任何錯誤都在這裡處理掉，不會往外丟，確保單檔失敗不會中斷整個更新。
     """
     symbol = t["symbol"]
@@ -117,18 +121,46 @@ def process_symbol(t: dict) -> str:
         df = download_daily(symbol)
         if df is None:
             print(f"  [{symbol}] 下載失敗，保留前一天的檔案")
+            STATUS[symbol] = {"result": "download", "reason": f"下載失敗（已重試 {RETRIES} 次）"}
             return "download"
-        problems = validate_daily(df.dropna(subset=["Close"]), MIN_ROWS)
+        df, notes = repair_daily(df)
+        if notes:
+            print(f"  [{symbol}] 自動修正：{'；'.join(notes)}")
+        problems = validate_daily(df, MIN_ROWS)
         if problems:
             print(f"  [{symbol}] 資料異常：{'；'.join(problems)}，保留前一天的檔案")
+            STATUS[symbol] = {"result": "invalid", "reason": "；".join(problems), "repaired": notes}
             return "invalid"
         payload = build_ticker_payload(df, {**t, "sample": False})
         write_json_atomic(ticker_path(symbol), payload)
         print(f"  [{symbol}] 完成，最後日期 {payload['lastDate']} 收盤 {payload['lastClose']}")
+        STATUS[symbol] = {"result": "ok", "lastDate": payload["lastDate"], "rows": len(df), "repaired": notes}
         return "ok"
     except Exception as e:  # 保險：任何意料外的錯誤都只影響這一檔
         print(f"  [{symbol}] 發生錯誤：{e}，保留前一天的檔案")
+        STATUS[symbol] = {"result": "invalid", "reason": f"程式錯誤：{e}"}
         return "invalid"
+
+
+def write_status(tickers: list[dict], fx: dict, risk_free: float | None) -> None:
+    """
+    寫出 public/data/status.json：這次更新每一檔的結果。
+    失敗的股票網站上仍顯示前一天的資料；這個檔案讓人知道哪些沒更新、原因是什麼。
+    """
+    from datetime import datetime, timezone
+
+    results = {t["symbol"]: STATUS.get(t["symbol"], {"result": "skipped"}) for t in tickers}
+    write_json_atomic(STATUS_PATH, {
+        "generatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "summary": {
+            "total": len(results),
+            "ok": sum(r["result"] == "ok" for r in results.values()),
+            "failed": [s for s, r in results.items() if r["result"] != "ok"],
+            "fx": "ok" if fx else "沿用上次",
+            "riskFree": "ok" if risk_free is not None else "沿用上次",
+        },
+        "tickers": results,
+    })
 
 
 def main() -> int:
@@ -168,6 +200,7 @@ def main() -> int:
     if fx_history:
         write_json_atomic(FX_PATH, fx_history)
     rebuild_index(watchlist, fx, risk_free)
+    write_status(tickers, fx, risk_free)
     print(f"\n成功 {len(ok)} 檔，失敗 {len(failed)} 檔：{failed}")
     return 0
 

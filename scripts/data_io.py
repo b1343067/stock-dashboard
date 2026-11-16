@@ -17,6 +17,7 @@ CONFIG_PATH = ROOT / "config" / "watchlist.json"         # 觀察清單設定
 DATA_DIR = ROOT / "public" / "data"                      # 前端讀取的資料夾
 INDEX_PATH = DATA_DIR / "index.json"                     # 總表（清單 + 匯率）
 SCREENER_PATH = DATA_DIR / "screener.json"               # 篩選器用的精簡資料
+STATUS_PATH = DATA_DIR / "status.json"                   # 每次更新的結果（哪檔失敗、原因）
 FX_PATH = DATA_DIR / "fx.json"                           # 歷史匯率（第四階段換算台股報酬用）
 
 # 觀察清單迷你走勢線用幾天的收盤價
