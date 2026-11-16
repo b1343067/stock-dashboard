@@ -4,14 +4,18 @@ import { expect, test } from "@playwright/test";
 test.use({ serviceWorkers: "allow" });
 
 test("PWA：有 manifest 與圖示；離線時仍能打開網站、看上次的資料", async ({ page, context }) => {
-  // manifest 與圖示
-  const manifest = await (await page.request.get("/manifest.webmanifest")).json();
-  expect(manifest.display).toBe("standalone");
-  expect(manifest.icons.length).toBeGreaterThanOrEqual(2);
-  for (const icon of manifest.icons) expect((await page.request.get(icon.src)).ok()).toBe(true);
-
   // 第一次打開：註冊 Service Worker
   await page.goto("/#/VOO/daily");
+
+  // manifest 與圖示（用瀏覽器的 fetch 檢查，和真實使用者一樣的連線方式）
+  const check = await page.evaluate(async () => {
+    const m = await (await fetch("/manifest.webmanifest")).json();
+    const icons = await Promise.all(m.icons.map(async (i: { src: string }) => (await fetch(i.src)).ok));
+    return { display: m.display, icons };
+  });
+  expect(check.display).toBe("standalone");
+  expect(check.icons.length).toBeGreaterThanOrEqual(2);
+  expect(check.icons.every(Boolean)).toBe(true);
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
