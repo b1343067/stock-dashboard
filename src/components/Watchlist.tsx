@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { TickerSummary } from "../lib/types";
 import { useStoredState } from "../lib/storage";
 import { filterByCategory, groupTickers } from "../lib/watchlist";
+import Sparkline from "./Sparkline";
 
 interface Props {
   items: TickerSummary[] | null;
@@ -100,8 +101,13 @@ export default function Watchlist({ items, categories = [], selected, onSelect, 
                       >
                         <span className="wl-sym">{t.symbol}</span>
                         <span className="wl-name">{t.name}</span>
-                        <span className="wl-price">{t.lastClose.toFixed(2)}</span>
-                        <span className={`wl-chg ${t.changePct === 0 ? "" : cls}`}>
+                        {t.spark && (
+                          <span className="wl-spark">
+                            <Sparkline values={t.spark} color={t.spark[t.spark.length - 1] >= t.spark[0] === redUp ? "var(--red)" : "var(--green)"} />
+                          </span>
+                        )}
+                        <span className="wl-price num">{t.lastClose.toFixed(2)}</span>
+                        <span className={`wl-chg num ${t.changePct === 0 ? "" : cls}`}>
                           {up ? "+" : ""}
                           {t.changePct.toFixed(2)}%
                         </span>

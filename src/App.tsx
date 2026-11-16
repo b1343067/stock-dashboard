@@ -8,6 +8,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import BottomNav from "./components/BottomNav";
 // 各頁面「用到才下載」（程式碼分割）：打開看盤頁時不會下載組合分析的程式，首次載入比較快。
 // lightweight-charts 也會被拆成獨立檔案，只有需要畫圖的頁面才載入。
 const ChartPage = lazy(() => import("./pages/ChartPage"));
@@ -62,6 +63,7 @@ export default function App() {
         onToggleRedUp={() => setRedUp(!redUp)}
         page={route.page}
         chartHref={lastChart}
+        onPickSymbol={(s) => navigate(s, route.page === "chart" ? route.timeframe : "daily")}
       />
 
       {freshness?.stale && !index?.sample && (
@@ -92,6 +94,7 @@ export default function App() {
       </main>
 
       <Footer />
+      <BottomNav page={route.page} chartHref={lastChart} />
     </div>
   );
 }

@@ -19,6 +19,9 @@ INDEX_PATH = DATA_DIR / "index.json"                     # 總表（清單 + 匯
 SCREENER_PATH = DATA_DIR / "screener.json"               # 篩選器用的精簡資料
 FX_PATH = DATA_DIR / "fx.json"                           # 歷史匯率（第四階段換算台股報酬用）
 
+# 觀察清單迷你走勢線用幾天的收盤價
+SPARK_DAYS = 30
+
 # 篩選器每個週期保留最近幾根 K 棒（條件最多看「最近 20 根」，再多留一些緩衝）
 SCREENER_BARS = 30
 # 篩選器需要的欄位（不含開高低量，讓檔案小一點）
@@ -132,6 +135,8 @@ def rebuild_index(watchlist: dict, fx: dict, risk_free: float | None = None, gen
             "lastClose": payload["lastClose"],
             "changePct": payload["changePct"],
             "sample": bool(payload.get("sample", False)),
+            # 最近 30 天收盤價：側邊欄的迷你走勢線用（每檔約 200 bytes，首頁不用另外下載各股檔案）
+            "spark": payload["daily"]["close"][-SPARK_DAYS:],
         })
 
     index = {

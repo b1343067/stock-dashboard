@@ -1,9 +1,8 @@
 // K 線圖元件（使用 TradingView 的 lightweight-charts v5）
 //
-// 版面分三個「窗格（pane）」：
+// 版面分「窗格（pane）」：
 //   第 0 格：K 線 + 成交量 + 均線 + 布林通道
-//   第 1 格：MACD（柱狀體 + 快線 + 慢線）
-//   第 2 格：RSI（含 70 / 30 參考線）
+//   MACD、RSI 窗格預設收起來，展開時依序加在下方（柱狀體 + 快慢線；RSI 含 70 / 30 參考線）
 // 三格共用同一條時間軸，所以縮放、拖曳會同步。
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -44,10 +43,11 @@ interface SeriesRefs {
   candle: ISeriesApi<"Candlestick">;
   volume: ISeriesApi<"Histogram">;
   lines: Record<LineKey, ISeriesApi<"Line">>;
-  macdHist: ISeriesApi<"Histogram">;
-  macd: ISeriesApi<"Line">;
-  signal: ISeriesApi<"Line">;
-  rsi: ISeriesApi<"Line">;
+  // MACD、RSI 只有展開時才建立（收起來時是 null）
+  macdHist: ISeriesApi<"Histogram"> | null;
+  macd: ISeriesApi<"Line"> | null;
+  signal: ISeriesApi<"Line"> | null;
+  rsi: ISeriesApi<"Line"> | null;
   projection: ISeriesApi<"Line">;
 }
 
@@ -72,8 +72,13 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   // MACD、RSI 兩格在畫面上的位置（像素），用來放標籤
   const [paneTops, setPaneTops] = useState<[number, number]>([0, 0]);
+  // 下方窗格：預設收起來，按「＋MACD」「＋RSI」才展開
+  const showMacd = overlays.macd;
+  const showRsi = overlays.rsi;
+  const macdPane = showMacd ? 1 : -1;
+  const rsiPane = showRsi ? (showMacd ? 2 : 1) : -1;
 
-  // ---- 1. 建立圖表（只在元件第一次出現時執行一次）----
+  // ---- 1. 建立圖表（第一次出現、或展開／收起 MACD、RSI 時重建）----
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -120,21 +125,28 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     };
 
     const macdFormat = { type: "price" as const, precision: 3, minMove: 0.001 };
-    const macdHist = chart.addSeries(HistogramSeries, { priceFormat: macdFormat, priceLineVisible: false, lastValueVisible: false }, 1);
-    const macd = mkLine(1, { priceFormat: macdFormat });
-    const signal = mkLine(1, { priceFormat: macdFormat });
+    let macdHist: ISeriesApi<"Histogram"> | null = null;
+    let macd: ISeriesApi<"Line"> | null = null;
+    let signal: ISeriesApi<"Line"> | null = null;
+    if (macdPane > 0) {
+      macdHist = chart.addSeries(HistogramSeries, { priceFormat: macdFormat, priceLineVisible: false, lastValueVisible: false }, macdPane);
+      macd = mkLine(macdPane, { priceFormat: macdFormat });
+      signal = mkLine(macdPane, { priceFormat: macdFormat });
+    }
 
-    const rsi = mkLine(2, { lineWidth: 2, lastValueVisible: true, priceFormat: { type: "price", precision: 1, minMove: 0.1 } });
-    rsi.createPriceLine({ price: 70, lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: true, title: "" });
-    rsi.createPriceLine({ price: 30, lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: true, title: "" });
-    rsi.priceScale().applyOptions({ autoScale: false, scaleMargins: { top: 0.05, bottom: 0.05 } });
-    rsi.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }) });
+    let rsi: ISeriesApi<"Line"> | null = null;
+    if (rsiPane > 0) {
+      rsi = mkLine(rsiPane, { lineWidth: 2, lastValueVisible: true, priceFormat: { type: "price", precision: 1, minMove: 0.1 } });
+      rsi.createPriceLine({ price: 70, lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: true, title: "" });
+      rsi.createPriceLine({ price: 30, lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: true, title: "" });
+      rsi.priceScale().applyOptions({ autoScale: false, scaleMargins: { top: 0.05, bottom: 0.05 } });
+      rsi.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }) });
+    }
 
-    // 三格高度比例 3 : 1 : 1
+    // 高度比例：K 線 4、每個下方窗格 1
     const panes = chart.panes();
-    panes[0]?.setStretchFactor(3);
-    panes[1]?.setStretchFactor(1);
-    panes[2]?.setStretchFactor(1);
+    panes[0]?.setStretchFactor(4);
+    for (let i = 1; i < panes.length; i++) panes[i].setStretchFactor(1);
 
     const onMove = (p: MouseEventParams<Time>) => {
       setHoverIndex(p.logical === undefined || p.point === undefined ? null : Math.round(p.logical));
@@ -149,7 +161,7 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
         const cell = chart.panes()[i]?.getHTMLElement();
         return cell ? cell.getBoundingClientRect().top - base : 0;
       };
-      setPaneTops([top(1), top(2)]);
+      setPaneTops([macdPane > 0 ? top(macdPane) : 0, rsiPane > 0 ? top(rsiPane) : 0]);
     };
     const ro = new ResizeObserver(() => requestAnimationFrame(measure));
     ro.observe(el);
@@ -168,7 +180,7 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, [precision]);
+  }, [precision, macdPane, rsiPane]);
 
   // ---- 2. 顏色（深色／淺色主題、紅漲綠跌設定改變時）----
   useEffect(() => {
@@ -187,12 +199,13 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     s.lines.ma50.applyOptions({ color: colors.ma50 });
     s.lines.ma200.applyOptions({ color: colors.ma200 });
     for (const k of ["bbUpper", "bbMiddle", "bbLower"] as const) s.lines[k].applyOptions({ color: colors.bb });
-    s.macd.applyOptions({ color: colors.macd });
-    s.signal.applyOptions({ color: colors.signal });
-    s.rsi.applyOptions({ color: colors.rsi });
+    s.macd?.applyOptions({ color: colors.macd });
+    s.signal?.applyOptions({ color: colors.signal });
+    s.rsi?.applyOptions({ color: colors.rsi });
     s.projection.applyOptions({ color: colors.s2 });
-    for (const pl of s.rsi.priceLines()) pl.applyOptions({ color: colors.muted });
-  }, [colors, redUp]);
+    for (const pl of s.rsi?.priceLines() ?? []) pl.applyOptions({ color: colors.muted });
+    // 圖表重建（展開／收起窗格）後也要重新上色
+  }, [colors, redUp, macdPane, rsiPane]);
 
   // ---- 3. 資料（切換股票或日/週/月線時）----
   useEffect(() => {
@@ -216,15 +229,15 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     );
     for (const k of Object.keys(s.lines) as LineKey[]) s.lines[k].setData(toLine(time, data[k]));
 
-    s.macdHist.setData(
+    s.macdHist?.setData(
       time.map((t, i) => {
         const v = data.hist[i];
         return v === null ? { time: t as Time } : { time: t as Time, value: v, color: v >= 0 ? upA : downA };
       }),
     );
-    s.macd.setData(toLine(time, data.macd));
-    s.signal.setData(toLine(time, data.signal));
-    s.rsi.setData(toLine(time, data.rsi));
+    s.macd?.setData(toLine(time, data.macd));
+    s.signal?.setData(toLine(time, data.signal));
+    s.rsi?.setData(toLine(time, data.rsi));
     const proj = timeframe === "daily" && projection ? projection : [];
     s.projection.setData(proj.map((p) => ({ time: p.time as Time, value: p.value })));
 
@@ -235,7 +248,7 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - bars), to: n + 2 + (proj.length > 0 ? proj.length : 0) });
     setHoverIndex(null);
     // colors / redUp 也會影響成交量、柱狀體顏色
-  }, [data, timeframe, colors, redUp, projection]);
+  }, [data, timeframe, colors, redUp, projection, macdPane, rsiPane]);
 
   // ---- 4. 疊加指標的顯示／隱藏 ----
   useEffect(() => {
@@ -246,7 +259,7 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
     s.lines.ma50.applyOptions({ visible: overlays.ma50 });
     s.lines.ma200.applyOptions({ visible: overlays.ma200 });
     for (const k of ["bbUpper", "bbMiddle", "bbLower"] as const) s.lines[k].applyOptions({ visible: overlays.bb });
-  }, [overlays]);
+  }, [overlays, macdPane, rsiPane]);
 
   // 圖例：顯示滑鼠指到（或最新）那一根的數值
   const legend = useMemo(() => {
@@ -302,16 +315,21 @@ export default function StockChart({ data, timeframe, overlays, redUp, precision
           </span>
         )}
       </div>
-      <div className="chart-canvas" ref={containerRef} />
+      {/* 高度依展開的窗格數調整（見 styles.css 的 .panes-0／1／2） */}
+      <div className={`chart-canvas panes-${(showMacd ? 1 : 0) + (showRsi ? 1 : 0)}`} ref={containerRef} />
       {/* 下方兩格的標籤，用絕對定位疊在圖上 */}
       <div className="pane-labels" aria-hidden="true">
-        <span className="pane-label" style={{ top: paneTops[0] }}>
-          MACD(12,26,9) <i style={{ color: colors.macd }}>DIF {f(legend.macd, 3)}</i>{" "}
-          <i style={{ color: colors.signal }}>DEA {f(legend.signal, 3)}</i> <i>柱 {f(legend.hist, 3)}</i>
-        </span>
-        <span className="pane-label" style={{ top: paneTops[1] }}>
-          RSI(14) <i style={{ color: colors.rsi }}>{f(legend.rsi, 1)}</i>
-        </span>
+        {showMacd && (
+          <span className="pane-label" style={{ top: paneTops[0] }}>
+            MACD(12,26,9) <i style={{ color: colors.macd }}>DIF {f(legend.macd, 3)}</i>{" "}
+            <i style={{ color: colors.signal }}>DEA {f(legend.signal, 3)}</i> <i>柱 {f(legend.hist, 3)}</i>
+          </span>
+        )}
+        {showRsi && (
+          <span className="pane-label" style={{ top: paneTops[1] }}>
+            RSI(14) <i style={{ color: colors.rsi }}>{f(legend.rsi, 1)}</i>
+          </span>
+        )}
       </div>
     </div>
   );

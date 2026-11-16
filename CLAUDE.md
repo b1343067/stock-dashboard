@@ -48,7 +48,8 @@
 - `lib/storage.ts`：`useStoredState(key, default)`、`readStorage`／`writeStorage`，key 自動加前綴 `stockdash:`
 - `lib/theme.ts`：從 CSS 變數讀圖表顏色；顏色只在 `styles.css` 的 `:root` 定義（`--s1`／`--s2` 類別色、`--div-*` 發散色，已用資料視覺化指引的驗證工具檢查過）
 - `lib/format.ts`：`fmtMoney`／`fmtPct`／`fmtFixed`／`pnlClass`（漲跌顏色跟著 redUp）
-- 看盤：`pages/ChartPage.tsx`、`components/StockChart.tsx`（lightweight-charts v5，3 個 pane＋趨勢外推虛線）、`components/TrendCard.tsx`
+- 看盤：`pages/ChartPage.tsx`（報價標頭）、`components/StockChart.tsx`（lightweight-charts v5；MACD／RSI 窗格展開才建立；趨勢外推虛線）、`components/StatusCards.tsx`＋`lib/signals.ts`（白話狀態卡）、`components/TrendCard.tsx`、`components/Sparkline.tsx`（觀察清單迷你走勢，資料來自 `index.json` 的 `spark`）
+- 頁首：`components/Header.tsx`（分頁、快速搜尋、紅漲綠跌、深淺色）、`components/BottomNav.tsx`（手機）
 - 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合）、`pages/ScreenerPage.tsx`、`components/screener/`
 - 投資組合：`lib/portfolio.ts`（`computePortfolio`、`toUsd`、`stopStatus`、`sanitizeHoldings`、`parseImport`／`buildExport`、`sampleHoldings`）、`lib/portfolioStore.ts`（讀 localStorage，分析頁共用）、`pages/PortfolioPage.tsx`、`components/portfolio/`
 - 組合分析：`lib/analytics.ts`（`convertToUsd`、`alignSeries`、`analyze`、`maxSharpe`、`buyAndHold`、`backtestStats`）、`pages/AnalysisPage.tsx`、`components/analysis/`
@@ -63,7 +64,7 @@
 ## 資料格式
 
 - `public/data/<代號>.json`：`{symbol,name,currency,sample,lastDate,lastClose,changePct,daily,weekly,monthly}`，每個週期為欄位導向物件：`time,open,high,low,close,volume,ma10,ma20,ma50,ma200,rsi,macd,signal,hist,bbUpper,bbMiddle,bbLower`。日線保留最近 1260 筆（指標先用完整 10 年算再截斷），週／月線保留全部。
-- `public/data/index.json`：`{generatedAt,sample,fx:{USDTWD},riskFree,categories:[...],tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,sample}]}`（riskFree 為年化小數，抓不到沿用上次）
+- `public/data/index.json`：`{generatedAt,sample,fx:{USDTWD},riskFree,categories:[...],tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,sample,spark:[最近 30 天收盤]}]}`（riskFree 為年化小數，抓不到沿用上次）
 - `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly}]}`，每週期只有 time/close/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
 - `public/data/fx.json`：`{USDTWD:{time,close}}`；沒有時分析頁用最新匯率近似並提示
 
@@ -71,7 +72,18 @@
 - 投資組合：`portfolio:holdings`、`portfolio:settings`、`portfolio:isSample`（沒有 holdings key 時顯示範例持股）
 - 篩選器：`screener:current`（目前條件＋AND/OR＋分類範圍 `category`）、`screener:presets`（我的組合）
 - 分析：`analysis:period`、`analysis:source`
-- 介面：`overlays`、`showTrend`、`redUp`、`theme`、`watchlist:collapsed`
+- 介面：`overlays`（含 ma10/20/50/200、bb、macd、rsi）、`showTrend`、`redUp`、`theme`、`watchlist:collapsed`
+
+## 視覺設計（改版後，使用者選定）
+
+- 主色紫藍：按鈕底色 `--accent-strong`（#6366f1）；文字／連結／選中狀態用 `--accent`（淺色 #6366f1、深色 #818cf8，因為深色底上 #6366f1 太暗）
+- 深淺色兩套都要維護（`styles.css` 有三處：`:root`、`prefers-color-scheme: dark`、`[data-theme="dark"]`，後兩處內容相同，改一處要同步另一處）；中性灰不帶暖調
+- 字體：英文與標題 Manrope、數字 Inter（`.num` 或 `var(--font-mono)`，等寬數字），用 `@fontsource-variable` 打包，不用 CDN；中文用系統字體
+- 均線顏色刻意避開紫色（MA10 黃、MA20 橘、MA50 天藍、MA200 粉），以免和主色混淆
+- 密度中等：卡片圓角 16px、內距 14～16px、基準字級 14.5px；不要回到太擠（小字＋細線）或太空的設計
+- 看盤頁：報價標頭 → K 線（MACD／RSI 預設收起來，`overlays.macd`／`overlays.rsi`）→「現在的狀態」卡片（`lib/signals.ts`）→ 趨勢外推
+- 手機：頁首分頁改成底部導覽列（`BottomNav`，z-index 要高於圖表），觀察清單是一排可滑動的卡片，工具列左右滑動不換行
+- 頁首快速搜尋按 `/` 聚焦、Enter 跳到該股票
 
 ## 慣例
 
@@ -88,6 +100,7 @@
 - [x] 第三階段 投資組合
 - [x] 第四階段 組合分析＋短期趨勢外推
 - [x] 優化：README 截圖與徽章、E2E 測試進 CI、程式碼分割、資料過期提醒
+- [x] 全站改版：紫藍主色、深淺色、K 線指標收合、白話狀態卡、手機底部導覽、快速搜尋
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
 
 ### 已知事實（不要當成 bug 重查）

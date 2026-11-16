@@ -19,7 +19,7 @@ test("篩選器：載入範例組合、切換 AND/OR、點結果看圖再切回�
   const first = page.locator(".result-list:not(.dim) .result-item").first();
   const symbol = (await first.locator(".result-sym").textContent())!;
   await first.click();
-  await expect(page.locator(".chart-title h2")).toHaveText(symbol);
+  await expect(page.locator(".quote-symbol")).toHaveText(symbol);
   await expect(page.locator(".chart-canvas canvas").first()).toBeVisible();
 
   // 切回篩選器（第二階段曾因 useEffect 回傳 Promise 而整頁出錯，這裡防止再犯）

@@ -26,10 +26,10 @@ function read(): ChartColors {
   const cs = getComputedStyle(document.documentElement);
   const v = (name: string) => cs.getPropertyValue(name).trim();
   return {
-    text: v("--text-2"),
+    text: v("--text-3"),
     muted: v("--text-3"),
     grid: v("--grid"),
-    font: v("--font-sans"),
+    font: v("--font-mono"), // 座標軸數字用 Inter
     red: v("--red"),
     green: v("--green"),
     ma10: v("--c-ma10"),

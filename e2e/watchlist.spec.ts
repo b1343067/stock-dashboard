@@ -15,7 +15,7 @@ test("首頁只載入總表和目前選的那一檔，不會一次載入全部",
 
   // 點另一檔才載入那一檔
   await page.locator(".wl-item", { hasText: "NVDA" }).click();
-  await expect(page.locator(".chart-title h2")).toHaveText("NVDA");
+  await expect(page.locator(".quote-symbol")).toHaveText("NVDA");
   expect(requested).toContain("NVDA.json");
   expect(requested.filter((f) => !["index.json", "VOO.json", "NVDA.json"].includes(f))).toEqual([]);
   await t.expectNoErrors();
@@ -36,11 +36,11 @@ test("依分類分組、可以收合，搜尋代號或名稱", async ({ page }) 
   await expect(page.locator(".wl-item", { hasText: "NVDA" })).toBeVisible();
 
   // 搜尋名稱
-  await page.getByLabel("搜尋股票").fill("nvidia");
+  await page.getByLabel("搜尋股票", { exact: true }).fill("nvidia");
   await expect(page.locator(".wl-item")).toHaveCount(1);
   await expect(page.locator(".wl-item")).toContainText("NVDA");
   // 找不到
-  await page.getByLabel("搜尋股票").fill("zzzz");
+  await page.getByLabel("搜尋股票", { exact: true }).fill("zzzz");
   await expect(page.locator(".watchlist")).toContainText("找不到");
   await t.expectNoErrors();
 });

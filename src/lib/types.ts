@@ -50,6 +50,8 @@ export interface TickerSummary {
   lastClose: number;
   changePct: number;
   sample: boolean;
+  /** 最近 30 天收盤價（迷你走勢線）；舊資料可能沒有 */
+  spark?: number[];
 }
 
 /** public/data/index.json */
@@ -65,4 +67,5 @@ export interface IndexData {
 }
 
 /** 可以疊加在 K 線上的指標 */
-export type OverlayKey = "ma10" | "ma20" | "ma50" | "ma200" | "bb";
+// ma*、bb 疊在 K 線上；macd、rsi 是下方另外展開的窗格（預設收起來）
+export type OverlayKey = "ma10" | "ma20" | "ma50" | "ma200" | "bb" | "macd" | "rsi";
