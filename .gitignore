@@ -12,3 +12,6 @@ portfolio*.json
 # Playwright 測試報告
 test-results/
 playwright-report/
+
+# 股價資料放在 data 分支（npm run data:pull 下載），不放 main
+public/data/

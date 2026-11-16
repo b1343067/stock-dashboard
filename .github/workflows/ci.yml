@@ -4,7 +4,7 @@ name: 檢查程式
 on:
   push:
     branches: [main]
-    paths-ignore: ["public/data/**"]   # 每日資料更新不需要檢查
+    paths-ignore: [".data-version"]   # 每日資料更新只改這個檔，不需要重跑檢查
   pull_request:
 
 jobs:
@@ -19,6 +19,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: 下載資料（data 分支）
+        run: bash scripts/pull-data.sh
       - name: 前端單元測試
         run: npm test
       - name: 建置
@@ -42,6 +44,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: 下載資料（data 分支）
+        run: bash scripts/pull-data.sh
       - name: 安裝 Chromium
         run: npx playwright install --with-deps chromium
       - name: 建置

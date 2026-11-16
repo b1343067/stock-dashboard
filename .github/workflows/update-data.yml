@@ -33,6 +33,18 @@ jobs:
       - name: 取得程式碼
         uses: actions/checkout@v4
 
+      # 資料放在 data 分支（main 只放程式碼，儲存庫才不會每天變大）。
+      # 先把現有資料拿回 public/data：某一檔今天抓失敗時，才能沿用它前一天的檔案。
+      - name: 取回目前的資料（data 分支）
+        run: |
+          mkdir -p public/data
+          if git fetch --depth 1 origin data; then
+            git archive FETCH_HEAD | tar -x -C public/data
+            echo "已取回 $(ls public/data | wc -l) 個資料檔"
+          else
+            echo "還沒有 data 分支，從頭開始"
+          fi
+
       - name: 安裝 Python
         uses: actions/setup-python@v5
         with:
@@ -47,17 +59,34 @@ jobs:
         run: python scripts/test_indicators.py
 
       - name: 抓取資料並計算指標
-        # 個別股票失敗會保留舊檔；全部失敗才會讓這一步變紅色
+        # 個別股票失敗會保留舊檔；全部失敗才會讓這一步變紅色（後面的步驟就不會執行）
         run: python scripts/fetch_data.py
 
-      - name: 有變更才 commit
+      - name: 發布資料到 data 分支（只保留最新一份）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd public/data
+          # 告訴 Vercel 不要部署 data 分支（只有 main 會部署；這個檔不會出現在網站上）
+          printf '{ "git": { "deploymentEnabled": false } }\n' > vercel.json
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "data: $(date -u +%Y-%m-%dT%H:%MZ)"
+          # 強制覆蓋：data 分支永遠只有一個 commit，舊資料不會累積
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:data
+
+      - name: 通知 Vercel 重新部署（更新 main 上的資料版本檔）
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data
-          if git diff --cached --quiet; then
-            echo "資料沒有變化，不需要 commit"
-          else
-            git commit -m "chore(data): 每日資料更新 $(date -u +%Y-%m-%d)"
-            git push
-          fi
+          # 只改一個很小的檔案，main 才不會因為資料而變大；Vercel 偵測到 main 有新 commit 就會重建
+          date -u +%Y-%m-%dT%H:%M:%SZ > .data-version
+          git add .data-version
+          git commit -q -m "chore(data): 資料已更新 $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git pull -q --rebase origin main && git push && exit 0
+            sleep 5
+          done
+          exit 1

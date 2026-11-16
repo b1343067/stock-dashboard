@@ -2,7 +2,7 @@
 // 任何股票對自己的 Beta、相關係數都必須是 1；如果日期錯位（例如時區造成差一天）
 // 或報酬沒有在共同交易日上計算，這個檢查就會失敗。
 // 執行：npm test
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { alignSeries, analyze, convertToUsd, correlation, dailyReturns, type PriceSeries } from "./analytics";
 import type { TickerData } from "./types";
@@ -12,8 +12,12 @@ function load(symbol: string): TickerData {
 }
 const daily = (t: TickerData): PriceSeries => ({ time: t.daily.time, close: t.daily.close });
 
-describe("自我檢查：VOO 對自己", () => {
-  const voo = daily(load("VOO"));
+// 資料放在 data 分支；本機還沒 npm run data:pull 時就跳過（CI 會先下載資料再跑）
+const hasData = existsSync("public/data/index.json") && existsSync("public/data/VOO.json");
+if (!hasData) console.warn("⚠️ 沒有 public/data，跳過自我檢查。請先執行 npm run data:pull");
+
+describe.skipIf(!hasData)("自我檢查：VOO 對自己", () => {
+  const voo = hasData ? daily(load("VOO")) : { time: [], close: [] };
 
   it("Beta = 1、相關係數 = 1（只有 VOO）", () => {
     const aligned = alignSeries({ VOO: voo });
@@ -46,8 +50,8 @@ describe("自我檢查：VOO 對自己", () => {
   });
 });
 
-describe("資料檢查：所有股票的日期", () => {
-  const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as { tickers: { symbol: string }[] };
+describe.skipIf(!hasData)("資料檢查：所有股票的日期", () => {
+  const index = hasData ? (JSON.parse(readFileSync("public/data/index.json", "utf8")) as { tickers: { symbol: string }[] }) : { tickers: [] };
   for (const { symbol } of index.tickers) {
     it(`${symbol}：日期遞增、沒有重複、沒有週末`, () => {
       const t = load(symbol).daily.time;

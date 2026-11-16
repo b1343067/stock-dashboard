@@ -104,7 +104,7 @@
 
 1. **自我檢查測試**（`src/lib/selfcheck.test.ts`，`npm test` 執行）：用網站上實際的 VOO 資料走完整個計算流程，**VOO 對自己的 Beta 和相關係數都必須等於 1**（加入台股一起對齊日期後也一樣），Alpha 必須等於 0。另有一個對照組：故意把日期錯開一天，確認相關係數會明顯下降，證明這個檢查抓得到錯位。同一個測試檔也逐一檢查每檔股票的日期：遞增、不重複、沒有週末。
 2. **抓資料時明確轉換時區**（`scripts/data_quality.py`）：先把 yfinance 的時間換成交易所時區（美股紐約、台股台北）再取日期，就算 yfinance 回傳 UTC 也不會差一天。
-3. **寫檔前檢查資料**：重複日期、週末日期、收盤價 ≤ 0、收盤價不在當天高低之間，有任何一項就不寫檔、保留前一天的檔案。
+3. **寫檔前先修正、再檢查**：少量問題自動修正（高低價沒有包含開盤收盤、台股週六補班日、零星空白或 ≤ 0 的價格）；嚴重問題（重複日期、大量週末日期＝時區錯開、問題資料超過 5%）就不寫檔、保留前一天的檔案。每檔的結果與修正內容記錄在 `status.json`。
 
 > **為什麼 BRK-B 的 Beta 只有 0.08？** 經過上面的檢查，日期對齊與計算都正確（網頁和 Python 獨立計算結果一致）。這是資料本身的結果：BRK-B 在 2026 年的日報酬和 VOO 幾乎不連動（相關係數約 0.07），但 2022 年時相關係數是 0.81、Beta 0.76；用 5 年日報酬算則 Beta 約 0.58。財經網站常見的「BRK-B Beta 約 0.8–0.9」多半是更長期間、月報酬的算法，和這裡「近 1 年日報酬」不同。
 
@@ -143,29 +143,31 @@
 
 ```
   ┌────────────────────────┐   每天 UTC 22:00（台灣早上 6:00）
-  │     GitHub Actions     │──────────────────────────────┐
-  │  scripts/fetch_data.py │                              │
-  └──────────┬─────────────┘                              │
-             │ yfinance 抓 10 年日線                      │
-             ▼                                            │
-  ┌────────────────────────┐                              │
-  │ scripts/indicators.py  │ 計算日／週／月線的            │
-  │                        │ MA、RSI、MACD、布林通道       │
-  └──────────┬─────────────┘                              │
-             ▼                                            │
-  public/data/<代號>.json、index.json ── git commit & push ┘
+  │     GitHub Actions     │
+  │  scripts/fetch_data.py │ ← 先從 data 分支取回昨天的資料（抓失敗的股票沿用）
+  └──────────┬─────────────┘
+             │ yfinance 分批抓 10 年日線 → 修正小問題 → 檢查 → 計算指標
+             ▼
+  public/data/*.json ──強制推送（只留最新一份）──► data 分支
              │
-             ▼ 偵測到新的 commit，自動重新部署
-  ┌────────────────────────┐
-  │    Vercel（靜態網站）    │  Vite + React + TypeScript
-  │   瀏覽器讀取 JSON 畫圖   │  lightweight-charts
-  └────────────────────────┘
+             └─► main 上的 .data-version 改一行 ──► Vercel 偵測到新 commit
+                                                        │
+  ┌──────────────────────────────┐                      │
+  │        Vercel（靜態網站）       │ ◄────────────────────┘
+  │ 建置時從 data 分支下載資料       │  Vite + React + TypeScript
+  │ 瀏覽器讀取 JSON 畫圖             │  lightweight-charts
+  └──────────────────────────────┘
 ```
+
+**為什麼資料放在另一個分支？** 資料每天更新、幾乎每個檔案都會變（約 12MB），如果每天 commit 到 `main`，儲存庫每天會長大好幾 MB，一年可能超過 1GB。現在 `data` 分支每次更新都覆蓋成只有一個 commit，大小不會累積；`main` 只放程式碼，每天只多一個改了一行的小 commit（用來觸發 Vercel 重新部署）。
+
+**怎麼知道哪幾檔今天沒更新？** 看 [`data/status.json`](https://stock-dashboard-peach-sigma.vercel.app/data/status.json)：每一檔的結果、失敗原因、自動修正了什麼都在裡面，不用登入 GitHub。
 
 **為什麼預先算好指標？** 網頁打開時不用即時計算，也不用呼叫外部 API，速度快、免費、不會被 Yahoo 擋。
 
 **抓不到資料怎麼辦？**
 - 某一檔失敗：重試 3 次，還是失敗就保留前一天的檔案，其他股票照常更新
+- 資料有小錯誤：自動修正後照常更新；有嚴重錯誤：保留前一天的檔案（原因寫在 `status.json`）
 - 匯率失敗：沿用上一次的匯率
 - 全部失敗：不修改任何檔案，Actions 會顯示紅色 ❌ 通知你
 - 寫檔時先寫暫存檔再換名，不會產生寫到一半的壞檔案
@@ -293,6 +295,7 @@
 
 ```bash
 npm install          # 安裝前端套件
+npm run data:pull    # 從 data 分支下載最新的股價資料到 public/data（需要網路）
 npm run dev          # 開發模式，打開 http://localhost:5173
 npm run build        # 正式打包到 dist/
 npm test             # 執行單元測試（vitest）
@@ -305,7 +308,7 @@ Python 資料腳本：
 pip install -r scripts/requirements.txt
 python scripts/test_indicators.py        # 檢查指標計算
 python scripts/fetch_data.py             # 抓真實資料（需要能連到 Yahoo Finance）
-python scripts/generate_sample_data.py   # 產生隨機範例資料（會覆蓋 public/data！）
+python scripts/generate_sample_data.py   # 產生隨機範例資料（會覆蓋本機的 public/data；沒網路時用）
 ```
 
 ## 部署步驟
@@ -375,7 +378,7 @@ python scripts/generate_sample_data.py   # 產生隨機範例資料（會覆蓋 
 | 幣別 | 自動判斷：`.TW`／`.TWO` 是台幣，其他當美元。其他幣別的股票（例如日股）可以加 `"currency": "JPY"`，但組合分析目前只支援美元與台幣換算 |
 | 分類順序 | 側邊欄和篩選器的分類順序 = 檔案裡的順序 |
 | 重複代號 | 只保留第一個，Actions 紀錄會顯示警告 |
-| 刪除股票 | 把那一行刪掉即可；`public/data/` 裡的舊檔案留著不影響網站，也可以手動刪除 |
+| 刪除股票 | 把那一行刪掉即可；它的舊資料檔還留在 data 分支也不影響網站 |
 | 改名或換分類 | 直接改，下次資料更新後生效，不用重抓歷史資料 |
 
 不確定代號對不對？到 [Yahoo Finance](https://finance.yahoo.com/) 搜尋，網址 `/quote/` 後面那段就是代號。
@@ -391,7 +394,7 @@ python scripts/generate_sample_data.py   # 產生隨機範例資料（會覆蓋 
 python scripts/generate_sample_data.py --missing-only   # 只替還沒有資料的新股票產生「隨機範例資料」
 npm run dev
 ```
-範例資料只是讓你預覽版面，**不要 commit**（`git checkout public/data` 可以還原）。
+範例資料只是讓你預覽版面；`public/data` 不會被 commit（資料在 data 分支），想還原成真實資料就執行 `npm run data:pull`。
 
 ### 資料更新怎麼處理幾十檔股票
 

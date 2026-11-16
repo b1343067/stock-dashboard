@@ -8,13 +8,13 @@
 1. **儲存庫是公開的：絕對不可以把真實持股資料寫進程式碼、設定檔、資料檔或截圖。** 預設持倉、測試資料、README 截圖一律用明顯的範例資料。使用者的持股只存在瀏覽器 localStorage。
 2. **註解用繁體中文**；介面文字用繁體中文。使用者程式基礎普通，註解要說明「為什麼」，不要只寫「做什麼」。
 3. **網頁不能壞掉**：所有資料讀取都要能處理失敗（顯示提示，不要 throw 到最上層）；localStorage 讀寫要包 try/catch。
-4. **資料更新失敗要保留舊檔**：不可以用空資料或部分資料覆蓋 `public/data/*.json`。寫檔用 `data_io.write_json_atomic`。
+4. **資料更新失敗要保留舊檔**：不可以用空資料或部分資料覆蓋資料檔。寫檔用 `data_io.write_json_atomic`。
 5. **價格四捨五入到小數 2 位**（MACD 系列 4 位），NaN 輸出為 `null`。
 6. 每一頁最下方要有免責聲明「本網站僅供學習參考，非投資建議」（在 `Footer.tsx`）。
 7. 手機要能正常瀏覽（≤ 860px 單欄、≤ 480px 再縮）；不能出現橫向捲軸（E2E 測試會檢查）。
 8. 開發環境可能連不到 Yahoo Finance：不要依賴在本機實際抓資料，用 `scripts/generate_sample_data.py` 產生範例資料，或用假的 yfinance 模組測試 `fetch_data.py`。
 9. 改完前端一定要跑 `npm test`、`npm run build`、`npm run test:e2e` 確認成功；改了指標要跑 `python scripts/test_indicators.py`。
-10. commit 時不要動 `public/data/`，除非就是要更新資料（GitHub Actions 每天會覆蓋它）。
+10. **資料不放 main**：`public/data/` 已列入 .gitignore，資料在 `data` 分支（Actions 每次強制推送、只留一個 commit）。本機用 `npm run data:pull` 下載，不要把資料 commit 回 main。
 11. `useEffect` 一律用大括號寫法，不要 `useEffect(() => someCall(), ...)`：新版 Chrome 的 `window.scrollTo` 等 API 會回傳 Promise，被 React 當成清除函式呼叫會讓整頁出錯（第二階段踩過）。
 12. 判斷與計算邏輯寫成 `src/lib/` 裡的純函式並加 Vitest 測試，元件只負責顯示。
 13. 新頁面要用 `React.lazy` 載入（見 `App.tsx`），不要直接 import，避免首頁變大。
@@ -31,11 +31,14 @@
 - `config/watchlist.json`：觀察清單（唯一來源，使用者自己會改），格式 `groups: [{name, tickers: [{symbol, name, currency?}]}]`；另有匯率代號 `fx`、無風險利率代號 `riskFree`（^IRX）。幣別依代號自動判斷（.TW/.TWO = TWD）
 - `scripts/indicators.py`：**所有指標計算**（MA、Wilder RSI、MACD、布林、週月線 resample、輸出 JSON 結構）
 - `scripts/data_io.py`：`load_watchlist()`→`normalize_watchlist()`（攤平成 tickers＋categories、去重、推斷幣別、相容舊格式）、原子寫檔、重建 `index.json` 與 `screener.json`（依磁碟上現存檔案；名稱與分類以設定檔為準；`generated_at` 可沿用舊時間）
-- `scripts/data_quality.py`：`to_exchange_dates()`（先換成交易所時區再取日期，避免台美差一天）、`validate_daily()`（重複／週末日期、價格異常 → 不寫檔）
+- `scripts/data_quality.py`：`to_exchange_dates()`（先換成交易所時區再取日期，避免台美差一天）、`repair_daily()`（少量問題自動修：高低價、台股週六補班日、零星空白／≤0，比例上限 5%）、`validate_daily()`（剩下的嚴重問題 → 不寫檔）
 - `scripts/fetch_data.py`：每批 10 檔、批次間休息；每檔重試 3 次（2/4/8 秒）＋下載失敗者最後再一輪；`process_symbol()` 吃掉所有錯誤，單檔失敗不中斷；匯率歷史寫 `fx.json`；全部失敗 exit 1 且不寫檔。測試時設 `FETCH_SLEEP_SCALE=0` 跳過等待
 - `scripts/generate_sample_data.py`：固定種子的隨機漫步範例資料，`sample: true`（會覆蓋 public/data）；`--missing-only` 只補沒有資料檔的股票（本機預覽用，不要 commit）
-- `.github/workflows/update-data.yml`：cron `0 22 * * *`（台灣 06:00）、手動觸發、改到 config/scripts 推到 main 時也會跑；有變更才 commit
-- `.github/workflows/ci.yml`：單元測試＋建置＋Python 測試；另一個 job 跑 Playwright E2E（失敗時上傳報告）
+- `.github/workflows/update-data.yml`：cron `0 22 * * *`（台灣 06:00）、手動觸發、改到 config/scripts 推到 main 時也會跑。流程：從 data 分支取回舊資料 → 抓取 → 強制推送 data 分支（單一 commit）→ 改 main 的 `.data-version` 觸發 Vercel
+- `scripts/pull-data.sh`：從 codeload 下載 data 分支到 `public/data`（Vercel buildCommand、CI、`npm run data:pull` 都用它）；失敗回傳錯誤 → Vercel 建置失敗、線上維持上一版。`DATA_URL` 可覆蓋網址（測試用）
+- `public/data/status.json`：每次更新每檔的結果（ok／download／invalid）、原因、自動修正內容；線上 `/data/status.json` 可直接看
+- `vercel.json`：`git.deploymentEnabled.data = false`（data 分支不部署）
+- `.github/workflows/ci.yml`：先 `pull-data.sh` 下載資料，再跑單元測試＋建置＋Python 測試；另一個 job 跑 Playwright E2E（失敗時上傳報告）；`.data-version` 的 commit 不觸發
 
 ### 前端（`src/`）
 - `App.tsx`：外殼（Header 分頁、資料過期／範例資料 banner、Footer），依 `route.page` 以 `React.lazy` 載入 `pages/` 的頁面
@@ -56,7 +59,7 @@
 - 趨勢外推：`lib/trend.ts`（線性回歸、`nextTradingDays`、`backtestAccuracy`）。**`NYSE_HOLIDAYS` 寫死到 2027 年，每年要補下一年**
 
 ### 測試
-- 單元測試：`src/lib/*.test.ts`（Vitest，`npm test`，只跑 src）。`selfcheck.test.ts` 讀真實 `public/data`：VOO 對自己 Beta／相關＝1、每檔日期遞增無週末
+- 單元測試：`src/lib/*.test.ts`（Vitest，`npm test`，只跑 src）。`selfcheck.test.ts` 讀真實 `public/data`：VOO 對自己 Beta／相關＝1、每檔日期遞增無週末（沒有資料時自動跳過）
 - E2E：`e2e/*.spec.ts`（Playwright 1.63，`npm run test:e2e`，自動啟動 `vite preview`；desktop 專案跑沒標 `@mobile` 的、mobile 專案只跑 `@mobile`）
 - E2E 用 `trackErrors(page)` 收集錯誤，結尾 `expectNoErrors()`；測試不可依賴每天變動的價格數值，只檢查結構與邏輯
 - ⚠️ Playwright 上傳檔案（`setInputFiles`）要用純英文路徑（例如 `mkdtempSync(join(tmpdir(), ...))`）；`testInfo.outputPath()` 的資料夾名稱含中文與「：」「→」，上傳會靜靜失敗
@@ -101,6 +104,7 @@
 - [x] 第四階段 組合分析＋短期趨勢外推
 - [x] 優化：README 截圖與徽章、E2E 測試進 CI、程式碼分割、資料過期提醒
 - [x] 全站改版：紫藍主色、深淺色、K 線指標收合、白話狀態卡、手機底部導覽、快速搜尋
+- [x] 資料品質：自動修正小問題＋status.json；資料搬到 data 分支（main 不再每天變大）
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
 
 ### 已知事實（不要當成 bug 重查）
@@ -122,5 +126,6 @@ npm test               # 單元測試
 npm run build          # 打包
 npm run test:e2e       # E2E（要先 build）
 python scripts/test_indicators.py
-python scripts/generate_sample_data.py   # 會覆蓋 public/data
+python scripts/generate_sample_data.py   # 會覆蓋本機 public/data
+npm run data:pull      # 下載 data 分支的真實資料
 ```
