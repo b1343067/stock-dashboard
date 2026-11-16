@@ -4,7 +4,7 @@ import { trackErrors } from "./helpers";
 
 test("看盤頁：清單、K 線圖、切換週期與指標", async ({ page }) => {
   const t = trackErrors(page);
-  await page.goto("/");
+  await page.goto("/#//daily"); // 沒指定代號 → 預設選第一檔
 
   // 觀察清單有股票，並預設選第一檔
   const items = page.locator(".wl-item");

@@ -5,6 +5,14 @@ import type { Page } from "../lib/route";
 import { NAV_ITEMS } from "./Header";
 
 const ICONS: Record<Page, ReactNode> = {
+  market: (
+    <>
+      <rect x="3" y="3" width="6" height="6" rx="1.5" />
+      <rect x="11" y="3" width="6" height="6" rx="1.5" />
+      <rect x="3" y="11" width="6" height="6" rx="1.5" />
+      <rect x="11" y="11" width="6" height="6" rx="1.5" />
+    </>
+  ),
   chart: <path d="M3 15l4-5 3 3 6-8" />,
   screener: <path d="M3 5h14M6 10h8M8.5 15h3" />,
   portfolio: (

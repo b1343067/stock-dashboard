@@ -751,6 +751,79 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
 .data-table td.better { font-weight: 700; color: var(--text); }
 .data-table tr.muted td { color: var(--text-3); }
 
+/* ---------- 市場總覽 ---------- */
+.market { display: flex; flex-direction: column; gap: 18px; }
+.market-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.market-head h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+.market-head p { margin: 2px 0 0; }
+.section-title small { font-weight: 500; margin-left: 6px; }
+
+.bench-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.bench { display: block; text-decoration: none; color: var(--text); padding: 14px 14px 10px; }
+.bench:hover { border-color: var(--accent); }
+.bench-top { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.bench-top b { font-size: 15px; }
+.bench-name { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bench-price { font-size: 22px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
+.bench-chg { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.bench .spark { width: 100%; height: 36px; }
+
+.market-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 18px; }
+.breadth-nums { display: flex; gap: 24px; margin: 4px 0 12px; }
+.breadth-nums div { display: flex; flex-direction: column; }
+.breadth-n { font-size: 32px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+.breadth-nums .muted { font-size: 12px; font-family: var(--font-sans); }
+.breadth-bar { display: flex; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; }
+.breadth-bar span { min-width: 0; }
+
+.movers-card { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.movers ol { list-style: none; margin: 0; padding: 0; counter-reset: rank; }
+.movers li a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+.movers li a:hover { background: var(--surface-2); }
+.mover-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mover-price { font-size: 13.5px; }
+.mover-chg { font-size: 13.5px; font-weight: 700; min-width: 64px; text-align: right; }
+
+.cat-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cat-bars li { display: grid; grid-template-columns: 100px minmax(0, 1fr) 72px 54px; gap: 12px; align-items: center; font-size: 13.5px; }
+.cat-name { font-weight: 700; }
+.cat-track { position: relative; height: 12px; background: var(--surface-3); border-radius: 6px; }
+.cat-zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--border-2); }
+.cat-fill { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
+.cat-val { text-align: right; font-weight: 700; }
+.cat-count { text-align: right; }
+
+.heat-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.heat-legend { display: inline-flex; align-items: center; gap: 4px; }
+.heat-legend i { width: 18px; height: 10px; border-radius: 3px; display: inline-block; }
+.heat-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 16px; }
+.heat-group-name { font-size: 12px; font-weight: 800; color: var(--text-3); margin-bottom: 6px; letter-spacing: 0.03em; }
+.heat-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 3px; }
+.heat-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 56px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.heat-tile b { font-size: 13px; }
+.heat-tile.strong { color: #fff; }
+.heat-tile:hover { outline: 2px solid var(--text); outline-offset: -2px; }
+
 /* ---------- 手機版 ---------- */
 @media (max-width: 860px) {
   .app { padding: 0 14px; }
@@ -765,7 +838,7 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
 
   .bottom-nav {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     position: fixed;
     left: 0;
     right: 0;
@@ -842,6 +915,14 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
   .chart-canvas.panes-2 { height: 540px; }
 
   .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+  /* 市場總覽 */
+  .bench-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .bench-price { font-size: 19px; }
+  .market-row, .movers-card { grid-template-columns: minmax(0, 1fr); }
+  .cat-bars li { grid-template-columns: 76px minmax(0, 1fr) 62px; gap: 8px; }
+  .cat-count { display: none; }
+  .heat-groups { grid-template-columns: minmax(0, 1fr); }
   .status-card { padding: 12px; }
   .status-value { font-size: 20px; }
 

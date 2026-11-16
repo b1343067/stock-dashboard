@@ -1,4 +1,5 @@
 // 極簡的網址路由（不用 react-router，自己處理 hash 就夠了）
+//   （空白）或 #/market → 市場總覽（網站打開的第一頁）
 //   #/代號/週期   → 看盤頁，例如 #/0050.TW/weekly
 //   #/screener    → 指標篩選器
 //   #/portfolio   → 投資組合
@@ -8,7 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Timeframe } from "./types";
 
-export type Page = "chart" | "screener" | "portfolio" | "analysis";
+export type Page = "market" | "chart" | "screener" | "portfolio" | "analysis";
 
 export interface Route {
   page: Page;
@@ -20,6 +21,8 @@ const TIMEFRAMES: Timeframe[] = ["daily", "weekly", "monthly"];
 
 export function parseHash(hash: string): Route {
   const [, first, tf] = hash.replace(/^#/, "").split("/");
+  // 沒有指定頁面（剛打開網站）→ 市場總覽
+  if (first === undefined || (first === "" && tf === undefined) || first === "market") return { page: "market", symbol: null, timeframe: "daily" };
   if (first === "screener" || first === "portfolio" || first === "analysis") return { page: first, symbol: null, timeframe: "daily" };
   return {
     page: "chart",
@@ -33,6 +36,7 @@ export function chartHref(symbol: string, timeframe: Timeframe = "daily"): strin
   return `#/${encodeURIComponent(symbol)}/${timeframe}`;
 }
 
+export const MARKET_HREF = "#/market";
 export const SCREENER_HREF = "#/screener";
 export const PORTFOLIO_HREF = "#/portfolio";
 export const ANALYSIS_HREF = "#/analysis";
@@ -48,7 +52,9 @@ export function useHashRoute() {
 
   const setRoute = useCallback((r: Omit<Route, "page"> & { page?: Page }) => {
     const next =
-      r.page === "screener"
+      r.page === "market"
+        ? MARKET_HREF
+        : r.page === "screener"
         ? SCREENER_HREF
         : r.page === "portfolio"
           ? PORTFOLIO_HREF

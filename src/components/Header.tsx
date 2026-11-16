@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { IndexData, TickerSummary } from "../lib/types";
 import { useStoredState } from "../lib/storage";
-import { ANALYSIS_HREF, PORTFOLIO_HREF, SCREENER_HREF, type Page } from "../lib/route";
+import { ANALYSIS_HREF, MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, type Page } from "../lib/route";
 import { matchesQuery } from "../lib/watchlist";
 
 interface Props {
@@ -23,6 +23,7 @@ const THEME_LABEL: Record<ThemePref, string> = { auto: "跟隨系統", light: "�
 const NEXT: Record<ThemePref, ThemePref> = { auto: "light", light: "dark", dark: "auto" };
 
 export const NAV_ITEMS = (chartHref: string): [Page, string, string, string][] => [
+  ["market", "市場", "市場", MARKET_HREF],
   ["chart", "看盤", "看盤", chartHref],
   ["screener", "篩選器", "篩選", SCREENER_HREF],
   ["portfolio", "投資組合", "組合", PORTFOLIO_HREF],
@@ -43,7 +44,7 @@ export default function Header({ index, redUp, onToggleRedUp, page, chartHref, o
 
   return (
     <header className="header">
-      <a className="brand" href={chartHref} aria-label="投資看盤首頁">
+      <a className="brand" href={MARKET_HREF} aria-label="投資看盤首頁（市場總覽）">
         <span className="brand-mark" aria-hidden="true">
           <svg width="15" height="15" viewBox="0 0 14 14">
             <path d="M2 10 L5.5 6 L8 8.5 L12 3" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
