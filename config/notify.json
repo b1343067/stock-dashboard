@@ -1,0 +1,31 @@
+{
+  "_說明": "每日篩選通知（Discord）的規則。每天早上資料更新後，依這些規則篩選，把符合的股票送到 Discord。條件格式和網站篩選器相同：在篩選器頁設好條件，按「複製成通知規則」，貼到 rules 裡。category 可填分類名稱（例如「科技」）或 all。onlyWhenMatched = true 時，沒有任何股票符合就不送。⚠️ 這個檔案是公開的，只放篩選條件，不要放持股。",
+  "siteUrl": "https://stock-dashboard-peach-sigma.vercel.app/",
+  "onlyWhenMatched": true,
+  "rules": [
+    {
+      "name": "超賣反彈",
+      "mode": "and",
+      "category": "all",
+      "conditions": [
+        { "kind": "rsiRebound", "tf": "daily", "value": 30, "n": 5 },
+        { "kind": "macdGolden", "tf": "daily", "n": 10 }
+      ]
+    },
+    {
+      "name": "長線黃金交叉（50 日線穿越 200 日線）",
+      "mode": "and",
+      "category": "all",
+      "conditions": [{ "kind": "maCrossUp", "tf": "daily", "ma": 50, "ma2": 200, "n": 3 }]
+    },
+    {
+      "name": "爆量上漲",
+      "mode": "and",
+      "category": "all",
+      "conditions": [
+        { "kind": "volSpike", "tf": "daily", "value": 2 },
+        { "kind": "maAbove", "tf": "daily", "ma": 20 }
+      ]
+    }
+  ]
+}

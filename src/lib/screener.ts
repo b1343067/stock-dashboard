@@ -13,6 +13,8 @@ import { t } from "./i18n";
 export interface ScreenerSeries {
   time: string[];
   close: number[];
+  /** 成交量（舊的 screener.json 沒有） */
+  volume?: number[];
   ma10: (number | null)[];
   ma20: (number | null)[];
   ma50: (number | null)[];
@@ -77,7 +79,11 @@ export type ConditionKind =
   | "peBelow"
   | "yieldAbove"
   | "near52High"
-  | "near52Low";
+  | "near52Low"
+  // 均線交叉、成交量
+  | "maCrossUp"
+  | "maCrossDown"
+  | "volSpike";
 
 export type Band = "upper" | "middle" | "lower";
 export type MaPeriod = 10 | 20 | 50 | 200;
@@ -98,6 +104,8 @@ export interface Condition {
   n: number;
   band: Band;
   ma: MaPeriod;
+  /** 均線交叉用的第二條（較長的）均線 */
+  ma2: MaPeriod;
 }
 
 export type CombineMode = "and" | "or";
@@ -111,7 +119,7 @@ export interface ScreenerPreset {
 /** 每種條件在畫面上要顯示哪些參數 */
 export const KIND_META: Record<
   ConditionKind,
-  { label: string; params: ("value" | "n" | "band" | "ma")[]; /** 基本面條件不分週期 */ noTf?: boolean; unit?: string }
+  { label: string; params: ("value" | "n" | "band" | "ma" | "ma2")[]; /** 基本面條件不分週期 */ noTf?: boolean; unit?: string }
 > = {
   rsiAbove: { label: "RSI 高於", params: ["value"] },
   rsiBelow: { label: "RSI 低於", params: ["value"] },
@@ -127,6 +135,9 @@ export const KIND_META: Record<
   yieldAbove: { label: "殖利率高於", params: ["value"], noTf: true, unit: "%" },
   near52High: { label: "接近 52 週高點（差距在）", params: ["value"], noTf: true, unit: "% 以內" },
   near52Low: { label: "接近 52 週低點（差距在）", params: ["value"], noTf: true, unit: "% 以內" },
+  maCrossUp: { label: "均線黃金交叉", params: ["ma", "ma2", "n"] },
+  maCrossDown: { label: "均線死亡交叉", params: ["ma", "ma2", "n"] },
+  volSpike: { label: "成交量放大", params: ["value"], unit: "倍（相對前 20 根平均）" },
 };
 
 export const KIND_ORDER = Object.keys(KIND_META) as ConditionKind[];
@@ -164,8 +175,11 @@ export function makeCondition(kind: ConditionKind = "rsiBelow", tf: Timeframe = 
     yieldAbove: { value: 3 },
     near52High: { value: 5 },
     near52Low: { value: 10 },
+    maCrossUp: { ma: 50, ma2: 200, n: 5 },
+    maCrossDown: { ma: 50, ma2: 200, n: 5 },
+    volSpike: { value: 2 },
   };
-  return { id: newId(), kind, tf, value: 30, n: 5, band: "upper", ma: 50, ...defaults[kind] };
+  return { id: newId(), kind, tf, value: 30, n: 5, band: "upper", ma: 50, ma2: 200, ...defaults[kind] };
 }
 
 /** 切換條件種類時，套用新種類的預設值，但保留時間週期 */
@@ -320,6 +334,28 @@ export function evaluateCondition(ticker: ScreenerTicker, c: Condition): CondRes
       const detail = t("距 MA{0} {1}{2}%", [c.ma, diff >= 0 ? "+" : "", diff.toFixed(1)]);
       return { matched: c.kind === "maAbove" ? close > ma : close < ma, detail };
     }
+    case "maCrossUp":
+    case "maCrossDown": {
+      // 短均線由下往上（黃金交叉）或由上往下（死亡交叉）穿越長均線，例如 MA50 穿越 MA200
+      if (c.ma === c.ma2) return { matched: false, detail: t("兩條均線相同") };
+      const a = s[`ma${c.ma}` as const];
+      const b = s[`ma${c.ma2}` as const];
+      const k = c.kind === "maCrossUp" ? findCrossUp(a, b, n) : findCrossDown(a, b, n);
+      return { matched: k >= 0, detail: k >= 0 ? t("{0}交叉", [ago(k, c.tf)]) : t("未交叉") };
+    }
+
+    case "volSpike": {
+      // 最新一根的成交量 ÷ 前 20 根的平均（不含最新這根，否則爆量會把平均拉高）
+      const v = s.volume;
+      if (!v || v.length < 21) return { matched: false, detail: t("無成交量資料") };
+      const prev = v.slice(-21, -1);
+      const avg = prev.reduce((x, y) => x + y, 0) / prev.length;
+      if (!(avg > 0)) return { matched: false, detail: t("無成交量資料") };
+      // 倍數四捨五入到 0.01，避免剛好 2 倍時因浮點誤差判斷錯
+      const ratio = Math.round((v[v.length - 1] / avg) * 100) / 100;
+      const min = value > 0 ? value : 2;
+      return { matched: ratio >= min, detail: t("成交量 {0} 倍", [ratio.toFixed(2)]) };
+    }
     default:
       return { matched: false, detail: "" };
   }
@@ -377,6 +413,12 @@ export function describeCondition(c: Condition): string {
       return t("距 52 週高點 {0}% 以內", [c.value]);
     case "near52Low":
       return t("距 52 週低點 {0}% 以內", [c.value]);
+    case "maCrossUp":
+      return t("{0} MA{1} 向上穿越 MA{2}{3}", [tf, c.ma, c.ma2, within]);
+    case "maCrossDown":
+      return t("{0} MA{1} 向下跌破 MA{2}{3}", [tf, c.ma, c.ma2, within]);
+    case "volSpike":
+      return t("{0} 成交量達前 20 根平均的 {1} 倍以上", [tf, c.value]);
   }
 }
 
@@ -399,6 +441,7 @@ export function sanitizeConditions(raw: unknown): Condition[] {
       n: typeof o.n === "number" ? clamp(Math.round(o.n), LIMITS.n.min, LIMITS.n.max) : base.n,
       band: o.band === "upper" || o.band === "middle" || o.band === "lower" ? o.band : base.band,
       ma: MA_PERIODS.includes(o.ma as MaPeriod) ? (o.ma as MaPeriod) : base.ma,
+      ma2: MA_PERIODS.includes(o.ma2 as MaPeriod) ? (o.ma2 as MaPeriod) : base.ma2,
     });
   }
   return out;
@@ -440,6 +483,16 @@ export const BUILTIN_PRESETS: ScreenerPreset[] = [
     name: "高殖利率且本益比合理",
     mode: "and",
     conditions: [makeCondition("yieldAbove"), makeCondition("peBelow")],
+  },
+  {
+    name: "長線黃金交叉（50 日線穿越 200 日線）",
+    mode: "and",
+    conditions: [{ ...makeCondition("maCrossUp", "daily"), n: 10 }],
+  },
+  {
+    name: "爆量上漲（成交量 2 倍且站上 20 日線）",
+    mode: "and",
+    conditions: [makeCondition("volSpike", "daily"), { ...makeCondition("maAbove", "daily"), ma: 20 }],
   },
   {
     name: "週線轉強",

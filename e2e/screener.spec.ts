@@ -48,3 +48,30 @@ test("篩選器：新增條件、儲存組合，重新整理後還在", async ({
   await expect(page.locator(".cond-summary")).toContainText("週線 MACD 黃金交叉（最近 10 週內）");
   await t.expectNoErrors();
 });
+
+test("篩選器：均線交叉、成交量條件；複製成通知規則", async ({ page, context }) => {
+  const t = trackErrors(page);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/#/screener");
+  await page.getByRole("button", { name: "清除全部" }).click();
+  await page.getByRole("button", { name: "＋ 新增條件" }).click();
+  const row = page.locator(".cond-row").first();
+  await row.getByLabel("條件", { exact: true }).selectOption("maCrossUp");
+  await row.getByLabel("長均線").selectOption("200");
+  await expect(page.locator(".cond-summary")).toContainText("日線 MA50 向上穿越 MA200");
+  await expect(row.locator(".cond-hits")).toHaveText(/\d+ 檔符合/);
+
+  await page.getByRole("button", { name: "＋ 新增條件" }).click();
+  const row2 = page.locator(".cond-row").nth(1);
+  await row2.getByLabel("條件", { exact: true }).selectOption("volSpike");
+  await expect(page.locator(".cond-summary")).toContainText("成交量達前 20 根平均的 2 倍以上");
+
+  // 複製成通知規則：剪貼簿內容是可以貼進 config/notify.json 的 JSON
+  await page.getByRole("button", { name: "📋 複製成通知規則" }).click();
+  await expect(page.locator(".rule-copy")).toContainText("已複製");
+  const json = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { conditions: { kind: string; ma2?: number; id?: string }[] };
+  expect(json.conditions.map((c) => c.kind)).toEqual(["maCrossUp", "volSpike"]);
+  expect(json.conditions[0].ma2).toBe(200);
+  expect(json.conditions[0].id).toBeUndefined();
+  await t.expectNoErrors();
+});

@@ -60,7 +60,8 @@
 - PWA：`public/manifest.webmanifest`、`public/icons/`、`public/sw.js`（手寫：頁面與 /data 網路優先、/assets 快取優先；**改快取策略時要改 cache 名稱版本**）；main.tsx 只在 PROD 註冊；App 有離線提示
 - 市場總覽：`pages/MarketPage.tsx`＋`lib/market.ts`（`periodChange`／`breadth`／`topMovers`／`categoryStats`／`heatIntensity`）；只用 index.json（含 spark 算 30 天漲跌），**首頁不可下載個股檔案**（E2E 檢查）
 - 價格提醒：`lib/alerts.ts`（條件、`evaluateAlert`、`alertState`、`acknowledge`）、`lib/alertsStore.ts`（`useSyncExternalStore` 共用狀態、`useAlertQuotes`：只有 RSI 提醒時才載入 screener.json）、`components/AlertsPanel.tsx`（lazy，桌機右側／手機底部滑出）、`components/AlertBanner.tsx`；App 統一計算 triggered
-- 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合）、`pages/ScreenerPage.tsx`、`components/screener/`
+- 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合；均線交叉 `maCrossUp/Down` 用 `ma`＋`ma2`、成交量 `volSpike` 用 screener.json 的 `volume`，平均不含最新一根）、`pages/ScreenerPage.tsx`、`components/screener/`
+- 每日篩選通知（Discord）：`config/notify.json`（規則＝篩選器條件格式，公開檔案，不放持股）→ `scripts/notify.ts`（Actions 用 `npx vite-node` 執行，直接用 `src/lib/screener.ts` 判斷）＋`lib/notify.ts` 純函式（`sanitizeNotifyConfig`、`evaluateRules` 和昨天比較標 🆕、`buildMessages` 切 2000 字、`toRuleJson`）；紀錄存 `public/data/notify-state.json`（同一個資料日期只通知一次，`NOTIFY_FORCE=1` 可強制）；Webhook 在 GitHub Secret `DISCORD_WEBHOOK_URL`，沒設定只印出；範例資料不通知；步驟 `continue-on-error`，失敗不影響資料發布。篩選器頁「📋 複製成通知規則」
 - 投資組合：`lib/portfolio.ts`（`computePortfolio`、`toUsd`、`stopStatus`、`sanitizeHoldings`、`parseImport`／`buildExport`、`sampleHoldings`）、`lib/portfolioStore.ts`（讀 localStorage，分析頁共用）、`pages/PortfolioPage.tsx`、`components/portfolio/`
 - 多語系（加碼 C-2）：`lib/i18n.ts`（`t(中文原文, [參數])` 依 `{0}{1}` 代入、`getLang`／`setLang`／`useLang`、`locale()` 給數字與圖表日期格式）、`lib/i18n-en.ts` 英文對照表（key = 中文原文，查不到就顯示中文）。**模組最上層的常數不能呼叫 t()**（載入時就決定了），要在顯示的地方 `t(常數)`；`i18n.test.ts` 會檢查所有 `t("…")`、條件名稱、分類名稱都有英文。App 用 `key={lang}` 讓切換語言時整個畫面重建；`data.ts` 的 `localizeName` 在英文模式把 `name` 換成設定檔的 `nameEn`。E2E 固定 `locale: "zh-TW"`，英文版在 `e2e/i18n.spec.ts`（用英文瀏覽器打開每一頁、確認沒有中文殘留）。少數依語言不同的格式直接判斷 `getLang()`：市值單位（兆億／T B）、K 線週期按鈕（日週月／D W M）、漲跌色按鈕（漲跌／▲▼）
 - 交易紀錄（加碼 C）：`lib/transactions.ts`（`buildLedger` 移動平均成本法、`positionsToHoldings`、`xirr` 牛頓＋二分、`positionStats`、`totals` 台股每筆依當天 `fxAt` 匯率換美元、`sanitizeTransactions`、`sampleTransactions`）、`components/portfolio/TransactionsPanel.tsx`／`TransactionForm.tsx`；`portfolioStore.loadHoldings()` 依 `portfolio:mode` 回傳交易計算出的持股（分析頁共用），交易模式下 `portfolio:holdings` 只當「類型／停利停損」設定用（HoldingForm `metaOnly`）
@@ -78,7 +79,7 @@
 
 - `public/data/<代號>.json`：`{symbol,name,currency,sample,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?}`（fundamentals 見 `types.ts` 的 `Fundamentals`），每個週期為欄位導向物件：`time,open,high,low,close,volume,ma10,ma20,ma50,ma200,rsi,macd,signal,hist,bbUpper,bbMiddle,bbLower`。日線保留最近 1260 筆（指標先用完整 10 年算再截斷），週／月線保留全部。
 - `public/data/index.json`：`{generatedAt,sample,fx:{USDTWD},riskFree,categories:[...],tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,sample,spark:[最近 30 天收盤]}]}`（riskFree 為年化小數，抓不到沿用上次）
-- `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?:{pe,forwardPe,pb,dividendYield,high52w,low52w}}]}`，每週期只有 time/close/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
+- `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?:{pe,forwardPe,pb,dividendYield,high52w,low52w}}]}`，每週期只有 time/close/volume/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
 - `public/data/fx.json`：`{USDTWD:{time,close}}`；沒有時分析頁用最新匯率近似並提示
 
 ### localStorage key（都有 `stockdash:` 前綴）
@@ -121,6 +122,7 @@
 - [x] 加碼 B：K 線畫圖工具、基本面資料
 - [x] 加碼 C-1：交易紀錄制投資組合（已實現損益、股利、XIRR）
 - [x] 加碼 C-2：英文版
+- [x] 篩選器新條件（均線交叉、成交量）、每日篩選通知（Discord，使用者選的管道）
 - [x] 資料品質：自動修正小問題＋status.json；資料搬到 data 分支（main 不再每天變大）
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
 
@@ -129,8 +131,7 @@
 - BRK-B 在 2026 年和 VOO 的日報酬幾乎不連動（近 1 年 Beta≈0.08、相關≈0.07；2022 年 0.76／0.81；5 年日報酬 Beta≈0.58）。已確認日期對齊與計算正確，是資料本身的結果
 
 ### 之後可做（使用者尚未決定）
-- 篩選器新條件（均線交叉、成交量；52 週新高低已在加碼 B 完成）
-- 篩選結果 Telegram 通知
+- （目前沒有）
 
 ### 舊作業（reference/old_streamlit_app.py，尚未取得）要修正的點：全部完成
 1. RSI 用 Wilder（ewm alpha=1/14） 2. 新增布林通道 3. 台股先換美元 4. 「AI 預測」→「短期趨勢外推」＋歷史準確度 5. 回測從起始日買進持有 6. 預設持倉改範例資料

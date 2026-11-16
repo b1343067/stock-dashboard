@@ -1135,3 +1135,5 @@ a.chip { text-decoration: none; }
   .tx-summary .stat:last-child { grid-column: 1 / -1; }
 }
 .lang-btn { font-weight: 800; font-size: 12.5px; min-width: 36px; }
+.rule-copy { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); display: grid; gap: 6px; }
+.rule-copy textarea { width: 100%; font-family: var(--font-mono); font-size: 12px; }

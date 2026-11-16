@@ -62,6 +62,24 @@ jobs:
         # 個別股票失敗會保留舊檔；全部失敗才會讓這一步變紅色（後面的步驟就不會執行）
         run: python scripts/fetch_data.py
 
+      # ---- 每日篩選通知（Discord）----
+      # 用網站篩選器同一套程式判斷（scripts/notify.ts），所以需要 Node。
+      # 沒有設定 DISCORD_WEBHOOK_URL 就只在記錄裡印出結果；通知失敗不影響資料發布。
+      - name: 安裝 Node（篩選通知用）
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22   # 和 ci.yml 相同
+          cache: npm
+
+      - name: 安裝前端套件（篩選通知用）
+        run: npm ci --no-audit --no-fund
+
+      - name: 送出每日篩選通知
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: npx vite-node scripts/notify.ts
+
       - name: 發布資料到 data 分支（只保留最新一份）
         env:
           GH_TOKEN: ${{ github.token }}

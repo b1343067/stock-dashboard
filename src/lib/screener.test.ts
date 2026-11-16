@@ -193,3 +193,29 @@ describe("基本面條件（加碼 B）", () => {
     expect(sanitizeConditions([{ kind: "yieldAbove", value: 4 }])[0]).toMatchObject({ kind: "yieldAbove", value: 4 });
   });
 });
+
+describe("均線交叉與成交量條件", () => {
+  it("MA50 向上穿越 MA200（最近 N 根內）", () => {
+    const s = series({ close: [1, 1, 1, 1], ma50: [9, 9, 11, 12], ma200: [10, 10, 10, 10] });
+    expect(evaluateCondition(ticker(s), cond("maCrossUp", { ma: 50, ma2: 200, n: 3 })).matched).toBe(true);
+    expect(evaluateCondition(ticker(s), cond("maCrossUp", { ma: 50, ma2: 200, n: 1 })).matched).toBe(false); // 交叉在 1 根前
+    expect(evaluateCondition(ticker(s), cond("maCrossDown", { ma: 50, ma2: 200, n: 3 })).matched).toBe(false);
+  });
+  it("兩條均線相同 → 不符合", () => {
+    const s = series({ close: [1, 1], ma50: [1, 2], ma200: [1, 1] });
+    expect(evaluateCondition(ticker(s), cond("maCrossUp", { ma: 50, ma2: 50 })).matched).toBe(false);
+  });
+  it("成交量 ≥ 前 20 根平均的 X 倍（平均不含最新這根）", () => {
+    const vol = [...Array(20).fill(100), 250];
+    const s = { ...series({ close: Array(21).fill(10) }), volume: vol };
+    expect(evaluateCondition(ticker(s), cond("volSpike", { value: 2.5 }))).toEqual({ matched: true, detail: "成交量 2.50 倍" });
+    expect(evaluateCondition(ticker(s), cond("volSpike", { value: 3 })).matched).toBe(false);
+  });
+  it("舊資料沒有成交量 → 不符合但不出錯", () => {
+    expect(evaluateCondition(ticker(series({ close: [1] })), cond("volSpike")).detail).toBe("無成交量資料");
+  });
+  it("sanitizeConditions 保留 ma2、壞值補預設", () => {
+    expect(sanitizeConditions([{ kind: "maCrossUp", ma: 20, ma2: 50 }])[0]).toMatchObject({ ma: 20, ma2: 50 });
+    expect(sanitizeConditions([{ kind: "maCrossUp", ma2: 7 }])[0].ma2).toBe(200);
+  });
+});

@@ -28,7 +28,7 @@ SCREENER_BARS = 30
 # 篩選器需要的欄位（不含開高低量，讓檔案小一點）
 SCREENER_FUNDAMENTALS = ("pe", "forwardPe", "pb", "dividendYield", "high52w", "low52w")
 SCREENER_FIELDS = (
-    "time", "close", "ma10", "ma20", "ma50", "ma200",
+    "time", "close", "volume", "ma10", "ma20", "ma50", "ma200",
     "rsi", "macd", "signal", "hist", "bbUpper", "bbMiddle", "bbLower",
 )
 

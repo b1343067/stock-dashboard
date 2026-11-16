@@ -83,6 +83,16 @@ K 線畫圖工具（看盤頁 K 線上方）：
 - 中文名稱的股票可在 `config/watchlist.json` 加 `"nameEn"`，英文模式就顯示英文名稱
 - 單元測試會檢查每個 `t("…")` 都有英文翻譯；E2E 測試會用英文瀏覽器打開每一頁，確認沒有漏翻的中文
 
+每日篩選通知（Discord）：
+- 每天早上資料更新後，依 `config/notify.json` 的規則篩選，把符合的股票（含「🆕 今天新出現」標記與看圖連結）送到你的 Discord 頻道
+- 規則格式和網站篩選器相同：在篩選器設好條件，按「📋 複製成通知規則」，貼到 `config/notify.json` 的 `rules` 裡
+- 判斷直接用網站篩選器的同一套程式（`npx vite-node scripts/notify.ts`），結果和網頁一致；沒有股票符合時不送；同一天的資料只通知一次
+- 設定步驟：
+  1. Discord 頻道 → 編輯頻道 → 整合 → Webhook → 新增 Webhook → 複製 Webhook 網址
+  2. GitHub 儲存庫 → Settings → Secrets and variables → Actions → New repository secret，名稱 `DISCORD_WEBHOOK_URL`，值貼上網址
+  3. 到 Actions →「更新股價資料」→ Run workflow 試跑一次（沒設定網址時只會在執行記錄裡印出訊息）
+- ⚠️ `config/notify.json` 是公開的，只放篩選條件；Webhook 網址一定要放在 Secrets，不可以寫進檔案
+
 加到手機主畫面（PWA）：
 - 手機瀏覽器選「加到主畫面」，就能像 App 一樣全螢幕打開
 - 沒有網路時仍可打開，顯示上次載入的資料（頁首會提示離線）
@@ -194,6 +204,8 @@ K 線畫圖工具（看盤頁 K 線上方）：
 | 殖利率高於 X% | 近 12 個月配息合計 ÷ 最新收盤 > X%（沒配息視為 0%） |
 | 接近 52 週高點 X% 以內 | (1 − 收盤 ÷ 52 週最高) ≤ X%（基本面條件不分日／週／月） |
 | 接近 52 週低點 X% 以內 | (收盤 ÷ 52 週最低 − 1) ≤ X% |
+| 均線黃金／死亡交叉 | 最近 N 根內，短均線由下往上（黃金）／由上往下（死亡）穿越長均線，例如 MA50 穿越 MA200 |
+| 成交量放大 X 倍 | 最新一根成交量 ÷ 前 20 根平均成交量（不含最新這根）≥ X |
 
 週線、月線的最新一根可能是「還沒結束的本週／本月」，數值會隨每天更新而變動。
 
@@ -259,6 +271,7 @@ K 線畫圖工具（看盤頁 K 線上方）：
 │   ├── data_quality.py      #   日期轉成交易所時區、寫檔前的資料檢查
 │   ├── fetch_data.py        #   抓真實資料（GitHub Actions 執行）
 │   ├── generate_sample_data.py  # 產生隨機範例資料（不需網路）
+│   ├── notify.ts            #   每日篩選通知（Actions 執行，送到 Discord）
 │   ├── fundamentals.py      #   基本面：52 週高低、殖利率、本益比等（抓不到沿用上次）
 │   ├── test_indicators.py   #   指標計算的自我檢查
 │   └── requirements.txt     #   Python 套件清單
@@ -303,6 +316,7 @@ K 線畫圖工具（看盤頁 K 線上方）：
 │       ├── fundamentals.ts  #     基本面卡片的計算與文字
 │       ├── market.ts        #     市場總覽計算（漲跌家數、排行、分類平均、熱力圖）
 │       ├── alerts.ts        #     價格提醒判斷；alertsStore.ts 共用狀態
+│       ├── notify.ts        #     每日篩選通知：規則、比較昨天、組 Discord 訊息
 │       ├── i18n.ts          #     多語系：t()、語言切換；i18n-en.ts 英文對照表
 │       ├── format.ts        #     金額、百分比格式化
 │       ├── freshness.ts     #     資料過期檢查（落後 3 個平日以上提醒）

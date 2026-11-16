@@ -100,6 +100,20 @@ export default function ConditionRow({ index, condition: c, onChange, onRemove, 
         </select>
       )}
 
+      {/* 均線交叉：MA[短] 向上穿越／向下跌破 MA[長] */}
+      {params.includes("ma2") && (
+        <>
+          <span className="cond-param">{c.kind === "maCrossUp" ? t("向上穿越") : t("向下跌破")}</span>
+          <select aria-label={t("長均線")} value={c.ma2} onChange={(e) => onChange({ ...c, ma2: Number(e.target.value) as MaPeriod })}>
+            {MA_PERIODS.map((m) => (
+              <option key={m} value={m}>
+                MA{m}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+
       {params.includes("value") && (
         <label className="cond-param">
           {c.kind === "rsiRebound" ? t("從") : ""}
@@ -108,7 +122,7 @@ export default function ConditionRow({ index, condition: c, onChange, onRemove, 
             min={LIMITS.value.min}
             max={LIMITS.value.max}
             onChange={(v) => onChange({ ...c, value: v })}
-            ariaLabel={meta.noTf ? t("數值") : t("RSI 門檻")}
+            ariaLabel={meta.noTf || c.kind === "volSpike" ? t("數值") : t("RSI 門檻")}
           />
           {c.kind === "rsiRebound" ? t("以下回升") : (meta.unit ?? "")}
         </label>

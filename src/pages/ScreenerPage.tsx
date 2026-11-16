@@ -25,6 +25,7 @@ import {
 import { readStorage, writeStorage } from "../lib/storage";
 import { filterByCategory, groupTickers } from "../lib/watchlist";
 import { t } from "../lib/i18n";
+import { toRuleJson } from "../lib/notify";
 
 const KEY_CURRENT = "screener:current";
 const KEY_PRESETS = "screener:presets";
@@ -96,6 +97,19 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
   // 載入組合不改變目前選的分類
   const loadPreset = (p: ScreenerPreset) =>
     setState((s) => ({ ...s, mode: p.mode, conditions: p.conditions.map((c) => ({ ...c, id: newId() })) }));
+
+  // 「複製成通知規則」：轉成 config/notify.json 的格式。剪貼簿可能被瀏覽器擋住，失敗時改成顯示文字讓使用者手動複製
+  const [ruleCopy, setRuleCopy] = useState<{ ok: boolean; json: string } | null>(null);
+  const copyRule = async () => {
+    const name = conditions.map(describeCondition).join(mode === "and" ? " 且 " : " 或 ").slice(0, 60);
+    const json = toRuleJson(name, mode, state.category, conditions);
+    try {
+      await navigator.clipboard.writeText(json);
+      setRuleCopy({ ok: true, json });
+    } catch {
+      setRuleCopy({ ok: false, json });
+    }
+  };
 
   const savePreset = (name: string) => {
     const preset: ScreenerPreset = { name, mode, conditions };
@@ -180,7 +194,24 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
               {t("清除全部")}
             </button>
           )}
+          {conditions.length > 0 && (
+            <button type="button" className="btn-link" onClick={() => void copyRule()} title={t("貼到 config/notify.json，每天早上把符合的股票送到 Discord")}>
+              {t("📋 複製成通知規則")}
+            </button>
+          )}
         </div>
+        {ruleCopy && (
+          <div className="rule-copy small" role="status">
+            {ruleCopy.ok ? (
+              <span>{t("已複製。貼到儲存庫的 config/notify.json 的 rules 裡，每天早上就會把符合的股票送到 Discord。")}</span>
+            ) : (
+              <>
+                <span>{t("無法自動複製，請手動複製下面的內容：")}</span>
+                <textarea className="text-input" readOnly rows={8} value={ruleCopy.json} onFocus={(e) => e.target.select()} />
+              </>
+            )}
+          </div>
+        )}
 
         {conditions.length > 0 && (
           <p className="cond-summary">
