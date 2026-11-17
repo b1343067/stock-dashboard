@@ -37,6 +37,36 @@ def to_exchange_dates(df: pd.DataFrame, symbol: str) -> pd.DataFrame:
     return out
 
 
+# 各交易所「收盤後多久」才把今天的 K 棒當作完整（留一點緩衝給 Yahoo 更新）
+# 台股 13:30 收盤（盤後定價到 14:30）、美股 16:00 收盤
+COMPLETE_AFTER = {TZ_TAIPEI: (14, 30), TZ_NEW_YORK: (16, 30)}
+
+
+def drop_incomplete_today(df: pd.DataFrame, symbol: str, now_utc: pd.Timestamp | None = None) -> tuple[pd.DataFrame, str | None]:
+    """
+    盤中執行時，Yahoo 會給「今天到目前為止」的半根 K 棒（收盤價其實是盤中價）。
+    把它當成收盤資料會讓指標、篩選、通知都用到還沒確定的數字，所以先丟掉，
+    等收盤後的下一次更新再抓。df 的索引必須已經是交易所當地日期（to_exchange_dates 之後）。
+    """
+    if df.empty:
+        return df, None
+    tz = exchange_tz(symbol)
+    now = (now_utc if now_utc is not None else pd.Timestamp.now(tz="UTC")).tz_convert(tz)
+    hour, minute = COMPLETE_AFTER[tz]
+    last_day = pd.Timestamp(df.index[-1]).date()
+    if last_day == now.date() and (now.hour, now.minute) < (hour, minute):
+        return df.iloc[:-1], f"丟掉今天（{last_day}）尚未收盤的盤中資料"
+    return df, None
+
+
+def latest_is_blank(df: pd.DataFrame) -> bool:
+    """最新一筆的收盤價是空的或 ≤ 0（Yahoo 偶爾會這樣）：repair_daily 會刪掉它，但代表最新一天其實沒抓到"""
+    if df.empty or "Close" not in df.columns:
+        return False
+    c = df["Close"].iloc[-1]
+    return bool(pd.isna(c) or c <= 0)
+
+
 # 少量異常可以自動修；超過這個比例就當作整份資料有問題
 MAX_BAD_RATIO = 0.05
 

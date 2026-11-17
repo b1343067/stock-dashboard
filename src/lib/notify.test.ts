@@ -11,6 +11,7 @@ import {
   stockLine,
   toRuleJson,
   withoutExcluded,
+  dataKeyOf,
 } from "./notify";
 import { makeCondition, sanitizeConditions, type ScreenerData, type ScreenerSeries, type ScreenerTicker } from "./screener";
 
@@ -122,7 +123,7 @@ describe("buildMessages", () => {
   });
 
   it("紀錄：每條規則今天符合的代號", () => {
-    expect(buildState("2026-01-03", data, cfg)).toEqual({ dataDate: "2026-01-03", rules: { "RSI 急轉直下": ["AAA"], 超賣: ["BBB"] } });
+    expect(buildState("2026-01-03", data, cfg)).toEqual({ dataDate: "2026-01-03", dataKey: "USD:2026-01-03", rules: { "RSI 急轉直下": ["AAA"], 超賣: ["BBB"] } });
   });
 });
 
@@ -141,5 +142,19 @@ describe("小工具", () => {
     const json = JSON.parse(toRuleJson("交叉", "and", "all", [makeCondition("maCrossUp")]));
     expect(json.conditions[0].id).toBeUndefined();
     expect(sanitizeConditions(json.conditions)[0]).toMatchObject({ kind: "maCrossUp", ma: 50, ma2: 200 });
+  });
+});
+
+describe("dataKeyOf（同一份資料只通知一次）", () => {
+  const mk = (us: string, tw: string): ScreenerData => ({
+    generatedAt: "",
+    bars: 1,
+    tickers: [tk("VOO", [1, 1], [50, 50], { lastDate: us }), tk("2330.TW", [1, 1], [50, 50], { currency: "TWD", lastDate: tw })],
+  });
+  it("台股、美股的最新日期分開記", () => {
+    expect(dataKeyOf(mk("2026-11-16", "2026-11-17"))).toBe("TWD:2026-11-17|USD:2026-11-16");
+  });
+  it("最新日期相同、但美股更新了 → 視為新資料（不會被誤判成已通知）", () => {
+    expect(dataKeyOf(mk("2026-11-16", "2026-11-17"))).not.toBe(dataKeyOf(mk("2026-11-17", "2026-11-17")));
   });
 });

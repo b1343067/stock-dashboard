@@ -127,6 +127,8 @@ export interface SignalHit {
 /** 上一次通知的紀錄（存在 data 分支的 notify-state.json）：判斷「新出現」與避免同一天重複通知 */
 export interface NotifyState {
   dataDate: string;
+  /** 各市場的最新日期（例如 "TWD:2026-11-17|USD:2026-11-16"），用來判斷「這份資料通知過了沒」 */
+  dataKey?: string;
   /** 「規則名稱 → 符合的代號」 */
   rules: Record<string, string[]>;
 }
@@ -163,6 +165,23 @@ export function withoutExcluded(data: ScreenerData, cfg: NotifyConfig): Screener
   return { ...data, tickers: data.tickers.filter((tk) => !ex.has(tk.symbol)) };
 }
 
+/**
+ * 這份資料的識別：每個市場（幣別）各自的最新日期。
+ * 為什麼不只用「最新日期」？台股和美股收盤日不同：例如台股 11/17、美股 11/16 的資料，
+ * 和隔天台股 11/17、美股 11/17 的資料，最新日期都是 11/17，會被誤判成「已經通知過」。
+ */
+export function dataKeyOf(data: ScreenerData): string {
+  const latest = new Map<string, string>();
+  for (const tk of data.tickers) {
+    const cur = latest.get(tk.currency);
+    if (!cur || tk.lastDate > cur) latest.set(tk.currency, tk.lastDate);
+  }
+  return [...latest.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([c, d]) => `${c}:${d}`)
+    .join("|");
+}
+
 export function buildState(dataDate: string, allData: ScreenerData, cfg: NotifyConfig): NotifyState {
   const data = withoutExcluded(allData, cfg);
   const rules: Record<string, string[]> = {};
@@ -172,7 +191,7 @@ export function buildState(dataDate: string, allData: ScreenerData, cfg: NotifyC
       .filter((r) => r.matched)
       .map((r) => r.ticker.symbol);
   }
-  return { dataDate, rules };
+  return { dataDate, dataKey: dataKeyOf(allData), rules };
 }
 
 /** 特別注意：關注的股票（和設了價位的股票）今天發生的大事 */

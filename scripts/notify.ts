@@ -11,7 +11,7 @@
 
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildMessages, buildState, sanitizeNotifyConfig, type DiscordMessage, type NotifyState } from "../src/lib/notify";
+import { buildMessages, buildState, dataKeyOf, sanitizeNotifyConfig, type DiscordMessage, type NotifyState } from "../src/lib/notify";
 import type { ScreenerData } from "../src/lib/screener";
 
 const ROOT = join(__dirname, "..");
@@ -60,8 +60,10 @@ async function main(): Promise<void> {
   // 資料日期：取各檔最新日期中最晚的一天（台股、美股收盤日可能不同）
   const dataDate = data.tickers.map((x) => x.lastDate).sort().at(-1) ?? "";
   const previous = readJson<NotifyState>(STATE_PATH);
-  if (previous?.dataDate === dataDate && process.env.NOTIFY_FORCE !== "1") {
-    return console.log(`${dataDate} 的資料已經通知過了（例如推程式碼觸發的重跑），這次不送。`);
+  // 用「各市場的最新日期」判斷這份資料通知過了沒（舊紀錄沒有 dataKey → 當作沒通知過）
+  const dataKey = dataKeyOf(data);
+  if (previous?.dataKey === dataKey && process.env.NOTIFY_FORCE !== "1") {
+    return console.log(`這份資料（${dataKey}）已經通知過了（例如備援排程或推程式碼觸發的重跑），這次不送。`);
   }
 
   const messages = buildMessages(data, cfg, dataDate, previous);

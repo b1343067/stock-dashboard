@@ -114,6 +114,19 @@ def main() -> None:
     assert fresh["pe"] == 25.12 and fresh["infoDate"] == "2026-11-14" and fresh["high52w"] == 120.0
     assert merge_fundamentals(st, {}, None, "2026-11-14")["pe"] is None
 
+    # ---- 盤中的半根 K 棒要丟掉；收盤後才保留 ----
+    from data_quality import drop_incomplete_today, latest_is_blank
+    tw = pd.DataFrame({"Close": [100.0, 101.0]}, index=pd.DatetimeIndex(["2026-11-16", "2026-11-17"]))
+    during = pd.Timestamp("2026-11-17 02:14", tz="UTC")   # 台北 10:14，盤中
+    after = pd.Timestamp("2026-11-17 07:00", tz="UTC")    # 台北 15:00，收盤後
+    assert len(drop_incomplete_today(tw, "2330.TW", during)[0]) == 1, "台股盤中要丟掉今天"
+    assert drop_incomplete_today(tw, "2330.TW", after)[1] is None, "台股收盤後保留"
+    us = pd.DataFrame({"Close": [100.0]}, index=pd.DatetimeIndex(["2026-11-16"]))
+    # 紐約 11/16 21:14（台北 11/17 10:14）：美股已收盤，11/16 這根要保留
+    assert drop_incomplete_today(us, "VOO", during)[1] is None, "美股收盤後保留"
+    assert len(drop_incomplete_today(us, "VOO", pd.Timestamp("2026-11-16 18:00", tz="UTC"))[0]) == 0, "美股盤中丟掉"
+    assert latest_is_blank(pd.DataFrame({"Close": [1.0, float("nan")]})) and not latest_is_blank(us)
+
     # ---- 英文名稱（加碼 C-2）：設定檔的 nameEn 會保留，沒填就沒有這個欄位 ----
     from data_io import normalize_watchlist
     wl = normalize_watchlist({"groups": [{"name": "台股", "tickers": [

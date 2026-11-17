@@ -30,7 +30,7 @@ import pandas as pd
 import yfinance as yf
 
 from data_io import FX_PATH, STATUS_PATH, load_watchlist, read_json, rebuild_index, ticker_path, write_json_atomic
-from data_quality import repair_daily, to_exchange_dates, validate_daily
+from data_quality import drop_incomplete_today, latest_is_blank, repair_daily, to_exchange_dates, validate_daily
 from fundamentals import clean_info, merge_fundamentals, price_stats
 from indicators import build_ticker_payload
 
@@ -140,7 +140,13 @@ def process_symbol(t: dict) -> str:
             print(f"  [{symbol}] 下載失敗，保留前一天的檔案")
             STATUS[symbol] = {"result": "download", "reason": f"下載失敗（已重試 {RETRIES} 次）"}
             return "download"
+        # 盤中執行（例如推程式碼觸發）時，丟掉今天還沒收盤的半根 K 棒
+        df, partial = drop_incomplete_today(df, symbol)
+        # 最新一天的收盤價是空的：修正時會被刪掉，但要記下來，讓備援排程知道要重抓
+        blank_latest = latest_is_blank(df)
         df, notes = repair_daily(df)
+        if partial:
+            notes.insert(0, partial)
         if notes:
             print(f"  [{symbol}] 自動修正：{'；'.join(notes)}")
         problems = validate_daily(df, MIN_ROWS)
@@ -156,6 +162,8 @@ def process_symbol(t: dict) -> str:
         write_json_atomic(ticker_path(symbol), payload)
         print(f"  [{symbol}] 完成，最後日期 {payload['lastDate']} 收盤 {payload['lastClose']}")
         STATUS[symbol] = {"result": "ok", "lastDate": payload["lastDate"], "rows": len(df), "repaired": notes}
+        if blank_latest:
+            STATUS[symbol]["incompleteLatest"] = True
         return "ok"
     except Exception as e:  # 保險：任何意料外的錯誤都只影響這一檔
         print(f"  [{symbol}] 發生錯誤：{e}，保留前一天的檔案")
@@ -177,6 +185,8 @@ def write_status(tickers: list[dict], fx: dict, risk_free: float | None) -> None
             "total": len(results),
             "ok": sum(r["result"] == "ok" for r in results.values()),
             "failed": [s for s, r in results.items() if r["result"] != "ok"],
+            # 成功但「最新一天收盤價是空的」：備援排程會再抓一次
+            "incomplete": [s for s, r in results.items() if r.get("incompleteLatest")],
             "fx": "ok" if fx else "沿用上次",
             "riskFree": "ok" if risk_free is not None else "沿用上次",
         },
