@@ -82,6 +82,15 @@ def main() -> int:
     direction = ml.direction_summary(dir_pred)
     print("方向：上漲比例", direction["baseRate"], [(m["key"], m["accuracy"], m.get("pValue")) for m in direction["models"]])
 
+    # ③ 市場狀態分群（美股、台股大盤各自分）
+    regimes = {}
+    for sym, label in ml.REGIME_MARKETS.items():
+        if sym in frames:
+            res = ml.run_regimes(frames[sym])
+            if res:
+                regimes[sym] = {"label": label, **res}
+                print(f"市場狀態 {sym}：{res['current']['name']}（第 {res['current']['days']} 天）")
+
     test_dates = vol_pred["date"]
     payload = {
         "generatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -96,6 +105,7 @@ def main() -> int:
         "features": {"vol": ml.VOL_FEATURES, "direction": ml.DIR_FEATURES},
         "vol": {**vol, "tickers": current, "examples": example_series(vol_pred, vol["best"])},
         "direction": direction,
+        "regime": regimes,
     }
     write_json_atomic(ML_PATH, payload)
     write_json_atomic(ML_VOL_PATH, {
@@ -103,6 +113,8 @@ def main() -> int:
         "horizon": ml.HORIZON,
         "models": [{"key": m["key"], "name": m["name"]} for m in vol["models"]],
         "tickers": current,
+        # 今日總覽與 Discord 通知只需要「現在的市場狀態」
+        "regime": {s: {"label": r["label"], **r["current"]} for s, r in regimes.items()},
     })
     print(f"已寫入 {ML_PATH}（{time.time() - t0:.0f} 秒）")
     return 0

@@ -42,9 +42,27 @@ const ML = {
     curves: { time: times, buyHold: [1, 3, 2, 5], trend: [0, 1, 1, 2], logit: [1, 2, 2, 3], gbm: [1, 2, 1, 3] },
     byYear: [{ year: 2026, baseRate: 54.6, up: 54.6, trend: 53.3, logit: 54.1, gbm: 54.1 }],
   },
+  regime: {
+    VOO: {
+      label: "美股（VOO）",
+      current: { key: "down", name: "修正下跌", since: "2026-10-30", days: 12, date: "2026-11-16", ret20: -3.5, vol20: 23, dd: -5 },
+      states: [
+        { key: "calm", name: "平穩（低波動）", share: 55.7, ret20: 2.9, vol20: 11.4, dd: -0.9, fwdRet: 1.2, fwdUp: 70, fwdVol: 11.7, avgDays: 24.8 },
+        { key: "down", name: "修正下跌", share: 21.8, ret20: -2.7, vol20: 15.8, dd: -5.9, fwdRet: 1.3, fwdUp: 67, fwdVol: 18.1, avgDays: 7.5 },
+        { key: "panic", name: "高波動（恐慌）", share: 10.9, ret20: -5.7, vol20: 29.3, dd: -17.2, fwdRet: 2.5, fwdUp: 67, fwdVol: 24.5, avgDays: 13.1 },
+      ],
+      timeline: { time: times, close: [600, 610, 590, 580], state: ["calm", "calm", "down", "down"] },
+    },
+  },
 };
 
-const ML_VOL = { generatedAt: ML.generatedAt, horizon: 5, models: ML.vol.models.map(({ key, name }) => ({ key, name })), tickers: ML.vol.tickers };
+const ML_VOL = {
+  generatedAt: ML.generatedAt,
+  horizon: 5,
+  models: ML.vol.models.map(({ key, name }) => ({ key, name })),
+  tickers: ML.vol.tickers,
+  regime: { VOO: { label: "美股（VOO）", ...ML.regime.VOO.current } },
+};
 const mockMl = async (page: Page) => {
   await page.route("**/data/ml.json", (r) => r.fulfill({ json: ML }));
   await page.route("**/data/ml-vol.json", (r) => r.fulfill({ json: ML_VOL }));
@@ -62,7 +80,7 @@ test("ML 實驗室：方法、兩個實驗的結果與自動產生的結論", as
 
   // ① 波動：結論由數字產生、最佳模型有標示
   await expect(page.locator(".lab-verdict").first()).toContainText("梯度提升樹（ML）」：預測誤差（QLIKE）比基準少 16.7%");
-  await expect(page.locator(".lab-table tr.best")).toContainText("最佳");
+  await expect(page.locator("section[aria-labelledby=\"lab-vol\"] tr.best")).toContainText("最佳");
   await page.getByRole("radio", { name: "NVDA" }).click();
   await expect(page.locator(".bt-legend").first()).toContainText("70.0%");
   // 模型輸給基準的股票標成灰色
@@ -71,6 +89,26 @@ test("ML 實驗室：方法、兩個實驗的結果與自動產生的結論", as
   // ② 方向：都輸給永遠猜漲 → ❌ 結論
   await expect(page.locator(".lab-verdict.bad")).toContainText("沒有任何模型贏過「永遠猜漲」（這段期間 57.2% 的時候是漲的）");
   await expect(page.getByRole("cell", { name: "0.995" })).toBeVisible();
+
+  // ③ 市場狀態：現在的狀態、各狀態統計
+  const regime = page.locator("#regime");
+  await expect(regime.locator(".regime-now-name")).toHaveText("修正下跌");
+  await expect(regime).toContainText("第 12 個交易日");
+  await expect(regime.locator("tr.best")).toContainText("現在");
+  await expect(regime.locator(".regime-legend")).toContainText("高波動（恐慌）");
+  await t.expectNoErrors();
+});
+
+test("今日總覽：最上面顯示市場狀態，點了進 ML 實驗室", async ({ page }) => {
+  const t = trackErrors(page);
+  await mockMl(page);
+  await page.goto("/");
+  const bar = page.locator(".regime-bar");
+  await expect(bar).toContainText("美股（VOO）");
+  await expect(bar).toContainText("修正下跌");
+  await expect(bar).toContainText("第 12 天");
+  await bar.click();
+  await expect(page).toHaveURL(/#\/lab$/);
   await t.expectNoErrors();
 });
 

@@ -94,6 +94,24 @@ def test_metrics() -> None:
     assert ml.paired_t_pvalue(np.array([0.1, -0.1, 0.1, -0.1, 0.0])) > 0.3
 
 
+def test_regime_names() -> None:
+    """分群命名：依特性對應、名稱不重複；反彈與強勢上漲用離高點多遠區分"""
+    c = pd.DataFrame({"ret20": [0.05, -0.06, 0.01, -0.02], "vol20": [0.20, 0.35, 0.10, 0.16], "dd": [-0.12, -0.18, -0.01, -0.05]}, index=[0, 1, 2, 3])
+    assert ml.name_regimes(c) == {1: "panic", 3: "down", 2: "calm", 0: "rebound"}
+    c.loc[0, "dd"] = -0.02
+    assert ml.name_regimes(c)[0] == "rally"
+    res = ml.run_regimes(fake_prices(900, seed=5))
+    assert res and res["current"]["key"] in ml.REGIME_NAMES and res["current"]["days"] >= 1
+    assert abs(sum(s["share"] for s in res["states"]) - 100) < 0.5
+    assert len(res["timeline"]["time"]) == len(res["timeline"]["state"]) == len(res["timeline"]["close"])
+    # 特徵只用過去：竄改未來不影響今天
+    df = fake_prices(600, seed=6)
+    a = ml.regime_features(df).iloc[:400]
+    t = df.copy()
+    t.iloc[460:] *= 2
+    pd.testing.assert_frame_equal(a, ml.regime_features(t).iloc[:400])
+
+
 def test_end_to_end() -> None:
     """整個流程跑得完；波動會群聚的資料上，ML／HAR 要贏過「過去 20 天」；方向在隨機漫步上贏不了"""
     frames = {f"S{i}": fake_prices(900, seed=10 + i) for i in range(5)}
@@ -114,7 +132,7 @@ def test_end_to_end() -> None:
 
 
 def main() -> None:
-    tests = [test_no_lookahead, test_targets_use_only_future, test_taiwan_uses_previous_us_day, test_purge, test_metrics, test_end_to_end]
+    tests = [test_no_lookahead, test_targets_use_only_future, test_taiwan_uses_previous_us_day, test_purge, test_metrics, test_regime_names, test_end_to_end]
     for t in tests:
         t()
         print(f"  ✓ {t.__doc__.strip().splitlines()[0] if t.__doc__ else t.__name__}")

@@ -417,3 +417,130 @@ def _stats(per: pd.Series) -> dict:
         "annual": round(((1 + total) ** (1 / years) - 1) * 100, 1) if years > 0 and total > -1 else None,
         "sharpe": round(float(np.mean(a)) / sd * math.sqrt(TRADING_DAYS / HORIZON), 2) if sd > 0 else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# ③ 市場狀態分群（描述「現在的市場是什麼樣子」，不是預測）
+# ---------------------------------------------------------------------------
+
+REGIME_MARKETS = {"VOO": "美股（VOO）", "0050.TW": "台股（0050）"}
+# 狀態名稱（依各群的特性自動對應，見 name_regimes）
+REGIME_NAMES = {
+    "calm": "平穩（低波動）",
+    "rally": "強勢上漲",
+    "rebound": "反彈回升",
+    "down": "修正下跌",
+    "panic": "高波動（恐慌）",
+}
+REGIME_ORDER = ["calm", "rally", "rebound", "down", "panic"]
+REBOUND_DD = -0.08  # 上漲的那群如果平均離高點還有 8% 以上 → 是「大跌後的反彈」，不是「強勢上漲」
+REGIME_FWD = 20  # 「之後 20 個交易日」的表現
+
+
+def regime_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    每天的三個特徵（都只用當天以前的資料）：
+      ret20  近 20 天報酬（趨勢）
+      vol20  近 20 天年化波動（風險）
+      dd     距離近一年最高點跌了多少（回檔深度）
+    """
+    c = df["Close"]
+    r = np.log(c).diff()
+    return pd.DataFrame(
+        {
+            "ret20": c / c.shift(20) - 1,
+            "vol20": r.rolling(20).std() * math.sqrt(TRADING_DAYS),
+            "dd": c / c.rolling(252, min_periods=60).max() - 1,
+        },
+        index=df.index,
+    ).dropna()
+
+
+def name_regimes(centers: pd.DataFrame) -> dict[int, str]:
+    """
+    把 K-means 的 4 群對應到名稱（每次重新分群，群的編號都可能不同，所以依特性命名）：
+      波動最大的 → panic（恐慌）；剩下報酬最差的 → down（修正下跌）；
+      剩下兩群中波動較低的 → calm（平穩）；最後一群：離高點還很遠 → rebound（反彈），否則 → rally（強勢上漲）
+    依序挑、每群只用一次，名稱不會重複。centers 欄位：ret20、vol20、dd（原始單位的群中心）
+    """
+    left = list(centers.index)
+    out: dict[int, str] = {}
+    panic = max(left, key=lambda k: centers.loc[k, "vol20"])
+    out[panic] = "panic"
+    left.remove(panic)
+    down = min(left, key=lambda k: centers.loc[k, "ret20"])
+    out[down] = "down"
+    left.remove(down)
+    calm = min(left, key=lambda k: centers.loc[k, "vol20"])
+    out[calm] = "calm"
+    left.remove(calm)
+    for k in left:
+        out[k] = "rebound" if centers.loc[k, "dd"] < REBOUND_DD else "rally"
+    return out
+
+
+def run_regimes(df: pd.DataFrame, timeline_days: int = 756) -> dict | None:
+    """單一市場的分群結果：目前狀態、各狀態的統計、時間軸"""
+    from sklearn.cluster import KMeans
+    from sklearn.preprocessing import StandardScaler
+
+    feat = regime_features(df)
+    if len(feat) < 200:
+        return None
+    X = StandardScaler().fit_transform(feat.to_numpy())
+    km = KMeans(n_clusters=4, n_init=10, random_state=0).fit(X)
+    labels = pd.Series(km.labels_, index=feat.index)
+    centers = feat.groupby(labels).mean()
+    names = name_regimes(centers)
+    state = labels.map(names)
+
+    c = df["Close"].reindex(feat.index)
+    fwd = c.shift(-REGIME_FWD) / c - 1
+    r = np.log(df["Close"]).diff().reindex(feat.index)
+    fwd_vol = r[::-1].rolling(REGIME_FWD).std()[::-1].shift(-1) * math.sqrt(TRADING_DAYS)
+
+    # 每一段連續的同一狀態有幾天（平均持續天數）
+    runs = (state != state.shift()).cumsum()
+    run_len = state.groupby(runs).agg(["first", "size"])
+
+    states = []
+    for key in REGIME_ORDER:
+        m = state == key
+        if not m.any():
+            continue
+        f = fwd[m].dropna()
+        lens = run_len[run_len["first"] == key]["size"]
+        states.append({
+            "key": key,
+            "name": REGIME_NAMES[key],
+            "share": round(float(m.mean()) * 100, 1),
+            "ret20": round(float(feat["ret20"][m].mean()) * 100, 1),
+            "vol20": round(float(feat["vol20"][m].mean()) * 100, 1),
+            "dd": round(float(feat["dd"][m].mean()) * 100, 1),
+            "fwdRet": None if f.empty else round(float(f.mean()) * 100, 1),
+            "fwdUp": None if f.empty else round(float((f > 0).mean()) * 100),
+            "fwdVol": round(float(fwd_vol[m].dropna().mean()) * 100, 1) if fwd_vol[m].notna().any() else None,
+            "avgDays": round(float(lens.mean()), 1) if len(lens) else None,
+        })
+
+    cur = state.iloc[-1]
+    since = state.index[runs == runs.iloc[-1]][0]
+    tail = state.iloc[-timeline_days:]
+    return {
+        "current": {
+            "key": cur,
+            "name": REGIME_NAMES[cur],
+            "since": since.strftime("%Y-%m-%d"),
+            "days": int((runs == runs.iloc[-1]).sum()),
+            "date": state.index[-1].strftime("%Y-%m-%d"),
+            "ret20": round(float(feat["ret20"].iloc[-1]) * 100, 1),
+            "vol20": round(float(feat["vol20"].iloc[-1]) * 100, 1),
+            "dd": round(float(feat["dd"].iloc[-1]) * 100, 1),
+        },
+        "states": states,
+        "timeline": {
+            "time": [d.strftime("%Y-%m-%d") for d in tail.index],
+            "close": [round(float(v), 2) for v in c.reindex(tail.index)],
+            "state": list(tail),
+        },
+    }

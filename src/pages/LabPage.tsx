@@ -5,9 +5,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import LabLineChart, { type LabLine } from "../components/lab/LabLineChart";
+import RegimeChart from "../components/lab/RegimeChart";
 import { loadMl } from "../lib/data";
 import { t } from "../lib/i18n";
-import { dirConclusion, fmtP, volConclusion, type MlData } from "../lib/ml";
+import { REGIME_COLOR, dirConclusion, fmtP, volConclusion, type MlData } from "../lib/ml";
 import { MARKET_HREF, chartHref } from "../lib/route";
 
 // 圖表數值格式（放在模組層級：同一個函式，圖表才不會每次重畫都重建）
@@ -17,6 +18,7 @@ const fmtRet = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 export default function LabPage() {
   const [data, setData] = useState<MlData | null | undefined>(undefined);
   const [example, setExample] = useState<string>("VOO");
+  const [regimeMarket, setRegimeMarket] = useState<string>("VOO");
 
   useEffect(() => {
     let cancelled = false;
@@ -220,6 +222,78 @@ export default function LabPage() {
           </table>
         </div>
       </section>
+
+      {/* ③ 市場狀態 */}
+      {data.regime && Object.keys(data.regime).length > 0 && (() => {
+        const markets = data.regime;
+        const key = markets[regimeMarket] ? regimeMarket : Object.keys(markets)[0];
+        const m = markets[key];
+        return (
+          <section className="card" aria-labelledby="lab-regime" id="regime">
+            <div className="lab-chart-head">
+              <h3 id="lab-regime" className="section-title">{t("③ 市場狀態分群：現在的市場是什麼樣子")}</h3>
+              <div className="segmented" role="radiogroup" aria-label={t("選擇市場")}>
+                {Object.entries(markets).map(([s, mk]) => (
+                  <button key={s} type="button" role="radio" aria-checked={key === s} className={key === s ? "active" : ""} onClick={() => setRegimeMarket(s)}>
+                    {t(mk.label)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="regime-now">
+              <i className="regime-dot big" style={{ background: `var(${REGIME_COLOR[m.current.key]})` }} aria-hidden="true" />
+              <div>
+                <div className="regime-now-name">{t(m.current.name)}</div>
+                <div className="muted small">
+                  {t("從 {0} 開始，第 {1} 個交易日（資料日期 {2}）", [m.current.since, m.current.days, m.current.date])}
+                </div>
+              </div>
+              <dl className="vol-facts regime-facts">
+                <div><dt>{t("近 20 天報酬")}</dt><dd className="num">{fmtRet(m.current.ret20)}</dd></div>
+                <div><dt>{t("近 20 天年化波動")}</dt><dd className="num">{m.current.vol20}%</dd></div>
+                <div><dt>{t("距離一年高點")}</dt><dd className="num">{m.current.dd}%</dd></div>
+              </dl>
+            </div>
+            <RegimeChart market={m} />
+            <div className="table-scroll">
+              <table className="data-table lab-table">
+                <thead>
+                  <tr>
+                    <th>{t("狀態")}</th>
+                    <th className="num">{t("佔的時間")}</th>
+                    <th className="num">{t("近 20 天報酬")}</th>
+                    <th className="num">{t("年化波動")}</th>
+                    <th className="num">{t("距離高點")}</th>
+                    <th className="num">{t("平均持續")}</th>
+                    <th className="num">{t("之後 20 天平均報酬")}</th>
+                    <th className="num">{t("之後 20 天上漲機率")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {m.states.map((st) => (
+                    <tr key={st.key} className={st.key === m.current.key ? "best" : ""}>
+                      <td>
+                        <i className="swatch" style={{ background: `var(${REGIME_COLOR[st.key]})` }} /> {t(st.name)}
+                        {st.key === m.current.key && <span className="best-tag">{t("現在")}</span>}
+                      </td>
+                      <td className="num">{st.share}%</td>
+                      <td className="num">{fmtRet(st.ret20)}</td>
+                      <td className="num">{st.vol20}%</td>
+                      <td className="num">{st.dd}%</td>
+                      <td className="num">{st.avgDays === null ? "—" : t("{0} 天", [st.avgDays])}</td>
+                      <td className="num">{st.fwdRet === null ? "—" : fmtRet(st.fwdRet)}</td>
+                      <td className="num">{st.fwdUp === null ? "—" : `${st.fwdUp}%`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="hint">
+              {t("用 K-means 把每一天依「近 20 天報酬、近 20 天波動、距離一年高點」分成 4 群，名稱依各群的特性自動命名。這是描述現況，不是預測；「之後 20 天」是歷史上的平均，樣本不多（約 5 年），不代表這次一定會一樣。")}
+            </p>
+          </section>
+        );
+      })()}
 
       <section className="card" aria-labelledby="lab-why">
         <h3 id="lab-why" className="section-title">{t("為什麼波動預測得到，漲跌方向卻預測不了？")}</h3>

@@ -10,6 +10,7 @@
 
 import { dedupeNews, rankMarketNews, recentNews, type EarningsItem, type NewsItem } from "./finnhub";
 import { breadth, topMovers } from "./market";
+import type { MlVolData } from "./ml";
 import { runScreen, sanitizeConditions, type CombineMode, type Condition, type ScreenerData, type ScreenerTicker } from "./screener";
 import { macdStatus, maStatus, rsiStatus } from "./signals";
 import type { TickerSummary } from "./types";
@@ -384,6 +385,8 @@ export function buildMessages(
   previous: NotifyState | null,
   news: NewsBundle | null = null,
   nowSec: number = Math.floor(Date.now() / 1000),
+  /** 市場狀態（ML 實驗室 ③，public/data/ml-vol.json）；沒有就不列 */
+  regime: MlVolData["regime"] | null = null,
 ): DiscordMessage[] {
   const data = withoutExcluded(allData, cfg);
   const messages: DiscordMessage[] = [];
@@ -420,6 +423,8 @@ export function buildMessages(
     .map((s) => bySymbol.get(s))
     .filter((tk): tk is ScreenerTicker => !!tk)
     .map((tk) => `**${tk.symbol}** ${price(tk)}　${fmtPct(tk.changePct)}`);
+  const states = Object.values(regime ?? {});
+  if (states.length > 0) market.unshift(`市場狀態：${states.map((r) => `${r.label} **${r.name}**（第 ${r.days} 天）`).join("・")}`);
   market.push(`上漲 **${b.up}**・下跌 **${b.down}**・平盤 ${b.flat}（共 ${data.tickers.length} 檔）`);
   if (cfg.topMovers > 0) {
     const fmt = (list: ReturnType<typeof topMovers>) => list.map((m) => `${m.ticker.symbol} ${fmtPct(m.change)}`).join("、") || "無";

@@ -47,6 +47,53 @@ export interface PerfStats {
   sharpe: number | null;
 }
 
+// ---- ③ 市場狀態分群 ----
+export type RegimeKey = "calm" | "rally" | "rebound" | "down" | "panic";
+
+export interface RegimeNow {
+  key: RegimeKey;
+  name: string;
+  /** 這個狀態從哪天開始、持續了幾個交易日 */
+  since: string;
+  days: number;
+  date: string;
+  ret20: number;
+  vol20: number;
+  dd: number;
+}
+
+export interface RegimeState {
+  key: RegimeKey;
+  name: string;
+  /** 歷史上有幾 % 的日子處於這個狀態 */
+  share: number;
+  ret20: number;
+  vol20: number;
+  dd: number;
+  /** 之後 20 個交易日的平均報酬 %、上漲機率 %、平均年化波動 % */
+  fwdRet: number | null;
+  fwdUp: number | null;
+  fwdVol: number | null;
+  /** 平均持續幾個交易日 */
+  avgDays: number | null;
+}
+
+export interface RegimeMarket {
+  label: string;
+  current: RegimeNow;
+  states: RegimeState[];
+  timeline: { time: string[]; close: number[]; state: RegimeKey[] };
+}
+
+/** 狀態顏色（CSS 變數）：類別色，不用紅綠，避免和「紅漲綠跌」設定混淆；一律搭配文字名稱 */
+export const REGIME_COLOR: Record<RegimeKey, string> = {
+  calm: "--s1",
+  rally: "--s3",
+  rebound: "--s4",
+  down: "--text-3",
+  panic: "--s2",
+};
+
 export interface MlData {
   generatedAt: string;
   horizon: number;
@@ -72,6 +119,8 @@ export interface MlData {
     byYear: ({ year: number; baseRate: number } & Record<string, number>)[];
     periods: number;
   };
+  /** 舊的 ml.json 沒有 */
+  regime?: Record<string, RegimeMarket>;
 }
 
 /** ml-vol.json：看盤頁卡片用的小檔（每檔的預測＋模型名稱） */
@@ -80,6 +129,8 @@ export interface MlVolData {
   horizon: number;
   models: { key: VolModel["key"]; name: string }[];
   tickers: Record<string, VolTicker>;
+  /** 現在的市場狀態（今日總覽、Discord 用）；舊檔沒有 */
+  regime?: Record<string, RegimeNow & { label: string }>;
 }
 
 export function validMlVol(d: unknown): d is MlVolData {

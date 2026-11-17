@@ -77,7 +77,7 @@ describe("英文翻譯齊全", () => {
     ];
     // ML 實驗室的模型名稱寫在 Python（scripts/ml.py 的 VOL_MODELS／DIR_MODELS），網頁用 t(name) 顯示
     const mlPy = readFileSync(join(__dirname, "../../scripts/ml.py"), "utf8");
-    for (const block of mlPy.matchAll(/^(?:VOL|DIR)_MODELS = \{([\s\S]*?)^\}/gm)) {
+    for (const block of mlPy.matchAll(/^(?:VOL_MODELS|DIR_MODELS|REGIME_NAMES|REGIME_MARKETS) = \{([\s\S]*?)^\}/gm)) {
       for (const m of block[1].matchAll(/:\s*"([^"]+)"/g)) labels.push(m[1]);
     }
     labels.push("偏高", "略高", "一般", "略低", "偏低");

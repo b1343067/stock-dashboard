@@ -46,7 +46,7 @@ test("今日總覽：即時損益、停損排最前、異常波動＋新聞、�
   const tickerFiles: string[] = [];
   page.on("request", (r) => {
     const m = r.url().match(/\/data\/([^/?]+)\.json/);
-    if (m && !["index", "screener", "fx"].includes(m[1])) tickerFiles.push(m[1]);
+    if (m && !["index", "screener", "fx", "ml-vol"].includes(m[1])) tickerFiles.push(m[1]); // ml-vol：市場狀態（小檔）
   });
   // 只送代號，不送股數或成本
   const apiUrls: string[] = [];

@@ -224,3 +224,14 @@ describe("新聞與財報卡片", () => {
     expect(titles).toEqual(["📊", "📰", "👀", "🔎", "📅"].map((x) => x.slice(0, 2)));
   });
 });
+
+describe("市場狀態（ML 實驗室 ③）", () => {
+  it("放在市場摘要第一行；沒有資料就不列", () => {
+    const regime = { VOO: { label: "美股（VOO）", key: "down" as const, name: "修正下跌", since: "2026-10-30", days: 12, date: "2026-11-16", ret20: -3, vol20: 20, dd: -5 } };
+    const withR = buildMessages(data, cfg, "2026-01-03", null, null, 1, regime);
+    const market = withR.flatMap((m) => m.embeds).find((e) => e.title.startsWith("📊"))!;
+    expect(market.description.split("\n")[0]).toBe("市場狀態：美股（VOO） **修正下跌**（第 12 天）");
+    const without = buildMessages(data, cfg, "2026-01-03", null).flatMap((m) => m.embeds).find((e) => e.title.startsWith("📊"))!;
+    expect(without.description).not.toContain("市場狀態");
+  });
+});

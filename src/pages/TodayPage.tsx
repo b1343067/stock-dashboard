@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import EarningsPanel from "../components/today/EarningsPanel";
 import HoldingsLive from "../components/today/HoldingsLive";
+import RegimeBar from "../components/RegimeBar";
 import NewsPanel from "../components/today/NewsPanel";
 import SignalBoard from "../components/today/SignalBoard";
 import notifyConfig from "../../config/notify.json";
@@ -111,6 +112,7 @@ export default function TodayPage({ index, indexError, redUp }: Props) {
         </div>
       </div>
       {indexError && <p className="error">{t("無法讀取股票清單：{0}", [indexError])}</p>}
+      <RegimeBar />
 
       <HoldingsLive summary={summary} settings={settings} fx={fx} redUp={redUp} status={summary ? live.status : "idle"} updatedAt={live.updatedAt} />
 
