@@ -1,10 +1,14 @@
 # 每日自動更新股價資料
-# 台灣時間每天早上 6:00（= UTC 22:00）執行，也可以在 Actions 頁面手動觸發
+# 台灣時間每天早上 6:17 執行，7:47 再跑一次當備援；也可以在 Actions 頁面手動觸發
 name: 更新股價資料
 
 on:
+  # GitHub 的排程在整點（特別是 UTC 0 點附近）負載最高，常被延遲好幾個小時甚至取消，
+  # 所以刻意避開整點，並排兩次：第一次成功的話，第二次會在「檢查」步驟直接跳過。
+  # 同一個資料日期的 Discord 通知只會送一次（scripts/notify.ts 用 data 分支上的 notify-state.json 判斷）。
   schedule:
-    - cron: "0 22 * * *"
+    - cron: "17 22 * * *"   # 台灣 06:17（美股收盤後約 1 小時）
+    - cron: "47 23 * * *"   # 台灣 07:47：備援，第一次沒跑或有股票抓失敗時補上
   workflow_dispatch: {}        # 允許手動觸發（Actions → 更新股價資料 → Run workflow）
   # 修改觀察清單或資料腳本並推到 main 時，也自動重抓一次
   # （Actions 自己 commit 的 public/data 不在清單內，不會無限循環）
@@ -45,7 +49,28 @@ jobs:
             echo "還沒有 data 分支，從頭開始"
           fi
 
+      # 備援排程：如果「美股這次收盤之後」已經成功更新過（每一檔都成功），第二次排程就不用再跑。
+      # 判斷基準是最近一次 UTC 22:00（台灣 06:00，美股已收盤）：之後更新的資料才算今天的收盤資料。
+      # （不能只看「幾小時內更新過」：收盤前推程式碼觸發的更新，抓到的還是前一天的資料）
+      # 只對「排程」觸發的執行生效；手動執行和推程式碼觸發的一律照跑。
+      - name: 檢查今天是否已經更新過
+        id: fresh
+        run: |
+          skip=false
+          if [ "${{ github.event_name }}" = "schedule" ] && git rev-parse -q --verify FETCH_HEAD >/dev/null; then
+            now=$(date -u +%s)
+            boundary=$(date -u -d "$(date -u +%F) 22:00" +%s)
+            [ "$now" -lt "$boundary" ] && boundary=$((boundary - 86400))
+            updated=$(git log -1 --format=%ct FETCH_HEAD)
+            failed=$(python3 -c "import json;print(len(json.load(open('public/data/status.json'))['summary']['failed']))" 2>/dev/null || echo 999)
+            echo "資料更新於 $(date -u -d @"$updated" '+%F %H:%M') UTC；基準 $(date -u -d @"$boundary" '+%F %H:%M') UTC；上次失敗 ${failed} 檔"
+            if [ "$updated" -ge "$boundary" ] && [ "$failed" = "0" ]; then skip=true; fi
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+          if [ "$skip" = "true" ]; then echo "今天已經成功更新過，這次排程略過（不重抓、不重新部署、不重送通知）"; fi
+
       - name: 安裝 Python
+        if: steps.fresh.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -53,12 +78,15 @@ jobs:
           cache-dependency-path: scripts/requirements.txt
 
       - name: 安裝套件
+        if: steps.fresh.outputs.skip != 'true'
         run: pip install -r scripts/requirements.txt
 
       - name: 檢查指標計算
+        if: steps.fresh.outputs.skip != 'true'
         run: python scripts/test_indicators.py
 
       - name: 抓取資料並計算指標
+        if: steps.fresh.outputs.skip != 'true'
         # 個別股票失敗會保留舊檔；全部失敗才會讓這一步變紅色（後面的步驟就不會執行）
         run: python scripts/fetch_data.py
 
@@ -66,15 +94,18 @@ jobs:
       # 用網站篩選器同一套程式判斷（scripts/notify.ts），所以需要 Node。
       # 沒有設定 DISCORD_WEBHOOK_URL 就只在記錄裡印出結果；通知失敗不影響資料發布。
       - name: 安裝 Node（篩選通知用）
+        if: steps.fresh.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22   # 和 ci.yml 相同
           cache: npm
 
       - name: 安裝前端套件（篩選通知用）
+        if: steps.fresh.outputs.skip != 'true'
         run: npm ci --no-audit --no-fund
 
       - name: 送出每日篩選通知
+        if: steps.fresh.outputs.skip != 'true'
         continue-on-error: true
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -83,6 +114,7 @@ jobs:
         run: npx vite-node scripts/notify.ts
 
       - name: 發布資料到 data 分支（只保留最新一份）
+        if: steps.fresh.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -98,6 +130,7 @@ jobs:
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:data
 
       - name: 通知 Vercel 重新部署（更新 main 上的資料版本檔）
+        if: steps.fresh.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

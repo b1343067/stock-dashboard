@@ -34,7 +34,7 @@
 - `scripts/data_quality.py`：`to_exchange_dates()`（先換成交易所時區再取日期，避免台美差一天）、`repair_daily()`（少量問題自動修：高低價、台股週六補班日、零星空白／≤0，比例上限 5%）、`validate_daily()`（剩下的嚴重問題 → 不寫檔）
 - `scripts/fetch_data.py`：每批 10 檔、批次間休息；每檔重試 3 次（2/4/8 秒）＋下載失敗者最後再一輪；`process_symbol()` 吃掉所有錯誤，單檔失敗不中斷；匯率歷史寫 `fx.json`；全部失敗 exit 1 且不寫檔。測試時設 `FETCH_SLEEP_SCALE=0` 跳過等待
 - `scripts/generate_sample_data.py`：固定種子的隨機漫步範例資料，`sample: true`（會覆蓋 public/data）；`--missing-only` 只補沒有資料檔的股票（本機預覽用，不要 commit）
-- `.github/workflows/update-data.yml`：cron `0 22 * * *`（台灣 06:00）、手動觸發、改到 config/scripts 推到 main 時也會跑。流程：從 data 分支取回舊資料 → 抓取 → 強制推送 data 分支（單一 commit）→ 改 main 的 `.data-version` 觸發 Vercel
+- `.github/workflows/update-data.yml`：cron `17 22 * * *`（台灣 06:17）＋備援 `47 23 * * *`（07:47），刻意避開整點（GitHub 整點排程常延遲數小時或被丟掉，2026-11-17 實際發生過）；「檢查今天是否已經更新過」步驟：排程觸發時，若 data 分支在最近一次 UTC 22:00 之後已更新且 status.json 沒有失敗 → 後面步驟全部略過（不重抓、不部署、不重送通知），否則照跑補抓。手動觸發、改到 config/scripts 推到 main 時也會跑（一律不略過）。流程：從 data 分支取回舊資料 → 抓取 → 強制推送 data 分支（單一 commit）→ 改 main 的 `.data-version` 觸發 Vercel
 - `scripts/pull-data.sh`：從 codeload 下載 data 分支到 `public/data`（Vercel buildCommand、CI、`npm run data:pull` 都用它）；失敗回傳錯誤 → Vercel 建置失敗、線上維持上一版。`DATA_URL` 可覆蓋網址（測試用）
 - `public/data/status.json`：每次更新每檔的結果（ok／download／invalid）、原因、自動修正內容；線上 `/data/status.json` 可直接看
 - `vercel.json`：`git.deploymentEnabled.data = false`（data 分支不部署）
