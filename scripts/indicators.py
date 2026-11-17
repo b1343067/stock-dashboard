@@ -176,6 +176,45 @@ def frame_to_series_json(df: pd.DataFrame) -> dict:
     }
 
 
+def _r(v, digits: int = 6):
+    """狀態值保留 6 位小數（比畫面上的 2 位精確，盤中預估才會和收盤後的結果一致）；NaN → None"""
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(f) or math.isinf(f) else round(f, digits)
+
+
+def live_base(close: pd.Series, period: int = 14) -> dict:
+    """
+    「盤中預估」需要的計算狀態（今日總覽用）。
+    網頁拿到即時價後，把它當成「下一根 K 棒的收盤」，用這些狀態直接算出新的指標，
+    結果和收盤後用完整歷史重算的一模一樣，不用下載整檔 10 年資料：
+      sumN       最近 N−1 根收盤的加總（N = 10/20/50/200）→ 新 MA_N = (sumN + 價格) ÷ N
+      sumSq20    最近 19 根收盤的平方和 → 布林通道的標準差
+      avgGain／avgLoss  Wilder RSI 的平均漲跌幅 → 新的 RSI
+      ema12／ema26／signal  MACD 的指數平均 → 新的 DIF、DEA、柱狀體
+    """
+    c = close.dropna()
+    out: dict = {"close": _r(c.iloc[-1]) if len(c) else None}
+    for n in MA_WINDOWS:
+        out[f"sum{n}"] = _r(c.iloc[-(n - 1):].sum()) if len(c) >= n - 1 else None
+    out["sumSq20"] = _r((c.iloc[-19:] ** 2).sum()) if len(c) >= 19 else None
+    delta = c.diff()
+    gain = delta.clip(lower=0).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    loss = (-delta.clip(upper=0)).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    out["avgGain"] = _r(gain.iloc[-1]) if len(c) else None
+    out["avgLoss"] = _r(loss.iloc[-1]) if len(c) else None
+    ema12 = c.ewm(span=12, adjust=False).mean()
+    ema26 = c.ewm(span=26, adjust=False).mean()
+    sig = (ema12 - ema26).ewm(span=9, adjust=False).mean()
+    enough = len(c) >= 26
+    out["ema12"] = _r(ema12.iloc[-1]) if enough else None
+    out["ema26"] = _r(ema26.iloc[-1]) if enough else None
+    out["signal"] = _r(sig.iloc[-1]) if enough else None
+    return out
+
+
 def build_ticker_payload(daily: pd.DataFrame, meta: dict) -> dict:
     """
     輸入：完整的日線 OHLCV（建議 10 年，讓月線 MA 有足夠資料）
@@ -195,6 +234,8 @@ def build_ticker_payload(daily: pd.DataFrame, meta: dict) -> dict:
     return {
         **meta,
         "lastDate": d.index[-1].strftime("%Y-%m-%d"),
+        # 盤中預估用的狀態（用完整 10 年資料算，不是截斷後的）
+        "liveBase": live_base(daily["Close"]),
         "lastClose": round(float(last["Close"]), 2),
         "changePct": round(float(change_pct), 2),
         "daily": frame_to_series_json(d),

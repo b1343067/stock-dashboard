@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { IndexData, TickerSummary } from "../lib/types";
 import { useStoredState } from "../lib/storage";
-import { ANALYSIS_HREF, MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, type Page } from "../lib/route";
+import { MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, TODAY_HREF, type Page } from "../lib/route";
 import { matchesQuery } from "../lib/watchlist";
 import { getLang, locale, setLang, t, useLang } from "../lib/i18n";
 
@@ -26,13 +26,20 @@ type ThemePref = "auto" | "light" | "dark";
 const THEME_LABEL: Record<ThemePref, string> = { auto: "跟隨系統", light: "淺色", dark: "深色" };
 const NEXT: Record<ThemePref, ThemePref> = { auto: "light", light: "dark", dark: "auto" };
 
+// 導覽列 5 格（手機底部也是這 5 格）。「組合分析」放在投資組合頁裡面（使用者選的），
+// 在分析頁時讓「組合」分頁顯示為選中，見 navActive()。
 export const NAV_ITEMS = (chartHref: string): [Page, string, string, string][] => [
+  ["today", t("今日"), t("今日"), TODAY_HREF],
   ["market", t("市場"), t("市場"), MARKET_HREF],
   ["chart", t("看盤"), t("看盤"), chartHref],
   ["screener", t("篩選器"), t("篩選"), SCREENER_HREF],
   ["portfolio", t("投資組合"), t("組合"), PORTFOLIO_HREF],
-  ["analysis", t("組合分析"), t("分析"), ANALYSIS_HREF],
 ];
+
+/** 目前頁面對應到哪一個分頁（分析頁 → 組合；比較頁 → 看盤） */
+export function navActive(page: Page): Page {
+  return page === "analysis" ? "portfolio" : page === "compare" ? "chart" : page;
+}
 
 export default function Header({ index, redUp, onToggleRedUp, page, chartHref, onPickSymbol, alertCount, onOpenAlerts }: Props) {
   const [theme, setTheme] = useStoredState<ThemePref>("theme", "auto");
@@ -48,7 +55,7 @@ export default function Header({ index, redUp, onToggleRedUp, page, chartHref, o
 
   return (
     <header className="header">
-      <a className="brand" href={MARKET_HREF} aria-label={t("投資看盤首頁（市場總覽）")}>
+      <a className="brand" href={TODAY_HREF} aria-label={t("投資看盤首頁（今日總覽）")}>
         <span className="brand-mark" aria-hidden="true">
           <svg width="15" height="15" viewBox="0 0 14 14">
             <path d="M2 10 L5.5 6 L8 8.5 L12 3" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -59,7 +66,7 @@ export default function Header({ index, redUp, onToggleRedUp, page, chartHref, o
 
       <nav className="tabs" aria-label={t("頁面")}>
         {NAV_ITEMS(chartHref).map(([p, label, , href]) => (
-          <a key={p} href={href} className={page === p ? "active" : ""} aria-current={page === p ? "page" : undefined}>
+          <a key={p} href={href} className={navActive(page) === p ? "active" : ""} aria-current={navActive(page) === p ? "page" : undefined}>
             {label}
           </a>
         ))}

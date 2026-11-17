@@ -22,7 +22,7 @@ test("PWA：有 manifest 與圖示；離線時仍能打開網站、看上次的�
   // 再打開一次（這時 Service Worker 已經接手，會把網頁、程式、資料存起來）
   await page.reload();
   await expect(page.locator(".chart-canvas canvas").first()).toBeVisible();
-  await page.goto("/"); // 市場總覽也存一份
+  await page.goto("/#/market"); // 市場總覽也存一份
   await expect(page.locator(".heat-tile").first()).toBeVisible();
 
   // 斷網後重新整理：網站照常顯示，並提示目前離線

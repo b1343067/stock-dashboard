@@ -42,7 +42,7 @@
 
 ### 前端（`src/`）
 - `App.tsx`：外殼（Header 分頁、資料過期／範例資料 banner、Footer），依 `route.page` 以 `React.lazy` 載入 `pages/` 的頁面
-- `lib/route.ts`：hash 路由：空白或 `#/market`（市場總覽，預設首頁）、`#/代號/週期`（daily|weekly|monthly；`#//daily` = 選第一檔）、`#/screener`、`#/portfolio`、`#/analysis`；`chartHref()` 產生看圖連結（測試在 route.test.ts）
+- `lib/route.ts`：hash 路由：空白或 `#/today`（今日總覽，預設首頁）、`#/market`（市場總覽）、`#/代號/週期`（daily|weekly|monthly；`#//daily` = 選第一檔）、`#/screener`、`#/portfolio`、`#/analysis`；`chartHref()` 產生看圖連結（測試在 route.test.ts）
 - `lib/types.ts`：**JSON 格式的 TypeScript 定義，改 Python 輸出時必須同步修改**
 - `lib/data.ts`：讀 JSON（帶快取、驗證）：`loadIndex`、`loadTicker`、`loadScreener`、`loadFxHistory`（沒有檔案回傳 null）
 - `lib/freshness.ts`：`checkFreshness()`，最新資料落後 3 個平日以上就在頁首提醒
@@ -52,13 +52,16 @@
 - `lib/theme.ts`：從 CSS 變數讀圖表顏色；顏色只在 `styles.css` 的 `:root` 定義（`--s1`／`--s2` 類別色、`--div-*` 發散色，已用資料視覺化指引的驗證工具檢查過）
 - `lib/format.ts`：`fmtMoney`／`fmtPct`／`fmtFixed`／`pnlClass`（漲跌顏色跟著 redUp）
 - 看盤：`pages/ChartPage.tsx`（報價標頭）、`components/StockChart.tsx`（lightweight-charts v5；MACD／RSI 窗格展開才建立；趨勢外推虛線）、`components/StatusCards.tsx`＋`lib/signals.ts`（白話狀態卡）、`components/TrendCard.tsx`、`components/Sparkline.tsx`（觀察清單迷你走勢，資料來自 `index.json` 的 `spark`）
+- 導覽列 5 格（使用者選的）：今日、市場、看盤、篩選、組合；**組合分析放在投資組合頁裡**（`#/analysis` 仍可用，`navActive()` 讓它亮「組合」）
+- 今日總覽（首頁）：`pages/TodayPage.tsx`＋`components/today/`（HoldingsLive、SignalBoard、NewsPanel、EarningsPanel）；計算 `lib/today.ts`（`estimateBar` 用 screener.json 的 `liveBase` 狀態算盤中預估、`isNewSession` 報價日期 > 最後一根才預估、`recentEvents`／`intradayEvents`、`liveHoldings` 今日損益與停利停損排序、`newsTargets`、`bigMovers`）；`lib/live.ts`（`useLiveQuotes` 每 60 秒、分頁在背景暫停；`useNews`／`useEarnings`；失敗一律退回收盤資料）。watch 清單直接 import `config/notify.json`。沒有自己的持股（範例或空的）→ 顯示提示，不顯示範例數字（使用者選 A）
+- Vercel 函式 `api/quote.ts`、`api/news.ts`、`api/earnings.ts`（Web 標準 `export async function GET(request)`；`_lib.ts` 不會變成網址：`getKey`、記憶體 `cached`、`json` 帶 CDN `s-maxage`）。金鑰 `FINNHUB_API_KEY` 只在 Vercel 環境變數，用 `X-Finnhub-Token` 標頭送（不放網址）；**import 要寫 `.js` 副檔名**（package.json 是 `"type": "module"`）；共用解析在 `src/lib/finnhub.ts`（不 import 任何檔案）。本機 `vite preview` 沒有 /api → 404 → 頁面走 fallback；E2E 用 `page.route` 模擬，`helpers.ts` 忽略 /api 的資源載入錯誤。Service Worker 不處理 `/api/`（快取版本 v2）
 - 頁首：`components/Header.tsx`（分頁、快速搜尋、提醒鈴鐺、紅漲綠跌、深淺色）、`components/BottomNav.tsx`（手機，5 個分頁）
 - 畫圖工具：`lib/drawings.ts`（`handleClick`、`sanitizeDrawings`、key `drawings:代號:週期`）、`components/DrawingTools.tsx`；StockChart 用**容器的原生 click 事件**＋`coordinateToLogical`／`coordinateToPrice` 換算（`chart.subscribeClick` 連點時會被當成雙擊而漏掉），並忽略拖曳（移動 > 5px）；畫的線 `autoscaleInfoProvider: () => null` 不影響 Y 軸。ChartPage 不用 `useStoredState`（key 隨股票變動時它不會重讀）
 - 基本面：`scripts/fundamentals.py`（`price_stats` 從日線算 52 週高低與 TTM 殖利率；`clean_info` 讀 `Ticker.info`；`merge_fundamentals` 抓不到時沿用上次與 `infoDate`；`FETCH_INFO=0` 可跳過）；前端 `lib/fundamentals.ts`、`components/FundamentalsCard.tsx`；篩選器基本面條件 `peBelow`／`yieldAbove`／`near52High`／`near52Low`（`KIND_META.noTf`，不顯示週期）
 - 走勢比較：`pages/ComparePage.tsx`＋`lib/compare.ts`（`normalize`／`compareStats`／`parseSymbols`），路由 `#/compare/A,B`（route.symbol 放逗號字串），最多 4 檔；線色 `--s1`～`--s4`（已用驗證工具檢查，淺色背景下黃綠對比 < 3:1，所以一定要有直接標籤＋表格）
 - 效率前緣：`analytics.ts` 的 `simulatePortfolios`（固定種子亂數＋投影到 5%～45%）、`frontierEnvelope`；`components/analysis/FrontierChart.tsx`（SVG，標籤依兩點相對位置擺放避免重疊）
 - PWA：`public/manifest.webmanifest`、`public/icons/`、`public/sw.js`（手寫：頁面與 /data 網路優先、/assets 快取優先；**改快取策略時要改 cache 名稱版本**）；main.tsx 只在 PROD 註冊；App 有離線提示
-- 市場總覽：`pages/MarketPage.tsx`＋`lib/market.ts`（`periodChange`／`breadth`／`topMovers`／`categoryStats`／`heatIntensity`）；只用 index.json（含 spark 算 30 天漲跌），**首頁不可下載個股檔案**（E2E 檢查）
+- 市場總覽（`#/market`）：`pages/MarketPage.tsx`＋`lib/market.ts`（`periodChange`／`breadth`／`topMovers`／`categoryStats`／`heatIntensity`）；只用 index.json（含 spark 算 30 天漲跌），**首頁不可下載個股檔案**（E2E 檢查）
 - 價格提醒：`lib/alerts.ts`（條件、`evaluateAlert`、`alertState`、`acknowledge`）、`lib/alertsStore.ts`（`useSyncExternalStore` 共用狀態、`useAlertQuotes`：只有 RSI 提醒時才載入 screener.json）、`components/AlertsPanel.tsx`（lazy，桌機右側／手機底部滑出）、`components/AlertBanner.tsx`；App 統一計算 triggered
 - 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合；均線交叉 `maCrossUp/Down` 用 `ma`＋`ma2`、成交量 `volSpike` 用 screener.json 的 `volume`，平均不含最新一根）、`pages/ScreenerPage.tsx`、`components/screener/`
 - 每日 Discord 通知：`config/notify.json`（公開檔案，只放關注清單與條件、不放持股：`benchmarks`、`exclude`（使用者不想看 0050）、`topMovers`、`watch`、`bigMovePct`、`near52wPct`、`priceAlerts`（穿越才通知）、`danger`／`rules` 規則＝篩選器條件格式）→ `scripts/notify.ts`（Actions 用 `npx vite-node` 執行）＋`lib/notify.ts` 純函式（`sanitizeNotifyConfig`、`evaluateSignals` 依股票合併並和昨天比較標 🆕、`findAlerts` 特別注意、`stockLine` 用 signals.ts 的狀態、`buildMessages` 產生 Discord embed：第 1 則 🚨 特別注意（有大事才有）、第 2 則 📊 市場／👀 關注／⚠️ 危險／✅ 偏多（0 檔不列），超過 6000 字拆則）。使用者要的是「精簡卡片＋危險股票也要列出」。紀錄存 `public/data/notify-state.json`（用 `dataKeyOf()`＝各幣別的最新日期判斷同一份資料只通知一次，不能只看單一最新日期：台股盤中資料曾讓隔天通知被誤判成已送；`NOTIFY_FORCE=1` 強制，手動執行「更新股價資料」時自動帶入；`NOTIFY_STRICT=1` 失敗時結束碼 1）；`.github/workflows/notify-test.yml`「測試 Discord 通知」只下載 data 分支＋強制送出；Webhook 在 GitHub Secret `DISCORD_WEBHOOK_URL`（已設定）；範例資料不通知。篩選器新增事件型條件 `priceCrossUpMa`／`priceCrossDownMa`、`rsiDrop`
@@ -79,7 +82,7 @@
 
 - `public/data/<代號>.json`：`{symbol,name,currency,sample,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?}`（fundamentals 見 `types.ts` 的 `Fundamentals`），每個週期為欄位導向物件：`time,open,high,low,close,volume,ma10,ma20,ma50,ma200,rsi,macd,signal,hist,bbUpper,bbMiddle,bbLower`。日線保留最近 1260 筆（指標先用完整 10 年算再截斷），週／月線保留全部。
 - `public/data/index.json`：`{generatedAt,sample,fx:{USDTWD},riskFree,categories:[...],tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,sample,spark:[最近 30 天收盤]}]}`（riskFree 為年化小數，抓不到沿用上次）
-- `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?:{pe,forwardPe,pb,dividendYield,high52w,low52w}}]}`，每週期只有 time/close/volume/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
+- `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?:{pe,forwardPe,pb,dividendYield,high52w,low52w},liveBase?:{close,sum10,sum20,sum50,sum200,sumSq20,avgGain,avgLoss,ema12,ema26,signal}}]}`（liveBase 由 `indicators.live_base()` 用完整歷史算、6 位小數，盤中預估用），每週期只有 time/close/volume/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
 - `public/data/fx.json`：`{USDTWD:{time,close}}`；沒有時分析頁用最新匯率近似並提示
 
 ### localStorage key（都有 `stockdash:` 前綴）
@@ -106,7 +109,7 @@
 - 預設紅漲綠跌（台灣習慣），可切換；任何「漲／跌／偏多／偏空」的顏色都要跟著 `redUp` 設定。
 - 台股 `currency: "TWD"`；任何跨幣別加總（市值、權重、報酬）前都要換成美元（最新值用 `fx.USDTWD`，歷史用 `fx.json`）。
 - 年化：日報酬 × 252、波動 × √252；無風險利率是年化小數。
-- 不加後端、不加需要金鑰的 API；新套件盡量少。
+- 不加資料庫；唯一的後端是 Vercel 函式 `api/*`（只代查 Finnhub）。金鑰一律放環境變數：Vercel `FINNHUB_API_KEY`、GitHub Secrets `DISCORD_WEBHOOK_URL`（＋第三件的 `FINNHUB_API_KEY`）。新套件盡量少。
 - 第三方腳本若需 CDN，版本要固定。
 
 ## 開發路線

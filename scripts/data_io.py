@@ -184,6 +184,9 @@ def build_screener(watchlist: dict, generated_at: str) -> dict:
             series = payload[tf]
             item[tf] = {f: series[f][-SCREENER_BARS:] for f in SCREENER_FIELDS}
         # 基本面條件（本益比、殖利率、52 週高低）用；舊檔案沒有就不放
+        # 盤中預估用的計算狀態（舊檔案沒有就不放，網頁會略過盤中預估）
+        if isinstance(payload.get("liveBase"), dict):
+            item["liveBase"] = payload["liveBase"]
         fund = payload.get("fundamentals")
         if isinstance(fund, dict):
             item["fundamentals"] = {k: fund.get(k) for k in SCREENER_FUNDAMENTALS}

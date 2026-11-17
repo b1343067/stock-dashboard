@@ -203,7 +203,10 @@ export default function AnalysisPage({ index, redUp }: Props) {
   if (held.length === 0) {
     return (
       <div className="card">
-        <h2>{t("組合分析")}</h2>
+        <h2>
+            <a className="back-link" href={PORTFOLIO_HREF}>{t("← 投資組合")}</a>
+            {t("組合分析")}
+          </h2>
         <p className="muted empty">
           {t("還沒有可分析的持股。請先到")}{" "}<a href={PORTFOLIO_HREF}>{t("投資組合")}</a> {" "}{t("輸入持股（需要在觀察清單內、有報價的股票）。")}
         </p>
@@ -221,7 +224,10 @@ export default function AnalysisPage({ index, redUp }: Props) {
 
       <div className="card">
         <div className="screener-head">
-          <h2>{t("組合分析")}</h2>
+          <h2>
+            <a className="back-link" href={PORTFOLIO_HREF}>{t("← 投資組合")}</a>
+            {t("組合分析")}
+          </h2>
           <div className="segmented" role="radiogroup" aria-label={t("分析期間")}>
             {(Object.keys(PERIOD_YEARS) as Period[]).map((p) => (
               <button key={p} type="button" role="radio" aria-checked={period === p} className={period === p ? "active" : ""} onClick={() => setPeriod(p)}>

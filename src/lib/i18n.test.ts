@@ -9,6 +9,7 @@ import { KIND_META as ALERT_META } from "./alerts";
 import { TX_LABEL } from "./transactions";
 import { RANGE_LABEL } from "./compare";
 import { fmtBigMoney } from "./fundamentals";
+import { SIGNAL_LABELS } from "./today";
 
 afterEach(() => _setLangForTest("zh"));
 
@@ -71,6 +72,8 @@ describe("英文翻譯齊全", () => {
       ...Object.values(ALERT_META).flatMap((m) => [m.label, m.unit]),
       ...Object.values(TX_LABEL),
       ...Object.values(RANGE_LABEL),
+      ...SIGNAL_LABELS,
+      "盤前", "盤後", "盤中", "已達停利", "已觸及停損", "接近停利", "接近停損",
     ];
     const config = JSON.parse(readFileSync(join(__dirname, "../../config/watchlist.json"), "utf8")) as { groups: { name: string }[] };
     labels.push(...config.groups.map((g) => g.name), "其他");

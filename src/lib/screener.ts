@@ -38,8 +38,27 @@ export interface ScreenerFundamentals {
   low52w: number | null;
 }
 
+/**
+ * 盤中預估用的計算狀態（Python indicators.live_base 產生；舊資料沒有）。
+ * 把即時價當成下一根收盤，就能直接算出新的指標，見 src/lib/today.ts 的 estimateBar。
+ */
+export interface LiveBase {
+  close: number | null;
+  sum10: number | null;
+  sum20: number | null;
+  sum50: number | null;
+  sum200: number | null;
+  sumSq20: number | null;
+  avgGain: number | null;
+  avgLoss: number | null;
+  ema12: number | null;
+  ema26: number | null;
+  signal: number | null;
+}
+
 export interface ScreenerTicker {
   fundamentals?: ScreenerFundamentals;
+  liveBase?: LiveBase;
   symbol: string;
   name: string;
   nameEn?: string;

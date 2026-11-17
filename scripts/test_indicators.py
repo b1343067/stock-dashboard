@@ -114,6 +114,27 @@ def main() -> None:
     assert fresh["pe"] == 25.12 and fresh["infoDate"] == "2026-11-14" and fresh["high52w"] == 120.0
     assert merge_fundamentals(st, {}, None, "2026-11-14")["pe"] is None
 
+    # ---- 盤中預估的狀態：用狀態＋「下一根收盤」算出的指標，要等於把那根加進去完整重算 ----
+    from indicators import add_indicators, live_base
+    full = pd.DataFrame({"Open": close, "High": close + 1, "Low": close - 1, "Close": close, "Volume": 1}, index=idx)
+    base = live_base(full["Close"].iloc[:-1])
+    nxt = float(full["Close"].iloc[-1])
+    ref = add_indicators(full).iloc[-1]
+    assert abs((base["sum200"] + nxt) / 200 - ref["ma200"]) < 1e-4
+    assert abs((base["sum20"] + nxt) / 20 - ref["ma20"]) < 1e-4
+    a = 1 / 14
+    d = nxt - base["close"]
+    g = (1 - a) * base["avgGain"] + a * max(d, 0)
+    l = (1 - a) * base["avgLoss"] + a * max(-d, 0)
+    assert abs((100 - 100 / (1 + g / l)) - ref["rsi"]) < 1e-3, "RSI 遞推"
+    e12 = base["ema12"] + 2 / 13 * (nxt - base["ema12"])
+    e26 = base["ema26"] + 2 / 27 * (nxt - base["ema26"])
+    sig = base["signal"] + 2 / 10 * ((e12 - e26) - base["signal"])
+    assert abs((e12 - e26) - ref["macd"]) < 1e-4 and abs(sig - ref["signal"]) < 1e-4, "MACD 遞推"
+    mean = (base["sum20"] + nxt) / 20
+    var = (base["sumSq20"] + nxt ** 2) / 20 - mean ** 2
+    assert abs(mean + 2 * var ** 0.5 - ref["bbUpper"]) < 1e-3, "布林上軌"
+
     # ---- 盤中的半根 K 棒要丟掉；收盤後才保留 ----
     from data_quality import drop_incomplete_today, latest_is_blank
     tw = pd.DataFrame({"Close": [100.0, 101.0]}, index=pd.DatetimeIndex(["2026-11-16", "2026-11-17"]))

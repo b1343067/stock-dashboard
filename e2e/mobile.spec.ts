@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 import { expectNoHorizontalScroll, trackErrors } from "./helpers";
 
 for (const [name, path] of [
-  ["市場總覽", "/"],
+  ["今日總覽", "/"],
+  ["市場總覽", "/#/market"],
   ["看盤", "/#/VOO/daily"],
   ["走勢比較", "/#/compare/NVDA,AMD,TSM,2330.TW"],
   ["篩選器", "/#/screener"],

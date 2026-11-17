@@ -31,6 +31,7 @@ import {
 } from "../lib/portfolioStore";
 import type { IndexData } from "../lib/types";
 import { t } from "../lib/i18n";
+import { ANALYSIS_HREF } from "../lib/route";
 
 interface Props {
   index: IndexData | null;
@@ -241,6 +242,10 @@ export default function PortfolioPage({ index, indexError, redUp }: Props) {
         <div className="screener-head">
           <h2>{t("投資組合")}</h2>
           <div className="toolbar">
+            {/* 組合分析放在投資組合裡（導覽列維持 5 格） */}
+            <a className="btn-ghost btn-link-as-button" href={ANALYSIS_HREF}>
+              {t("📊 組合分析 →")}
+            </a>
             {!isTx && (
               <button type="button" className="btn-primary" onClick={() => setEditing("new")} disabled={editing === "new"}>
                 {t("＋ 新增持股")}

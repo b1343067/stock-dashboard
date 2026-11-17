@@ -6,9 +6,9 @@
 //   3. 其他（圖示、manifest）→ 先用快取、背景再更新
 // 這個檔案本身不能被長時間快取（vercel.json 設定 no-cache），改版後瀏覽器才會拿到新版。
 
-const PAGES = "pages-v1";
-const DATA = "data-v1";
-const ASSETS = "assets-v1";
+const PAGES = "pages-v2";
+const DATA = "data-v2";
+const ASSETS = "assets-v2";
 const MAX_ASSETS = 80; // 舊版本的程式檔會累積，超過就刪最舊的
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -66,6 +66,9 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // 外部網址不處理
+  // 即時報價、新聞（Vercel 函式）一律直接走網路、不快取：快取了就不是即時的了。
+  // 離線時請求會失敗，今日總覽會退回顯示收盤資料。
+  if (url.pathname.startsWith("/api/")) return;
 
   if (req.mode === "navigate") {
     // 單頁網站：所有頁面都是同一個 index.html（用 "/" 當作存放的鑰匙）

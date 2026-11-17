@@ -9,7 +9,9 @@ export function trackErrors(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => {
-    if (m.type() === "error") errors.push(m.text());
+    // /api（即時報價、新聞）失敗是預期中的狀況：本機 vite preview 沒有 Vercel 函式，
+    // 網頁會退回收盤資料並顯示提示，所以瀏覽器的「資源載入失敗」不算錯誤
+    if (m.type() === "error" && !(m.text().startsWith("Failed to load resource") && m.location().url.includes("/api/"))) errors.push(m.text());
   });
   return {
     errors,

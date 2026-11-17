@@ -1,4 +1,4 @@
-// 市場總覽（網站打開的第一頁）
+// 市場總覽（#/market；首頁改成今日總覽後移到這個分頁）
 import { expect, test } from "@playwright/test";
 import { trackErrors } from "./helpers";
 
@@ -9,7 +9,7 @@ test("市場總覽：只載入總表，顯示大盤、漲跌家數、排行、�
     const m = r.url().match(/\/data\/([^?]+)/);
     if (m) requested.push(decodeURIComponent(m[1]));
   });
-  await page.goto("/");
+  await page.goto("/#/market");
   await expect(page.getByRole("heading", { name: "市場總覽" })).toBeVisible();
   await expect(page.getByRole("link", { name: "市場", exact: true })).toHaveAttribute("aria-current", "page");
 

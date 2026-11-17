@@ -1,6 +1,7 @@
 // 最外層：頁首（含分頁導覽）＋ 目前的頁面 ＋ 頁尾免責聲明
 // 頁面由網址 hash 決定（見 src/lib/route.ts）：
-//   （空白）／#/market → 市場總覽（pages/MarketPage.tsx，網站打開的第一頁）
+//   （空白）／#/today → 今日總覽（pages/TodayPage.tsx，網站打開的第一頁）
+//   #/market    → 市場總覽（pages/MarketPage.tsx）
 //   #/代號/週期 → 看盤頁（pages/ChartPage.tsx）
 //   #/compare/A,B → 多檔走勢比較（pages/ComparePage.tsx）
 //   #/screener  → 指標篩選器（pages/ScreenerPage.tsx）
@@ -14,6 +15,7 @@ import BottomNav from "./components/BottomNav";
 import AlertBanner from "./components/AlertBanner";
 // 各頁面「用到才下載」（程式碼分割）：打開看盤頁時不會下載組合分析的程式，首次載入比較快。
 // lightweight-charts 也會被拆成獨立檔案，只有需要畫圖的頁面才載入。
+const TodayPage = lazy(() => import("./pages/TodayPage"));
 const MarketPage = lazy(() => import("./pages/MarketPage"));
 const ChartPage = lazy(() => import("./pages/ChartPage"));
 const ComparePage = lazy(() => import("./pages/ComparePage"));
@@ -125,7 +127,9 @@ export default function App() {
 
       <main className="main">
         <Suspense fallback={<div className="card"><p className="muted empty">{t("載入中…")}</p></div>}>
-          {route.page === "market" ? (
+          {route.page === "today" ? (
+            <TodayPage index={index} indexError={indexError} redUp={redUp} />
+          ) : route.page === "market" ? (
             <MarketPage index={index} indexError={indexError} redUp={redUp} />
           ) : route.page === "compare" ? (
             <ComparePage index={index} symbolsParam={route.symbol} redUp={redUp} />

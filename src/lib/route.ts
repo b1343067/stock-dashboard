@@ -1,5 +1,6 @@
 // 極簡的網址路由（不用 react-router，自己處理 hash 就夠了）
-//   （空白）或 #/market → 市場總覽（網站打開的第一頁）
+//   （空白）或 #/today → 今日總覽（網站打開的第一頁：持股即時損益、訊號、新聞、財報）
+//   #/market      → 市場總覽
 //   #/代號/週期   → 看盤頁，例如 #/0050.TW/weekly
 //   #/compare/A,B → 多檔走勢比較（最多 4 檔）
 //   #/screener    → 指標篩選器
@@ -10,7 +11,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Timeframe } from "./types";
 
-export type Page = "market" | "chart" | "compare" | "screener" | "portfolio" | "analysis";
+export type Page = "today" | "market" | "chart" | "compare" | "screener" | "portfolio" | "analysis";
 
 export interface Route {
   page: Page;
@@ -22,8 +23,9 @@ const TIMEFRAMES: Timeframe[] = ["daily", "weekly", "monthly"];
 
 export function parseHash(hash: string): Route {
   const [, first, tf] = hash.replace(/^#/, "").split("/");
-  // 沒有指定頁面（剛打開網站）→ 市場總覽
-  if (first === undefined || (first === "" && tf === undefined) || first === "market") return { page: "market", symbol: null, timeframe: "daily" };
+  // 沒有指定頁面（剛打開網站）→ 今日總覽
+  if (first === undefined || (first === "" && tf === undefined) || first === "today") return { page: "today", symbol: null, timeframe: "daily" };
+  if (first === "market") return { page: "market", symbol: null, timeframe: "daily" };
   if (first === "screener" || first === "portfolio" || first === "analysis") return { page: first, symbol: null, timeframe: "daily" };
   // 比較頁：symbol 欄位放「逗號分隔的代號」（例如 NVDA,AMD），由比較頁自己解析
   if (first === "compare") return { page: "compare", symbol: tf ? decodeURIComponent(tf) : null, timeframe: "daily" };
@@ -39,6 +41,7 @@ export function chartHref(symbol: string, timeframe: Timeframe = "daily"): strin
   return `#/${encodeURIComponent(symbol)}/${timeframe}`;
 }
 
+export const TODAY_HREF = "#/today";
 export const MARKET_HREF = "#/market";
 
 /** 比較頁連結，例如 compareHref(["NVDA","AMD"]) → "#/compare/NVDA,AMD" */
@@ -60,7 +63,9 @@ export function useHashRoute() {
 
   const setRoute = useCallback((r: Omit<Route, "page"> & { page?: Page }) => {
     const next =
-      r.page === "market"
+      r.page === "today"
+        ? TODAY_HREF
+        : r.page === "market"
         ? MARKET_HREF
         : r.page === "compare"
         ? `#/compare/${r.symbol ?? ""}`
