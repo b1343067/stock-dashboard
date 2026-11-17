@@ -146,3 +146,24 @@ test("今日總覽手機版：持股在最上面、一頁滑完、沒有橫向�
   await expectNoHorizontalScroll(page);
   await t.expectNoErrors();
 });
+
+test("今日總覽：新聞很多時先顯示 12 則；資料載入後才查新聞、財報（不重複查）", async ({ page }) => {
+  const t = trackErrors(page);
+  await seedHoldings(page);
+  const calls: string[] = [];
+  await page.route("**/api/quote**", (r) => r.fulfill({ status: 503, json: {} }));
+  await page.route("**/api/news**", (r) => {
+    calls.push("news");
+    return r.fulfill({ json: { items: Array.from({ length: 20 }, (_, i) => ({ id: String(i), symbol: "TSLA", headline: `Headline ${i}`, source: "CNBC", url: `https://example.com/${i}`, datetime: now() - i * 60 })) } });
+  });
+  await page.route("**/api/earnings**", (r) => {
+    calls.push("earnings");
+    return r.fulfill({ json: { items: [] } });
+  });
+  await page.goto("/");
+  await expect(page.locator(".news-item")).toHaveCount(12);
+  await page.getByRole("button", { name: "顯示全部 20 則" }).click();
+  await expect(page.locator(".news-item")).toHaveCount(20);
+  expect(calls.sort()).toEqual(["earnings", "news"]);
+  await t.expectNoErrors();
+});

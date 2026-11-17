@@ -1,5 +1,6 @@
 // 區塊三：重大新聞（只有標題、來源、時間、連結；點了開新分頁看原文，不轉載內文）
 
+import { useState } from "react";
 import { fmtPct } from "../../lib/format";
 import type { NewsItem } from "../../lib/finnhub";
 import { t } from "../../lib/i18n";
@@ -37,6 +38,9 @@ export default function NewsPanel({ items, failed, loading, movers, nowSec }: Pr
   const list = items ?? [];
   const moverSet = new Set(movers.map((m) => m.symbol));
   const others = list.filter((n) => !n.symbol || !moverSet.has(n.symbol));
+  // 持股＋有新訊號的股票加起來新聞可能幾十則：先顯示 12 則，其餘按「顯示全部」
+  const [all, setAll] = useState(false);
+  const shown = all ? others : others.slice(0, 12);
   return (
     <section className="card" aria-labelledby="today-news">
       <h2 id="today-news" className="section-title">{t("重大新聞")}</h2>
@@ -86,7 +90,14 @@ export default function NewsPanel({ items, failed, loading, movers, nowSec }: Pr
       ) : others.length === 0 ? (
         <p className="muted">{t("持股與有新訊號的股票，最近 24 小時沒有新聞。")}</p>
       ) : (
-        <ul className="news-list">{others.map((n) => <NewsLink key={n.id} n={n} now={nowSec} />)}</ul>
+        <>
+          <ul className="news-list">{shown.map((n) => <NewsLink key={n.id} n={n} now={nowSec} />)}</ul>
+          {others.length > 12 && (
+            <button type="button" className="btn-link small news-more" onClick={() => setAll(!all)}>
+              {all ? t("收起") : t("顯示全部 {0} 則", [others.length])}
+            </button>
+          )}
+        </>
       )}
       <p className="hint">{t("持股與有新訊號的美股，最近 24 小時的新聞（Finnhub）。只顯示標題，點擊在新分頁開啟原文。")}</p>
     </section>

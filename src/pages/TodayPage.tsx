@@ -88,15 +88,16 @@ export default function TodayPage({ index, indexError, redUp }: Props) {
     () => [...events.danger, ...events.bull].filter((e) => e.intraday || e.barsAgo <= 1).map((e) => e.symbol),
     [events],
   );
+  // 等股票清單和篩選資料都載入後才查（否則會先用不完整的清單查一次、再查一次，浪費 API 額度）
   const newsSymbols = useMemo(
-    () => newsTargets([...holdingSet].sort(), movers.map((m) => m.symbol), recentSignalSymbols),
-    [holdingSet, movers, recentSignalSymbols],
+    () => (index && screener ? newsTargets([...holdingSet].sort(), movers.map((m) => m.symbol), recentSignalSymbols) : []),
+    [index, screener, holdingSet, movers, recentSignalSymbols],
   );
   const news = useNews(newsSymbols);
 
   // 財報：持股＋觀察清單（美股）
   const earningsSymbols = useMemo(
-    () => [...new Set([...mine.map((h) => h.symbol), ...(index?.tickers ?? []).map((tk) => tk.symbol)])].filter(isUs).sort(),
+    () => (index ? [...new Set([...mine.map((h) => h.symbol), ...index.tickers.map((tk) => tk.symbol)])].filter(isUs).sort() : []),
     [mine, index],
   );
   const earnings = useEarnings(earningsSymbols);

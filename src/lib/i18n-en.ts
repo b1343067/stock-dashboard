@@ -696,4 +696,5 @@ export const EN: Record<string, string> = {
   "盤中": "During session",
   "跌破布林下軌": "Broke below lower Bollinger band",
   "（沒有相關新聞）": "(no related news)",
+  "顯示全部 {0} 則": "Show all {0}",
 };
