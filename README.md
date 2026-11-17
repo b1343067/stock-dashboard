@@ -7,19 +7,23 @@
 
 個人投資看盤網站，同時也是我的求職作品集。
 每天由 GitHub Actions 自動抓取股價、預先算好技術指標存成 JSON，網站部署在 Vercel，是純靜態網頁，不需要後端伺服器。
-功能涵蓋 K 線看盤、指標篩選器、投資組合管理、組合分析（Beta／Alpha／夏普最佳化／回測），桌機與手機都能使用。
+功能涵蓋今日總覽（持股即時損益、新訊號、新聞、財報提醒）、K 線看盤、指標篩選器、投資組合管理（含交易紀錄與 XIRR）、組合分析（Beta／Alpha／夏普最佳化／效率前緣／回測）、每日 Discord 通知與中英文介面，桌機與手機都能使用。
 
 > **免責聲明：本網站僅供學習參考，非投資建議。**
 
-![看盤頁（深色模式）：K 線、均線、MACD、RSI 與短期趨勢外推虛線](docs/screenshots/chart.png)
+![今日總覽（首頁）：持股即時損益、停利停損提醒、觀察清單的新訊號](docs/screenshots/today.png)
 
-| 指標篩選器 | 投資組合（範例持股） |
+| 看盤（深色模式） | 市場總覽 |
 | --- | --- |
+| ![看盤頁：K 線、均線、趨勢外推虛線](docs/screenshots/chart.png) | ![市場總覽：大盤、漲跌家數、類股熱力圖](docs/screenshots/market.png) |
+| **指標篩選器** | **投資組合（範例持股）** |
 | ![篩選器](docs/screenshots/screener.png) | ![投資組合](docs/screenshots/portfolio.png) |
 | **組合分析** | **回測 vs VOO** |
 | ![組合分析](docs/screenshots/analysis.png) | ![回測](docs/screenshots/backtest.png) |
 
-<p align="center"><img src="docs/screenshots/mobile.png" alt="手機版看盤頁" width="280"></p>
+<p align="center"><img src="docs/screenshots/mobile.png" alt="手機版今日總覽" width="280"></p>
+
+> 截圖用的是程式內建的範例持股（不是任何人的真實持股）。重新截圖：`node scripts/readme-screenshots.cjs docs/screenshots`（截的是線上網站，需要已安裝 Playwright）。
 
 ## 技術亮點
 
@@ -265,6 +269,7 @@ K 線畫圖工具（看盤頁 K 線上方）：
 
 **抓不到資料怎麼辦？**
 - 某一檔失敗：重試 3 次，還是失敗就保留前一天的檔案，其他股票照常更新
+- Yahoo 漏掉美股最新一天（收盤價空白或整筆不見）：用 Finnhub 的收盤價補上（成交量記為 0，`status.json` 會註明）；沒有金鑰時標成「不完整」，07:47 的備援排程會再抓一次
 - 資料有小錯誤：自動修正後照常更新；有嚴重錯誤：保留前一天的檔案（原因寫在 `status.json`）
 - 匯率失敗：沿用上一次的匯率
 - 全部失敗：不修改任何檔案，Actions 會顯示紅色 ❌ 通知你
@@ -531,7 +536,7 @@ npm run dev
 | --- | --- | --- | --- |
 | Vercel → Settings → Environment Variables | `FINNHUB_API_KEY` | 今日總覽的即時報價、新聞、財報（`api/*.ts`） | 今日總覽顯示收盤資料並標示「非即時」 |
 | GitHub → Settings → Secrets and variables → Actions | `DISCORD_WEBHOOK_URL` | 每日 Discord 通知 | 只在 Actions 記錄裡印出通知內容 |
-| GitHub → Settings → Secrets and variables → Actions | `FINNHUB_API_KEY` | Discord 通知裡的新聞與財報提醒（`scripts/notify.ts`） | 略過新聞與財報卡片，其他通知照常 |
+| GitHub → Settings → Secrets and variables → Actions | `FINNHUB_API_KEY` | Discord 通知裡的新聞與財報提醒（`scripts/notify.ts`）；Yahoo 漏掉美股最新一天時補收盤價（`scripts/fetch_data.py`） | 略過新聞與財報卡片；缺的那天等備援排程重抓 |
 
 金鑰只從環境變數讀取，不會出現在程式碼、前端或 GitHub 儲存庫裡。
 

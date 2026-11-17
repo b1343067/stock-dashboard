@@ -67,6 +67,48 @@ def latest_is_blank(df: pd.DataFrame) -> bool:
     return bool(pd.isna(c) or c <= 0)
 
 
+def expected_latest_us_day(now_utc: pd.Timestamp | None = None) -> pd.Timestamp:
+    """
+    「現在應該已經有收盤資料」的最新美股交易日：今天 16:30（紐約）以後是今天，否則往前找；跳過週末。
+    （不處理國定假日：假日時只會多查一次 Finnhub、查到的還是前一天，不會寫錯資料）
+    """
+    now = (now_utc if now_utc is not None else pd.Timestamp.now(tz="UTC")).tz_convert(TZ_NEW_YORK)
+    day = now.normalize().tz_localize(None)
+    if (now.hour, now.minute) < COMPLETE_AFTER[TZ_NEW_YORK]:
+        day -= pd.Timedelta(days=1)
+    while day.dayofweek >= 5:
+        day -= pd.Timedelta(days=1)
+    return day
+
+
+def fill_latest_from_quote(df: pd.DataFrame, quote: dict | None) -> tuple[pd.DataFrame, str | None]:
+    """
+    Yahoo 偶爾會漏掉最新一天（收盤價空白或整筆不見，2026-11-17 美股 11/16 就發生過），
+    這時用 Finnhub 的報價補上：{o 開盤, h 最高, l 最低, c 收盤, t 時間}。
+    只補「最新一天」，而且只在 Finnhub 的日期比現有資料新、或同一天但收盤價空白時才補。
+    Finnhub 報價沒有成交量，那天的成交量記為 0。df 的索引必須是紐約當地日期。
+    """
+    if not quote or df.empty:
+        return df, None
+    c, o, h, low, t = (quote.get(k) for k in ("c", "o", "h", "l", "t"))
+    if not all(isinstance(v, (int, float)) and v > 0 for v in (c, o, h, low, t)):
+        return df, None
+    qday = pd.Timestamp(t, unit="s", tz="UTC").tz_convert(TZ_NEW_YORK).normalize().tz_localize(None)
+    row = {"Open": float(o), "High": float(max(h, o, c)), "Low": float(min(low, o, c)), "Close": float(c), "Volume": 0.0}
+    out = df.copy()
+    last = pd.Timestamp(out.index[-1])
+    if qday == last and latest_is_blank(out):
+        for k, v in row.items():
+            if k in out.columns:
+                out.loc[last, k] = v
+    elif qday > last:
+        add = pd.DataFrame([{k: v for k, v in row.items() if k in out.columns}], index=pd.DatetimeIndex([qday]))
+        out = pd.concat([out, add])
+    else:
+        return df, None
+    return out, f"用 Finnhub 補上 {qday.date()} 的收盤價（Yahoo 缺這天；成交量記為 0）"
+
+
 # 少量異常可以自動修；超過這個比例就當作整份資料有問題
 MAX_BAD_RATIO = 0.05
 

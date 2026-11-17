@@ -148,6 +148,23 @@ def main() -> None:
     assert len(drop_incomplete_today(us, "VOO", pd.Timestamp("2026-11-16 18:00", tz="UTC"))[0]) == 0, "美股盤中丟掉"
     assert latest_is_blank(pd.DataFrame({"Close": [1.0, float("nan")]})) and not latest_is_blank(us)
 
+    # ---- Yahoo 漏掉最新一天時，用 Finnhub 報價補上 ----
+    from data_quality import expected_latest_us_day, fill_latest_from_quote
+    q = {"c": 110.0, "o": 100.0, "h": 112.0, "l": 99.0, "t": int(pd.Timestamp("2026-11-16 21:00", tz="UTC").timestamp())}  # 紐約 11/16 16:00
+    base = pd.DataFrame({"Open": [1.0, 1.0], "High": [2.0, 2.0], "Low": [0.5, 0.5], "Close": [1.5, float("nan")], "Volume": [10.0, float("nan")]},
+                        index=pd.DatetimeIndex(["2026-11-13", "2026-11-16"]))
+    filled, note = fill_latest_from_quote(base, q)
+    assert filled["Close"].iloc[-1] == 110.0 and filled["Volume"].iloc[-1] == 0 and len(filled) == 2 and "Finnhub" in note, "收盤價空白 → 用 Finnhub 補"
+    missing = base.iloc[:1]
+    appended, _ = fill_latest_from_quote(missing, q)
+    assert len(appended) == 2 and str(appended.index[-1].date()) == "2026-11-16", "整筆不見 → 補一筆"
+    complete = base.copy(); complete.iloc[-1, complete.columns.get_loc("Close")] = 1.6
+    assert fill_latest_from_quote(complete, q)[1] is None, "資料完整時不動"
+    assert fill_latest_from_quote(missing, {"c": 0, "o": 0, "h": 0, "l": 0, "t": 0})[1] is None, "報價無效時不動"
+    assert str(expected_latest_us_day(pd.Timestamp("2026-11-17 02:00", tz="UTC")).date()) == "2026-11-16", "紐約週一晚上 → 週一"
+    assert str(expected_latest_us_day(pd.Timestamp("2026-11-16 15:00", tz="UTC")).date()) == "2026-11-13", "紐約週一盤中 → 上週五"
+    assert str(expected_latest_us_day(pd.Timestamp("2026-11-15 15:00", tz="UTC")).date()) == "2026-11-13", "週日 → 週五"
+
     # ---- 英文名稱（加碼 C-2）：設定檔的 nameEn 會保留，沒填就沒有這個欄位 ----
     from data_io import normalize_watchlist
     wl = normalize_watchlist({"groups": [{"name": "台股", "tickers": [

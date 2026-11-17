@@ -21,7 +21,7 @@
 
 ## 工作流程
 
-- 在功能分支開發 → 測試全過 → 合併進 `main` 並推送 → Vercel 自動部署 → 打開線上網站確認。
+- 在**本機**功能分支開發 → 測試全過 → 合併進 `main` 並推送（**不要把功能分支推到 GitHub**：這個環境的 git 代理不能刪除遠端分支，推上去會累積，只能請使用者到 GitHub 網頁手動刪除） → Vercel 自動部署 → 打開線上網站確認。
 - `main` 常有 Actions 的資料 commit，合併前先 `git fetch origin main` 並 rebase。
 - 本環境已允許連線 `stock-dashboard-peach-sigma.vercel.app`，可直接用 Playwright 檢查線上版本。
 
@@ -31,7 +31,7 @@
 - `config/watchlist.json`：觀察清單（唯一來源，使用者自己會改），格式 `groups: [{name, tickers: [{symbol, name, nameEn?, currency?}]}]`（nameEn 選填，英文模式顯示用，會帶到 index／screener／個股檔）；另有匯率代號 `fx`、無風險利率代號 `riskFree`（^IRX）。幣別依代號自動判斷（.TW/.TWO = TWD）
 - `scripts/indicators.py`：**所有指標計算**（MA、Wilder RSI、MACD、布林、週月線 resample、輸出 JSON 結構）
 - `scripts/data_io.py`：`load_watchlist()`→`normalize_watchlist()`（攤平成 tickers＋categories、去重、推斷幣別、相容舊格式）、原子寫檔、重建 `index.json` 與 `screener.json`（依磁碟上現存檔案；名稱與分類以設定檔為準；`generated_at` 可沿用舊時間）
-- `scripts/data_quality.py`：`to_exchange_dates()`（先換成交易所時區再取日期，避免台美差一天）、`drop_incomplete_today()`（盤中執行時丟掉今天未收盤的半根 K 棒：台股 14:30、美股 16:30 前）、`latest_is_blank()`（最新一筆收盤價空白 → status 記 `incompleteLatest`、summary `incomplete`，備援排程會重抓；2026-11-17 Yahoo 美股 11/16 收盤價空白實際發生過）、`repair_daily()`（少量問題自動修：高低價、台股週六補班日、零星空白／≤0，比例上限 5%）、`validate_daily()`（剩下的嚴重問題 → 不寫檔）
+- `scripts/data_quality.py`：`to_exchange_dates()`（先換成交易所時區再取日期，避免台美差一天）、`drop_incomplete_today()`（盤中執行時丟掉今天未收盤的半根 K 棒：台股 14:30、美股 16:30 前）、`fill_latest_from_quote()`＋`expected_latest_us_day()`（美股最新一天空白或缺漏時，`fetch_data.finnhub_quote()` 用 GitHub Secret `FINNHUB_API_KEY` 查 Finnhub 補上，成交量記 0；只有缺資料才呼叫，每次間隔 1.1 秒）、`latest_is_blank()`（最新一筆收盤價空白 → status 記 `incompleteLatest`、summary `incomplete`，備援排程會重抓；2026-11-17 Yahoo 美股 11/16 收盤價空白實際發生過）、`repair_daily()`（少量問題自動修：高低價、台股週六補班日、零星空白／≤0，比例上限 5%）、`validate_daily()`（剩下的嚴重問題 → 不寫檔）
 - `scripts/fetch_data.py`：每批 10 檔、批次間休息；每檔重試 3 次（2/4/8 秒）＋下載失敗者最後再一輪；`process_symbol()` 吃掉所有錯誤，單檔失敗不中斷；匯率歷史寫 `fx.json`；全部失敗 exit 1 且不寫檔。測試時設 `FETCH_SLEEP_SCALE=0` 跳過等待
 - `scripts/generate_sample_data.py`：固定種子的隨機漫步範例資料，`sample: true`（會覆蓋 public/data）；`--missing-only` 只補沒有資料檔的股票（本機預覽用，不要 commit）
 - `.github/workflows/update-data.yml`：cron `17 22 * * *`（台灣 06:17）＋備援 `47 23 * * *`（07:47），刻意避開整點（GitHub 整點排程常延遲數小時或被丟掉，2026-11-17 實際發生過）；「檢查今天是否已經更新過」步驟：排程觸發時，若 data 分支在最近一次 UTC 22:00 之後已更新且 status.json 的 `failed`＋`incomplete` 都是空的 → 後面步驟全部略過（不重抓、不部署、不重送通知），否則照跑補抓。手動觸發、改到 config/scripts 推到 main 時也會跑（一律不略過）。流程：從 data 分支取回舊資料 → 抓取 → 強制推送 data 分支（單一 commit）→ 改 main 的 `.data-version` 觸發 Vercel

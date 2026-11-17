@@ -26,11 +26,25 @@ import os
 import sys
 import time
 
+import json
+import urllib.parse
+import urllib.request
+
 import pandas as pd
 import yfinance as yf
 
 from data_io import FX_PATH, STATUS_PATH, load_watchlist, read_json, rebuild_index, ticker_path, write_json_atomic
-from data_quality import drop_incomplete_today, latest_is_blank, repair_daily, to_exchange_dates, validate_daily
+from data_quality import (
+    drop_incomplete_today,
+    exchange_tz,
+    expected_latest_us_day,
+    fill_latest_from_quote,
+    latest_is_blank,
+    repair_daily,
+    to_exchange_dates,
+    validate_daily,
+    TZ_NEW_YORK,
+)
 from fundamentals import clean_info, merge_fundamentals, price_stats
 from indicators import build_ticker_payload
 
@@ -121,6 +135,39 @@ def fetch_info(symbol: str) -> dict:
         return {}
 
 
+def finnhub_quote(symbol: str) -> dict | None:
+    """
+    Yahoo 漏掉美股最新一天時的備援：Finnhub 報價（GitHub Secrets 的 FINNHUB_API_KEY）。
+    沒有金鑰或失敗就回傳 None（不影響原本的流程）。金鑰放標頭、不放網址，錯誤訊息也不會印出金鑰。
+    免費額度每分鐘 60 次，每次呼叫後休息 1.1 秒。
+    """
+    key = os.environ.get("FINNHUB_API_KEY", "").strip()
+    if not key:
+        return None
+    req = urllib.request.Request(
+        f"https://finnhub.io/api/v1/quote?symbol={urllib.parse.quote(symbol)}",
+        headers={"X-Finnhub-Token": key},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as res:
+            return json.loads(res.read().decode("utf-8"))
+    except Exception as e:  # 網路、額度、格式錯誤都一樣：放棄備援
+        print(f"  [{symbol}] Finnhub 備援失敗：{type(e).__name__}")
+        return None
+    finally:
+        pause(1.1)
+
+
+def needs_backfill(df: pd.DataFrame, symbol: str) -> bool:
+    """美股、而且最新一天的收盤價空白或整筆缺漏 → 需要用 Finnhub 補"""
+    if exchange_tz(symbol) != TZ_NEW_YORK or df.empty:
+        return False
+    valid = df["Close"].dropna()
+    if valid.empty:
+        return False
+    return latest_is_blank(df) or pd.Timestamp(valid.index[-1]) < expected_latest_us_day()
+
+
 # 每檔的更新結果（最後寫進 public/data/status.json，不用登入 GitHub 也能看到哪檔失敗、為什麼）
 STATUS: dict[str, dict] = {}
 
@@ -142,11 +189,17 @@ def process_symbol(t: dict) -> str:
             return "download"
         # 盤中執行（例如推程式碼觸發）時，丟掉今天還沒收盤的半根 K 棒
         df, partial = drop_incomplete_today(df, symbol)
-        # 最新一天的收盤價是空的：修正時會被刪掉，但要記下來，讓備援排程知道要重抓
+        # Yahoo 漏掉美股最新一天 → 用 Finnhub 的收盤價補上（有設定金鑰才會做）
+        backfill = None
+        if needs_backfill(df, symbol):
+            df, backfill = fill_latest_from_quote(df, finnhub_quote(symbol))
+        # 最新一天的收盤價是空的（而且沒補到）：修正時會被刪掉，但要記下來，讓備援排程知道要重抓
         blank_latest = latest_is_blank(df)
         df, notes = repair_daily(df)
         if partial:
             notes.insert(0, partial)
+        if backfill:
+            notes.insert(0, backfill)
         if notes:
             print(f"  [{symbol}] 自動修正：{'；'.join(notes)}")
         problems = validate_daily(df, MIN_ROWS)

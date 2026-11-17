@@ -89,6 +89,9 @@ jobs:
       - name: 抓取資料並計算指標
         if: steps.fresh.outputs.skip != 'true'
         # 個別股票失敗會保留舊檔；全部失敗才會讓這一步變紅色（後面的步驟就不會執行）
+        env:
+          # Yahoo 漏掉美股最新一天時，用 Finnhub 的收盤價補上（沒設定就不補）
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
         run: python scripts/fetch_data.py
 
       # ---- 每日篩選通知（Discord）----
