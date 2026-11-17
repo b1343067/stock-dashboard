@@ -3,6 +3,7 @@
 
 import type { IndexData, SeriesData, TickerData } from "./types";
 import type { ScreenerData } from "./screener";
+import { validMl, validMlVol, type MlData, type MlVolData } from "./ml";
 import { getLang, t } from "./i18n";
 
 const DATA_BASE = `${import.meta.env.BASE_URL}data`;
@@ -97,4 +98,29 @@ export function loadFxHistory(): Promise<Record<string, { time: string[]; close:
     fxPromise = fetchJson<Record<string, { time: string[]; close: number[] }>>(`${DATA_BASE}/fx.json`).catch(() => null);
   }
   return fxPromise;
+}
+
+// ---- ML 實驗室（scripts/ml_lab.py 產生）----
+// 沒有檔案、格式不對都回傳 null：頁面顯示「還沒有 ML 結果」，不會壞
+let mlPromise: Promise<MlData | null> | null = null;
+
+export function loadMl(): Promise<MlData | null> {
+  if (!mlPromise) {
+    mlPromise = fetchJson<unknown>(`${DATA_BASE}/ml.json`)
+      .then((d) => (validMl(d) ? d : null))
+      .catch(() => null);
+  }
+  return mlPromise;
+}
+
+let mlVolPromise: Promise<MlVolData | null> | null = null;
+
+/** 看盤頁的波動預測卡片用（小檔，只有每檔的預測） */
+export function loadMlVol(): Promise<MlVolData | null> {
+  if (!mlVolPromise) {
+    mlVolPromise = fetchJson<unknown>(`${DATA_BASE}/ml-vol.json`)
+      .then((d) => (validMlVol(d) ? d : null))
+      .catch(() => null);
+  }
+  return mlVolPromise;
 }

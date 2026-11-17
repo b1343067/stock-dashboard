@@ -36,9 +36,9 @@ export const NAV_ITEMS = (chartHref: string): [Page, string, string, string][] =
   ["portfolio", t("投資組合"), t("組合"), PORTFOLIO_HREF],
 ];
 
-/** 目前頁面對應到哪一個分頁（分析頁 → 組合；比較頁 → 看盤） */
+/** 目前頁面對應到哪一個分頁（分析頁 → 組合；比較頁 → 看盤；ML 實驗室 → 市場） */
 export function navActive(page: Page): Page {
-  return page === "analysis" ? "portfolio" : page === "compare" ? "chart" : page;
+  return page === "analysis" ? "portfolio" : page === "compare" ? "chart" : page === "lab" ? "market" : page;
 }
 
 export default function Header({ index, redUp, onToggleRedUp, page, chartHref, onPickSymbol, alertCount, onOpenAlerts }: Props) {

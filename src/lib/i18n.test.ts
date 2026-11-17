@@ -75,6 +75,12 @@ describe("英文翻譯齊全", () => {
       ...SIGNAL_LABELS,
       "盤前", "盤後", "盤中", "已達停利", "已觸及停損", "接近停利", "接近停損",
     ];
+    // ML 實驗室的模型名稱寫在 Python（scripts/ml.py 的 VOL_MODELS／DIR_MODELS），網頁用 t(name) 顯示
+    const mlPy = readFileSync(join(__dirname, "../../scripts/ml.py"), "utf8");
+    for (const block of mlPy.matchAll(/^(?:VOL|DIR)_MODELS = \{([\s\S]*?)^\}/gm)) {
+      for (const m of block[1].matchAll(/:\s*"([^"]+)"/g)) labels.push(m[1]);
+    }
+    labels.push("偏高", "略高", "一般", "略低", "偏低");
     const config = JSON.parse(readFileSync(join(__dirname, "../../config/watchlist.json"), "utf8")) as { groups: { name: string }[] };
     labels.push(...config.groups.map((g) => g.name), "其他");
     const missing = labels.filter((l) => l && CJK.test(l) && !(l in EN));

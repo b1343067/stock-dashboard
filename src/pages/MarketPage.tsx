@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import Sparkline from "../components/Sparkline";
 import { fmtFixed, pnlClass } from "../lib/format";
 import { breadth, categoryStats, heatIntensity, periodChange, topMovers, type Mover, type Period } from "../lib/market";
-import { chartHref, compareHref } from "../lib/route";
+import { chartHref, compareHref, LAB_HREF } from "../lib/route";
 import { useStoredState } from "../lib/storage";
 import type { IndexData, TickerSummary } from "../lib/types";
 import { t } from "../lib/i18n";
@@ -65,6 +65,16 @@ export default function MarketPage({ index, indexError, redUp }: Props) {
           ))}
         </div>
       </div>
+
+      {/* ML 實驗室入口（導覽列維持 5 格，實驗室從這裡進入） */}
+      <a className="lab-entry card" href={LAB_HREF}>
+        <span className="lab-entry-icon" aria-hidden="true">🧪</span>
+        <span>
+          <b>{t("ML 實驗室")}</b>
+          <span className="muted small"> {t("機器學習能預測股價嗎？波動度預測與漲跌方向實驗（滾動式驗證）")}</span>
+        </span>
+        <span className="lab-entry-go" aria-hidden="true">›</span>
+      </a>
 
       {/* 大盤指標 */}
       <div className="bench-head">

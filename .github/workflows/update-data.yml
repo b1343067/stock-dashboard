@@ -94,6 +94,13 @@ jobs:
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
         run: python scripts/fetch_data.py
 
+      # ---- ML 實驗室：波動度預測、漲跌方向實驗（寫 public/data/ml.json）----
+      # 先跑自我檢查（含「沒有偷看未來」的測試）再訓練；失敗時保留上一次的 ml.json，不影響後面的步驟
+      - name: ML 實驗室（波動度預測、漲跌方向實驗）
+        if: steps.fresh.outputs.skip != 'true'
+        continue-on-error: true
+        run: python scripts/test_ml.py && python scripts/ml_lab.py
+
       # ---- 每日篩選通知（Discord）----
       # 用網站篩選器同一套程式判斷（scripts/notify.ts），所以需要 Node。
       # 沒有設定 DISCORD_WEBHOOK_URL 就只在記錄裡印出結果；通知失敗不影響資料發布。

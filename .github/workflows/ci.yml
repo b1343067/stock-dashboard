@@ -30,8 +30,9 @@ jobs:
           python-version: "3.12"
       - name: Python 指標測試
         run: |
-          pip install pandas numpy
+          pip install pandas numpy "scikit-learn>=1.5"
           python scripts/test_indicators.py
+          python scripts/test_ml.py
 
   e2e:
     name: 瀏覽器端對端測試

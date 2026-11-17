@@ -2,6 +2,7 @@
 // 頁面由網址 hash 決定（見 src/lib/route.ts）：
 //   （空白）／#/today → 今日總覽（pages/TodayPage.tsx，網站打開的第一頁）
 //   #/market    → 市場總覽（pages/MarketPage.tsx）
+//   #/lab       → ML 實驗室（pages/LabPage.tsx）
 //   #/代號/週期 → 看盤頁（pages/ChartPage.tsx）
 //   #/compare/A,B → 多檔走勢比較（pages/ComparePage.tsx）
 //   #/screener  → 指標篩選器（pages/ScreenerPage.tsx）
@@ -17,6 +18,7 @@ import AlertBanner from "./components/AlertBanner";
 // lightweight-charts 也會被拆成獨立檔案，只有需要畫圖的頁面才載入。
 const TodayPage = lazy(() => import("./pages/TodayPage"));
 const MarketPage = lazy(() => import("./pages/MarketPage"));
+const LabPage = lazy(() => import("./pages/LabPage"));
 const ChartPage = lazy(() => import("./pages/ChartPage"));
 const ComparePage = lazy(() => import("./pages/ComparePage"));
 const ScreenerPage = lazy(() => import("./pages/ScreenerPage"));
@@ -129,6 +131,8 @@ export default function App() {
         <Suspense fallback={<div className="card"><p className="muted empty">{t("載入中…")}</p></div>}>
           {route.page === "today" ? (
             <TodayPage index={index} indexError={indexError} redUp={redUp} />
+          ) : route.page === "lab" ? (
+            <LabPage />
           ) : route.page === "market" ? (
             <MarketPage index={index} indexError={indexError} redUp={redUp} />
           ) : route.page === "compare" ? (

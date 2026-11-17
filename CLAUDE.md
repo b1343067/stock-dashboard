@@ -33,6 +33,7 @@
 - `scripts/data_io.py`：`load_watchlist()`→`normalize_watchlist()`（攤平成 tickers＋categories、去重、推斷幣別、相容舊格式）、原子寫檔、重建 `index.json` 與 `screener.json`（依磁碟上現存檔案；名稱與分類以設定檔為準；`generated_at` 可沿用舊時間）
 - `scripts/data_quality.py`：`to_exchange_dates()`（先換成交易所時區再取日期，避免台美差一天）、`drop_incomplete_today()`（盤中執行時丟掉今天未收盤的半根 K 棒：台股 14:30、美股 16:30 前）、`fill_latest_from_quote()`＋`expected_latest_us_day()`（美股最新一天空白或缺漏時，`fetch_data.finnhub_quote()` 用 GitHub Secret `FINNHUB_API_KEY` 查 Finnhub 補上，成交量記 0；只有缺資料才呼叫，每次間隔 1.1 秒）、`latest_is_blank()`（最新一筆收盤價空白 → status 記 `incompleteLatest`、summary `incomplete`，備援排程會重抓；2026-11-17 Yahoo 美股 11/16 收盤價空白實際發生過）、`repair_daily()`（少量問題自動修：高低價、台股週六補班日、零星空白／≤0，比例上限 5%）、`validate_daily()`（剩下的嚴重問題 → 不寫檔）
 - `scripts/fetch_data.py`：每批 10 檔、批次間休息；每檔重試 3 次（2/4/8 秒）＋下載失敗者最後再一輪；`process_symbol()` 吃掉所有錯誤，單檔失敗不中斷；匯率歷史寫 `fx.json`；全部失敗 exit 1 且不寫檔。測試時設 `FETCH_SLEEP_SCALE=0` 跳過等待
+- `scripts/ml.py`＋`ml_lab.py`（ML 實驗室，scikit-learn）：讀 public/data 各檔日線 → `build_samples`（49 檔合併；特徵只用當天以前；台股用 VOO 前一天的特徵）→ 滾動式驗證（`MIN_TRAIN_DATES` 378、每 21 天重訓、`train_mask` purge：訓練樣本 `t_end` 必須早於測試期）→ ① 波動：naive（rv20）／EWMA／HAR／HistGradientBoosting，QLIKE 評分，`current_vol` 每檔預測（模型在該檔輸給基準就改用 naive）② 方向：永遠猜漲／趨勢外推／邏輯迴歸／GBM，準確率、AUC、每 5 天取樣的 t 檢定、策略回測（扣 0.1%）。寫 `ml.json`（實驗室頁）與小檔 `ml-vol.json`（看盤頁卡片）。`test_ml.py` 竄改未來價格驗證沒有偷看。Actions 在抓完資料後執行（`continue-on-error`，約 40 秒）；CI 也跑 `test_ml.py`。2026-11 的結果：波動 GBM 比基準好約 17%；方向全部輸給永遠猜漲（上漲比例 57%）
 - `scripts/generate_sample_data.py`：固定種子的隨機漫步範例資料，`sample: true`（會覆蓋 public/data）；`--missing-only` 只補沒有資料檔的股票（本機預覽用，不要 commit）
 - `.github/workflows/update-data.yml`：cron `17 22 * * *`（台灣 06:17）＋備援 `47 23 * * *`（07:47），刻意避開整點（GitHub 整點排程常延遲數小時或被丟掉，2026-11-17 實際發生過）；「檢查今天是否已經更新過」步驟：排程觸發時，若 data 分支在最近一次 UTC 22:00 之後已更新且 status.json 的 `failed`＋`incomplete` 都是空的 → 後面步驟全部略過（不重抓、不部署、不重送通知），否則照跑補抓。手動觸發、改到 config/scripts 推到 main 時也會跑（一律不略過）。流程：從 data 分支取回舊資料 → 抓取 → 強制推送 data 分支（單一 commit）→ 改 main 的 `.data-version` 觸發 Vercel
 - `scripts/pull-data.sh`：從 codeload 下載 data 分支到 `public/data`（Vercel buildCommand、CI、`npm run data:pull` 都用它）；失敗回傳錯誤 → Vercel 建置失敗、線上維持上一版。`DATA_URL` 可覆蓋網址（測試用）
@@ -42,7 +43,7 @@
 
 ### 前端（`src/`）
 - `App.tsx`：外殼（Header 分頁、資料過期／範例資料 banner、Footer），依 `route.page` 以 `React.lazy` 載入 `pages/` 的頁面
-- `lib/route.ts`：hash 路由：空白或 `#/today`（今日總覽，預設首頁）、`#/market`（市場總覽）、`#/代號/週期`（daily|weekly|monthly；`#//daily` = 選第一檔）、`#/screener`、`#/portfolio`、`#/analysis`；`chartHref()` 產生看圖連結（測試在 route.test.ts）
+- `lib/route.ts`：hash 路由：空白或 `#/today`（今日總覽，預設首頁）、`#/market`（市場總覽）、`#/lab`（ML 實驗室）、`#/代號/週期`（daily|weekly|monthly；`#//daily` = 選第一檔）、`#/screener`、`#/portfolio`、`#/analysis`；`chartHref()` 產生看圖連結（測試在 route.test.ts）
 - `lib/types.ts`：**JSON 格式的 TypeScript 定義，改 Python 輸出時必須同步修改**
 - `lib/data.ts`：讀 JSON（帶快取、驗證）：`loadIndex`、`loadTicker`、`loadScreener`、`loadFxHistory`（沒有檔案回傳 null）
 - `lib/freshness.ts`：`checkFreshness()`，最新資料落後 3 個平日以上就在頁首提醒
@@ -61,6 +62,7 @@
 - 走勢比較：`pages/ComparePage.tsx`＋`lib/compare.ts`（`normalize`／`compareStats`／`parseSymbols`），路由 `#/compare/A,B`（route.symbol 放逗號字串），最多 4 檔；線色 `--s1`～`--s4`（已用驗證工具檢查，淺色背景下黃綠對比 < 3:1，所以一定要有直接標籤＋表格）
 - 效率前緣：`analytics.ts` 的 `simulatePortfolios`（固定種子亂數＋投影到 5%～45%）、`frontierEnvelope`；`components/analysis/FrontierChart.tsx`（SVG，標籤依兩點相對位置擺放避免重疊）
 - PWA：`public/manifest.webmanifest`、`public/icons/`、`public/sw.js`（手寫：頁面與 /data 網路優先、/assets 快取優先；**改快取策略時要改 cache 名稱版本**）；main.tsx 只在 PROD 註冊；App 有離線提示
+- ML 實驗室（`#/lab`）：`pages/LabPage.tsx`＋`components/lab/LabLineChart.tsx`；`lib/ml.ts`（型別、`volConclusion`／`dirConclusion` 由數字產生結論、`pctileLabel`）；`data.ts` 的 `loadMl`／`loadMlVol`（沒有檔案回傳 null）。入口在市場總覽（導覽列維持 5 格，`navActive` 讓它亮「市場」）與看盤頁的 `components/VolForecastCard.tsx`。模型名稱寫在 Python，網頁用 `t(name)`，`i18n.test.ts` 會讀 `scripts/ml.py` 檢查翻譯
 - 市場總覽（`#/market`）：`pages/MarketPage.tsx`＋`lib/market.ts`（`periodChange`／`breadth`／`topMovers`／`categoryStats`／`heatIntensity`）；只用 index.json（含 spark 算 30 天漲跌），**首頁不可下載個股檔案**（E2E 檢查）
 - 價格提醒：`lib/alerts.ts`（條件、`evaluateAlert`、`alertState`、`acknowledge`）、`lib/alertsStore.ts`（`useSyncExternalStore` 共用狀態、`useAlertQuotes`：只有 RSI 提醒時才載入 screener.json）、`components/AlertsPanel.tsx`（lazy，桌機右側／手機底部滑出）、`components/AlertBanner.tsx`；App 統一計算 triggered
 - 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合；均線交叉 `maCrossUp/Down` 用 `ma`＋`ma2`、成交量 `volSpike` 用 screener.json 的 `volume`，平均不含最新一根）、`pages/ScreenerPage.tsx`、`components/screener/`
@@ -83,6 +85,7 @@
 - `public/data/<代號>.json`：`{symbol,name,currency,sample,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?}`（fundamentals 見 `types.ts` 的 `Fundamentals`），每個週期為欄位導向物件：`time,open,high,low,close,volume,ma10,ma20,ma50,ma200,rsi,macd,signal,hist,bbUpper,bbMiddle,bbLower`。日線保留最近 1260 筆（指標先用完整 10 年算再截斷），週／月線保留全部。
 - `public/data/index.json`：`{generatedAt,sample,fx:{USDTWD},riskFree,categories:[...],tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,sample,spark:[最近 30 天收盤]}]}`（riskFree 為年化小數，抓不到沿用上次）
 - `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?:{pe,forwardPe,pb,dividendYield,high52w,low52w},liveBase?:{close,sum10,sum20,sum50,sum200,sumSq20,avgGain,avgLoss,ema12,ema26,signal}}]}`（liveBase 由 `indicators.live_base()` 用完整歷史算、6 位小數，盤中預估用），每週期只有 time/close/volume/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
+- `public/data/ml.json`／`ml-vol.json`：ML 實驗室結果（見 `lib/ml.ts` 的 `MlData`／`MlVolData`）
 - `public/data/fx.json`：`{USDTWD:{time,close}}`；沒有時分析頁用最新匯率近似並提示
 
 ### localStorage key（都有 `stockdash:` 前綴）
@@ -100,7 +103,7 @@
 - 字體：英文與標題 Manrope、數字 Inter（`.num` 或 `var(--font-mono)`，等寬數字），用 `@fontsource-variable` 打包，不用 CDN；中文用系統字體
 - 均線顏色刻意避開紫色（MA10 黃、MA20 橘、MA50 天藍、MA200 粉），以免和主色混淆
 - 密度中等：卡片圓角 16px、內距 14～16px、基準字級 14.5px；不要回到太擠（小字＋細線）或太空的設計
-- 看盤頁：報價標頭 → K 線（MACD／RSI 預設收起來，`overlays.macd`／`overlays.rsi`）→「現在的狀態」卡片（`lib/signals.ts`）→ 基本面 → 趨勢外推
+- 看盤頁：報價標頭 → K 線（MACD／RSI 預設收起來，`overlays.macd`／`overlays.rsi`）→「現在的狀態」卡片（`lib/signals.ts`）→ 未來 5 天波動預測 → 基本面 → 趨勢外推
 - 手機：頁首分頁改成底部導覽列（`BottomNav`，z-index 要高於圖表），觀察清單是一排可滑動的卡片，工具列左右滑動不換行
 - 頁首快速搜尋按 `/` 聚焦、Enter 跳到該股票
 
@@ -126,6 +129,9 @@
 - [x] 加碼 C-1：交易紀錄制投資組合（已實現損益、股利、XIRR）
 - [x] 加碼 C-2：英文版
 - [x] 篩選器新條件（均線交叉、成交量）、每日篩選通知（Discord，使用者選的管道）
+- [x] 今日總覽首頁（Finnhub 即時報價／新聞／財報）、Discord 加新聞、資料備援
+- [x] ML 實驗室 ①② 波動度預測、漲跌方向實驗
+- [ ] ML 實驗室 ③ 市場狀態分群（使用者已同意，等「繼續」）
 - [x] 資料品質：自動修正小問題＋status.json；資料搬到 data 分支（main 不再每天變大）
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
 

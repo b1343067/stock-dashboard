@@ -11,13 +11,14 @@ test("首頁只載入總表和目前選的那一檔，不會一次載入全部",
   });
   await page.goto("/#/VOO/daily");
   await expect(page.locator(".chart-canvas canvas").first()).toBeVisible();
-  expect(requested.sort()).toEqual(["VOO.json", "index.json"]);
+  // ml-vol.json：波動預測卡片用的小檔（每檔一行預測，幾 KB）
+  expect(requested.filter((f) => f !== "ml-vol.json").sort()).toEqual(["VOO.json", "index.json"]);
 
   // 點另一檔才載入那一檔
   await page.locator(".wl-item", { hasText: "NVDA" }).click();
   await expect(page.locator(".quote-symbol")).toHaveText("NVDA");
   expect(requested).toContain("NVDA.json");
-  expect(requested.filter((f) => !["index.json", "VOO.json", "NVDA.json"].includes(f))).toEqual([]);
+  expect(requested.filter((f) => !["index.json", "VOO.json", "NVDA.json", "ml-vol.json"].includes(f))).toEqual([]);
   await t.expectNoErrors();
 });
 

@@ -7,6 +7,7 @@ import StatusCards from "../components/StatusCards";
 import ChartToolbar from "../components/ChartToolbar";
 import DrawingTools from "../components/DrawingTools";
 import FundamentalsCard from "../components/FundamentalsCard";
+import VolForecastCard from "../components/VolForecastCard";
 import { drawingKey, handleClick, sanitizeDrawings, type DrawMode, type Drawing, type Point } from "../lib/drawings";
 import TrendCard, { TREND_HORIZON, TREND_LOOKBACK } from "../components/TrendCard";
 import { extrapolate, nextTradingDays } from "../lib/trend";
@@ -260,6 +261,8 @@ export default function ChartPage({ index, indexError, route, navigate, redUp, o
         </div>
 
         {series && <StatusCards data={series} timeframe={route.timeframe} redUp={redUp} />}
+
+        {shown && <VolForecastCard symbol={shown.symbol} />}
 
         {shown && quote && <FundamentalsCard data={shown.fundamentals} close={quote.close} currency={shown.currency} sample={shown.sample} />}
 
