@@ -110,6 +110,8 @@ jobs:
         continue-on-error: true
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          # 新聞與財報提醒（沒設定時略過這幾張卡片，其他通知照常）
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           # 在 Actions 頁面手動執行時強制送出（自動排程與推程式碼觸發的，同一天只送一次）
           NOTIFY_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
         run: npx vite-node scripts/notify.ts

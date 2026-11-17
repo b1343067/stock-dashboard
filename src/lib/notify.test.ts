@@ -12,7 +12,9 @@ import {
   toRuleJson,
   withoutExcluded,
   dataKeyOf,
+  buildNewsEmbeds,
 } from "./notify";
+import type { NewsItem } from "./finnhub";
 import { makeCondition, sanitizeConditions, type ScreenerData, type ScreenerSeries, type ScreenerTicker } from "./screener";
 
 /** 測試用股票：close 是最近幾天收盤，rsi 同長度 */
@@ -156,5 +158,69 @@ describe("dataKeyOf（同一份資料只通知一次）", () => {
   });
   it("最新日期相同、但美股更新了 → 視為新資料（不會被誤判成已通知）", () => {
     expect(dataKeyOf(mk("2026-11-16", "2026-11-17"))).not.toBe(dataKeyOf(mk("2026-11-17", "2026-11-17")));
+  });
+});
+
+describe("新聞與財報卡片", () => {
+  const now = 1_800_000_000;
+  const n = (id: string, headline: string, url: string, hoursAgo: number, source = "Reuters", symbol: string | null = null): NewsItem => ({ id, symbol, headline, source, url, datetime: now - hoursAgo * 3600 });
+  const c = sanitizeNotifyConfig({ watch: ["NVDA", "TSLA", "AAPL"] });
+  const bundle = {
+    market: [
+      n("m1", "Fed holds rates steady", "https://r/1", 2),
+      n("m2", "Random blog post", "https://b/2", 1, "Blog"),
+      n("m3", "Old news [archive]", "https://r/3", 30),
+      n("m4", "Nvidia (NVDA) jumps", "https://x/a_(b)", 3),
+      ...Array.from({ length: 6 }, (_, i) => n(`f${i}`, `Filler ${i}`, `https://f/${i}`, 4, "Blog")),
+    ],
+    watch: {
+      NVDA: [n("w1", "Nvidia (NVDA) jumps", "https://other/nvda", 3, "CNBC", "NVDA"), n("w2", "Nvidia new chip", "https://c/2", 5, "CNBC", "NVDA"), n("w3", "Nvidia third", "https://c/3", 6, "CNBC", "NVDA"), n("w4", "Nvidia fourth", "https://c/4", 7, "CNBC", "NVDA")],
+      TSLA: [n("t1", "Tesla old", "https://c/t", 40, "CNBC", "TSLA")],
+    },
+    earnings: [
+      { symbol: "NVDA", date: "2027-01-17", hour: "amc", epsEstimate: 1 },
+      { symbol: "WMT", date: "2027-01-16", hour: "bmo", epsEstimate: 1 },
+    ],
+  };
+  const embeds = buildNewsEmbeds(bundle, c, now, "2027-01-15");
+  const byTitle = (p: string) => embeds.find((e) => e.title.startsWith(p))!;
+
+  it("重大財經新聞：最多 5 則、24 小時內、主要媒體優先", () => {
+    const d = byTitle("📰").description;
+    expect(d.split("\n").filter((l) => l.startsWith("•"))).toHaveLength(5);
+    expect(d.indexOf("Fed holds rates")).toBeLessThan(d.indexOf("Random blog"));
+    expect(d).not.toContain("Old news");
+    expect(d).toContain("Reuters · 2 小時前");
+  });
+
+  it("網址括號被編碼，連結不會壞", () => {
+    expect(byTitle("📰").description).toContain("(https://x/a_%28b%29)");
+  });
+
+  it("關注股票新聞：每檔最多 2 則、同一則新聞不重複、24 小時內", () => {
+    const d = byTitle("🔎").description;
+    expect(d).not.toContain("Nvidia (NVDA) jumps"); // 已經在重大新聞出現過（同標題）
+    expect(d).toContain("Nvidia new chip");
+    expect(d).toContain("Nvidia third");
+    expect(d).not.toContain("Nvidia fourth");
+    expect(d).not.toContain("TSLA"); // TSLA 的新聞超過 24 小時
+  });
+
+  it("財報提醒：只列 watch 清單，附星期、盤前盤後、幾天後與規則", () => {
+    const d = byTitle("📅").description;
+    expect(d).toContain("**NVDA** 01/17（週日） 盤後・2 天後");
+    expect(d).not.toContain("WMT");
+    expect(d).toContain("財報前一週不開新倉");
+  });
+
+  it("沒有金鑰或抓取失敗（null）→ 整段略過；只有部分失敗 → 其他照常", () => {
+    expect(buildNewsEmbeds(null, c, now, "2027-01-15")).toEqual([]);
+    expect(buildNewsEmbeds({ market: null, watch: null, earnings: bundle.earnings }, c, now, "2027-01-15").map((e) => e.title)).toEqual(["📅 財報提醒（7 天內）"]);
+  });
+
+  it("每日摘要的卡片順序：市場 → 財經新聞 → 關注 → 關注新聞 → 財報 → 訊號", () => {
+    const calm = { ...data, tickers: data.tickers.filter((x) => x.symbol === "VOO") };
+    const titles = buildMessages(calm, { ...c, watch: ["VOO", "NVDA"], priceAlerts: [] }, "2027-01-15", null, bundle, now).flatMap((m) => m.embeds.map((e) => e.title.slice(0, 2)));
+    expect(titles).toEqual(["📊", "📰", "👀", "🔎", "📅"].map((x) => x.slice(0, 2)));
   });
 });

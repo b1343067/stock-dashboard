@@ -8,6 +8,7 @@
 // 判斷都用網站篩選器同一套程式（runScreen），所以結果和網頁一致。
 // ⚠️ config/notify.json 在公開儲存庫裡：只放關注清單與條件，不要放持股數量或成本。
 
+import { dedupeNews, rankMarketNews, recentNews, type EarningsItem, type NewsItem } from "./finnhub";
 import { breadth, topMovers } from "./market";
 import { runScreen, sanitizeConditions, type CombineMode, type Condition, type ScreenerData, type ScreenerTicker } from "./screener";
 import { macdStatus, maStatus, rsiStatus } from "./signals";
@@ -259,7 +260,7 @@ export interface DiscordMessage {
 /** Discord 的上限：embed 說明 4096 字、一則訊息所有 embed 合計 6000 字、最多 10 個 embed */
 export const LIMITS = { description: 4096, message: 6000, embeds: 10, content: 2000 };
 
-const COLOR = { alert: 0xd9363e, market: 0x6366f1, watch: 0x0ea5e9, danger: 0xf97316, bull: 0x118a5c };
+const COLOR = { alert: 0xd9363e, market: 0x6366f1, watch: 0x0ea5e9, danger: 0xf97316, bull: 0x118a5c, news: 0x64748b, earnings: 0xeab308 };
 
 export function fmtPct(v: number): string {
   // 用真正的減號「−」：在 Discord 上比「-」清楚
@@ -296,12 +297,94 @@ export function stockLine(tk: ScreenerTicker): string {
   return parts.join("｜");
 }
 
+// ---------------------------------------------------------------------------
+// 新聞與財報（Finnhub；scripts/notify.ts 抓好傳進來，抓不到就是 null → 整段略過）
+// ---------------------------------------------------------------------------
+
+export interface NewsBundle {
+  /** 市場新聞（Finnhub /news?category=general） */
+  market: NewsItem[] | null;
+  /** 關注股票的公司新聞（代號 → 新聞） */
+  watch: Record<string, NewsItem[]> | null;
+  /** 關注股票未來 7 天的財報 */
+  earnings: EarningsItem[] | null;
+}
+
+/** 標題放進 Discord 連結 [標題](網址) 前，把會弄壞語法的 [ ] 換掉 */
+const safeTitle = (s: string) => s.replace(/\[/g, "（").replace(/\]/g, "）").replace(/\s+/g, " ").trim();
+
+function agoText(sec: number, nowSec: number): string {
+  const m = Math.max(1, Math.floor((nowSec - sec) / 60));
+  return m < 60 ? `${m} 分鐘前` : `${Math.floor(m / 60)} 小時前`;
+}
+
+/** 網址裡的括號會讓 Markdown 連結提早結束，換成編碼 */
+const safeUrl = (u: string) => u.replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/\s/g, "%20");
+
+const newsLine = (n: NewsItem, nowSec: number) => `• [${safeTitle(n.headline)}](${safeUrl(n.url)})\n　${n.source ? `${n.source} · ` : ""}${agoText(n.datetime, nowSec)}`;
+
+const WEEKDAY = ["日", "一", "二", "三", "四", "五", "六"];
+const HOUR_TEXT: Record<string, string> = { bmo: "盤前", amc: "盤後", dmh: "盤中" };
+
+/**
+ * 📰 重大財經新聞（最近 24 小時最重要的 5 則）、🔎 關注股票新聞（每檔最多 2 則）、📅 財報提醒（7 天內）。
+ * 同一則新聞只出現一次（先出現在「重大財經新聞」的，就不再列在個股底下）。只放標題和連結，不轉載內文。
+ */
+export function buildNewsEmbeds(news: NewsBundle | null, cfg: NotifyConfig, nowSec: number, today: string): DiscordEmbed[] {
+  if (!news) return [];
+  const embeds: DiscordEmbed[] = [];
+  const seen: NewsItem[] = [];
+  const isSeen = (n: NewsItem) => dedupeNews([...seen, n]).length === seen.length;
+
+  if (news.market) {
+    const top = rankMarketNews(recentNews(news.market, nowSec, 24), 5);
+    seen.push(...top);
+    if (top.length > 0) embeds.push({ title: "📰 重大財經新聞", color: COLOR.news, description: fitLines(top.map((n) => newsLine(n, nowSec)), LIMITS.description) });
+  }
+
+  if (news.watch) {
+    const lines: string[] = [];
+    for (const sym of cfg.watch) {
+      const items = dedupeNews(recentNews(news.watch[sym] ?? [], nowSec, 24))
+        .filter((n) => !isSeen(n))
+        .slice(0, 2);
+      if (items.length === 0) continue;
+      seen.push(...items);
+      lines.push(`**${sym}**`, ...items.map((n) => newsLine(n, nowSec)));
+    }
+    if (lines.length > 0) embeds.push({ title: "🔎 關注股票新聞", color: COLOR.watch, description: fitLines(lines, LIMITS.description) });
+  }
+
+  if (news.earnings) {
+    const watch = new Set(cfg.watch);
+    const items = news.earnings.filter((e) => watch.has(e.symbol));
+    if (items.length > 0) {
+      const lines = items.map((e) => {
+        const days = Math.round((Date.parse(e.date) - Date.parse(today)) / 86_400_000);
+        const wd = WEEKDAY[new Date(`${e.date}T00:00:00Z`).getUTCDay()];
+        const when = days <= 0 ? "今天" : days === 1 ? "明天" : `${days} 天後`;
+        return `**${e.symbol}** ${e.date.slice(5).replace("-", "/")}（週${wd}）${HOUR_TEXT[e.hour] ? ` ${HOUR_TEXT[e.hour]}` : ""}・${when}`;
+      });
+      lines.push("⚠️ 財報前一週不開新倉");
+      embeds.push({ title: "📅 財報提醒（7 天內）", color: COLOR.earnings, description: fitLines(lines, LIMITS.description) });
+    }
+  }
+  return embeds;
+}
+
 /**
  * 組成要送出的訊息（每則 = 一段文字 + 幾張彩色卡片）：
  *   第 1 則（有大事才有）：🚨 特別注意 —— 手機通知預覽會先看到這則
  *   第 2 則：📊 每日摘要 —— 市場、我關注的股票、⚠️ 危險訊號、✅ 偏多訊號（0 檔的不列）
  */
-export function buildMessages(allData: ScreenerData, cfg: NotifyConfig, dataDate: string, previous: NotifyState | null): DiscordMessage[] {
+export function buildMessages(
+  allData: ScreenerData,
+  cfg: NotifyConfig,
+  dataDate: string,
+  previous: NotifyState | null,
+  news: NewsBundle | null = null,
+  nowSec: number = Math.floor(Date.now() / 1000),
+): DiscordMessage[] {
   const data = withoutExcluded(allData, cfg);
   const messages: DiscordMessage[] = [];
   const danger = evaluateSignals(data, cfg.danger, previous, cfg.watch);
@@ -344,6 +427,11 @@ export function buildMessages(allData: ScreenerData, cfg: NotifyConfig, dataDate
     market.push(`跌幅前 ${cfg.topMovers}：${fmt(topMovers(asSummary, "day", cfg.topMovers, "down"))}`);
   }
   embeds.push({ title: `📊 市場摘要（${dataDate} 收盤）`, color: COLOR.market, description: fitLines(market, LIMITS.description) });
+  // 新聞與財報（沒有 Finnhub 金鑰或抓取失敗時是空的，其他卡片照常）
+  const newsEmbeds = buildNewsEmbeds(news, cfg, nowSec, new Date(nowSec * 1000).toISOString().slice(0, 10));
+  const marketNews = newsEmbeds.filter((e) => e.title.startsWith("📰"));
+  const otherNews = newsEmbeds.filter((e) => !e.title.startsWith("📰"));
+  embeds.push(...marketNews);
 
   // 我關注的股票
   const watched = cfg.watch.map((s) => bySymbol.get(s)).filter((tk): tk is ScreenerTicker => !!tk);
@@ -357,6 +445,8 @@ export function buildMessages(allData: ScreenerData, cfg: NotifyConfig, dataDate
       ),
     });
   }
+
+  embeds.push(...otherNews);
 
   const signalLines = (hits: SignalHit[]) =>
     hits.map((h) => `${h.isNew ? "🆕 " : ""}**${link(cfg, h.ticker)}** ${fmtPct(h.ticker.changePct)}　${h.rules.join("・")}`);

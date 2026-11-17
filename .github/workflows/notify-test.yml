@@ -31,6 +31,8 @@ jobs:
       - name: 送出通知（強制，即使今天已經通知過）
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          # 新聞與財報提醒（沒設定時略過這幾張卡片，其他通知照常）
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           NOTIFY_FORCE: "1"
           NOTIFY_STRICT: "1"
         run: npx vite-node scripts/notify.ts
