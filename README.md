@@ -251,7 +251,7 @@ K 線畫圖工具（看盤頁 K 線上方）：
 ```
 
 ```
-  ┌────────────────────────┐   每天台灣 06:17（07:47 備援）
+  ┌────────────────────────┐   每天台灣 06:00～06:59 由 Vercel Cron 觸發（GitHub 排程 06:17、07:47 備援）
   │     GitHub Actions     │
   │  scripts/fetch_data.py │ ← 先從 data 分支取回昨天的資料（抓失敗的股票沿用）
   └──────────┬─────────────┘
@@ -545,6 +545,8 @@ npm run dev
 | 放在哪裡 | 名稱 | 用途 | 沒設定時 |
 | --- | --- | --- | --- |
 | Vercel → Settings → Environment Variables | `FINNHUB_API_KEY` | 今日總覽的即時報價、新聞、財報（`api/*.ts`） | 今日總覽顯示收盤資料並標示「非即時」 |
+| Vercel → Settings → Environment Variables | `CRON_SECRET` | 每日排程的觸發密碼（任意一串長亂碼；Vercel Cron 會自動帶上） | Vercel Cron 不會觸發更新，只靠 GitHub 自己的排程（不可靠） |
+| Vercel → Settings → Environment Variables | `GH_DISPATCH_TOKEN` | GitHub fine-grained token（只給這個儲存庫 **Actions: Read and write**），讓 Vercel Cron 觸發「更新股價資料」 | 同上 |
 | GitHub → Settings → Secrets and variables → Actions | `DISCORD_WEBHOOK_URL` | 每日 Discord 通知 | 只在 Actions 記錄裡印出通知內容 |
 | GitHub → Settings → Secrets and variables → Actions | `FINNHUB_API_KEY` | Discord 通知裡的新聞與財報提醒（`scripts/notify.ts`）；Yahoo 漏掉美股最新一天時補收盤價（`scripts/fetch_data.py`） | 略過新聞與財報卡片；缺的那天等備援排程重抓 |
 

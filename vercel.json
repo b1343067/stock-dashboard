@@ -36,5 +36,11 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "20 22 * * *"
+    }
   ]
 }

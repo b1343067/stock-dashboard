@@ -1,5 +1,7 @@
 # 每日自動更新股價資料
-# 台灣時間每天早上 6:17 執行，7:47 再跑一次當備援；也可以在 Actions 頁面手動觸發
+# 主要觸發：Vercel Cron（api/cron.ts）每天台灣 06:00～06:59 用 GitHub API 觸發（source=cron）
+# 備援：GitHub 自己的 schedule（06:17、07:47；但它很不可靠，11/17、11/18 連續兩天沒觸發）
+# 也可以在 Actions 頁面手動觸發
 name: 更新股價資料
 
 on:
@@ -9,7 +11,13 @@ on:
   schedule:
     - cron: "17 22 * * *"   # 台灣 06:17（美股收盤後約 1 小時）
     - cron: "47 23 * * *"   # 台灣 07:47：備援，第一次沒跑或有股票抓失敗時補上
-  workflow_dispatch: {}        # 允許手動觸發（Actions → 更新股價資料 → Run workflow）
+  # 手動觸發（Actions → 更新股價資料 → Run workflow）；Vercel Cron 也走這裡，會帶 source=cron
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "觸發來源（手動執行保持 manual；cron = 每日排程，今天已更新過就略過）"
+        required: false
+        default: "manual"
   # 修改觀察清單或資料腳本並推到 main 時，也自動重抓一次
   # （Actions 自己 commit 的 public/data 不在清單內，不會無限循環）
   push:
@@ -57,7 +65,10 @@ jobs:
         id: fresh
         run: |
           skip=false
-          if [ "${{ github.event_name }}" = "schedule" ] && git rev-parse -q --verify FETCH_HEAD >/dev/null; then
+          # 排程（GitHub schedule 或 Vercel Cron 觸發的 source=cron）才檢查；手動執行一律照跑
+          scheduled=false
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.source }}" = "cron" ]; then scheduled=true; fi
+          if [ "$scheduled" = "true" ] && git rev-parse -q --verify FETCH_HEAD >/dev/null; then
             now=$(date -u +%s)
             boundary=$(date -u -d "$(date -u +%F) 22:00" +%s)
             [ "$now" -lt "$boundary" ] && boundary=$((boundary - 86400))
@@ -123,7 +134,8 @@ jobs:
           # 新聞與財報提醒（沒設定時略過這幾張卡片，其他通知照常）
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           # 在 Actions 頁面手動執行時強制送出（自動排程與推程式碼觸發的，同一天只送一次）
-          NOTIFY_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+          # （Vercel Cron 觸發的 source=cron 當作排程，不強制）
+          NOTIFY_FORCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.source != 'cron' && '1' || '0' }}
         run: npx vite-node scripts/notify.ts
 
       - name: 發布資料到 data 分支（只保留最新一份）
