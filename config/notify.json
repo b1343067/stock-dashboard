@@ -13,7 +13,7 @@
   "benchmarks": ["VOO", "QQQ", "VT"],
   "exclude": ["0050.TW"],
   "topMovers": 3,
-  "watch": ["COST", "XLE", "AMZN", "TSLA", "CVX"],
+  "watch": ["COST", "XLE", "AMZN", "TSLA", "LLY"],
   "bigMovePct": 5,
   "near52wPct": 1,
   "priceAlerts": [],
