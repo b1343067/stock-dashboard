@@ -69,3 +69,25 @@ test("手機版：辦公室兩欄、報告從底部滑出、沒有橫向捲軸 @
   await expectNoHorizontalScroll(page);
   await errs.expectNoErrors();
 });
+
+test("等角場景：畫布有畫出東西、點名牌打開報告", async ({ page }) => {
+  const errs = trackErrors(page);
+  await page.goto("/#/office");
+  const canvas = page.locator(".office-scene canvas");
+  await expect(canvas).toBeVisible();
+  // 畫布上有不透明的像素（場景真的畫出來了）
+  await expect
+    .poll(() =>
+      canvas.evaluate((c: HTMLCanvasElement) => {
+        const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+        let n = 0;
+        for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
+        return n;
+      }),
+    )
+    .toBeGreaterThan(10000);
+  await expect(page.locator(".office-tag")).toHaveCount(5);
+  await page.locator(".office-tag", { hasText: "技術分析師" }).click();
+  await expect(page.getByRole("dialog", { name: "技術分析師" })).toBeVisible();
+  await errs.expectNoErrors();
+});

@@ -53,15 +53,21 @@
   --div-neg: #e34948;
   --div-mid: #f0efec;
 
-  /* AI 辦公室（像素畫）：牆、地板、家具、角色的顏色 */
-  --office-wall: #eceefb;
-  --office-floor: #dfe2f0;
-  --office-desk: #b8865a;
-  --office-desk-dark: #8f6340;
-  --office-chair: #5b5f73;
-  --office-frame: #2b2e3a;
-  --office-screen: #a5f3c4;
-  --office-screen-off: #59607a;
+
+  /* AI 辦公室（等角像素場景，components/office/OfficeScene.tsx 讀這些顏色） */
+  --iso-wall: #dfe3ea;
+  --iso-floor: #c99d6e;
+  --iso-sky: #a9d4f2;
+  --iso-city: #8193ad;
+  --iso-lit: #eef3f8;
+  --iso-desk: #f3f4f6;
+  --iso-metal: #3a3f4b;
+  --iso-screen: #1d2433;
+  --iso-plant: #4caf6a;
+  --iso-pot: #c46b4b;
+  --iso-rug: #c7cbf3;
+  --iso-board: #fbfbfd;
+  --office-chair: #4b5063;
   --office-skin: #f2c9a0;
   --office-ink: #1b1c22;
   --office-hair-1: #3b2a20;
@@ -104,14 +110,19 @@
     --c-macd: #60a5fa;
     --c-signal: #fbbf24;
     --c-rsi: #a78bfa;
-    --office-wall: #1c1e2b;
-    --office-floor: #232536;
-    --office-desk: #8a6444;
-    --office-desk-dark: #694a31;
+    --iso-wall: #2b2f3d;
+    --iso-floor: #6f5238;
+    --iso-sky: #1c2544;
+    --iso-city: #323c5c;
+    --iso-lit: #f4d06f;
+    --iso-desk: #c4c8d0;
+    --iso-metal: #23262f;
+    --iso-screen: #0e121c;
+    --iso-plant: #3f9a5c;
+    --iso-pot: #a85a3f;
+    --iso-rug: #383b66;
+    --iso-board: #e2e5ec;
     --office-chair: #3c3f50;
-    --office-frame: #0c0d12;
-    --office-screen: #6ee7a8;
-    --office-screen-off: #353a4d;
     --office-skin: #e3b98f;
     --office-ink: #0c0d12;
     --office-hair-1: #2a1d16;
@@ -158,14 +169,19 @@
   --c-macd: #60a5fa;
   --c-signal: #fbbf24;
   --c-rsi: #a78bfa;
-  --office-wall: #1c1e2b;
-  --office-floor: #232536;
-  --office-desk: #8a6444;
-  --office-desk-dark: #694a31;
+  --iso-wall: #2b2f3d;
+  --iso-floor: #6f5238;
+  --iso-sky: #1c2544;
+  --iso-city: #323c5c;
+  --iso-lit: #f4d06f;
+  --iso-desk: #c4c8d0;
+  --iso-metal: #23262f;
+  --iso-screen: #0e121c;
+  --iso-plant: #3f9a5c;
+  --iso-pot: #a85a3f;
+  --iso-rug: #383b66;
+  --iso-board: #e2e5ec;
   --office-chair: #3c3f50;
-  --office-frame: #0c0d12;
-  --office-screen: #6ee7a8;
-  --office-screen-off: #353a4d;
   --office-skin: #e3b98f;
   --office-ink: #0c0d12;
   --office-hair-1: #2a1d16;
@@ -1314,50 +1330,52 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 /* ---------------- AI 投研辦公室（#/office） ---------------- */
 .office-banner { margin-bottom: 12px; }
 .office-dates { margin: 0 0 10px; }
-/* 辦公室：上半是牆、下半是地板（用漸層畫，不用圖片）；後排 4 位分析師、前排中間是主管 */
-.office-room {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  padding: 18px;
+/* 等角像素場景：畫布原始 352×252，等比例放大；名牌用百分比定位在角色頭上 */
+.office-scene {
+  position: relative;
+  max-width: 920px;
+  margin: 0 auto;
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  background: var(--surface-2);
+  background: radial-gradient(ellipse at 50% 40%, var(--surface-2), var(--surface-3));
+  overflow: hidden;
 }
+.office-scene canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
+.office-tag {
+  position: absolute; z-index: 2; transform: translate(-50%, -100%);
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+  font: 700 clamp(10px, 1.15vw, 13px) / 1.3 var(--font-sans);
+  background: rgba(16, 18, 28, 0.82); color: #f4f5f8; border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+.office-tag::after { content: ""; position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); border: 4px solid transparent; border-bottom: 0; border-top-color: rgba(16, 18, 28, 0.82); }
+.office-tag:hover, .office-tag:focus-visible { background: var(--accent-strong); outline: none; }
+.office-tag i { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex: none; }
+.office-tag.is-off i { background: #9ca3af; }
+.office-tag-off { font-weight: 600; opacity: 0.75; }
+/* 角色身上的點擊範圍（名牌下方） */
+.office-hit { position: absolute; z-index: 1; width: 7%; height: 15%; transform: translate(-50%, 0); cursor: pointer; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* 角色列表 */
+.office-roster { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
 .office-station {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  min-width: 0; padding: 10px 8px 12px;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 8px;
+  min-width: 0; padding: 10px 12px;
   background: var(--surface); color: var(--text);
   border: 1px solid var(--border); border-radius: var(--radius-sm);
-  cursor: pointer; font: inherit; text-align: center;
-  transition: border-color 0.15s, transform 0.15s;
+  cursor: pointer; font: inherit; text-align: left;
 }
-.office-station:hover { border-color: var(--accent); transform: translateY(-2px); }
+.office-station:hover { border-color: var(--accent); }
 .office-station:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.office-lead { grid-column: 2 / span 2; }
-/* 每個工作站的小場景：上面是牆、下面是地板（漸層畫，不用圖片） */
-.px-stage { display: flex; justify-content: center; width: 100%; padding-top: 6px; border-radius: 8px; background: linear-gradient(to bottom, var(--office-wall) 0 72%, var(--office-floor) 72% 100%); }
-.px-desk { width: 100%; max-width: 168px; height: auto; display: block; }
-.office-name { font-weight: 800; }
-.office-status { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.office-swatch { width: 10px; height: 10px; border-radius: 3px; }
+.office-name { font-weight: 800; min-width: 0; }
+.office-status { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
 .office-status.is-done { background: var(--accent-soft); color: var(--accent); }
 .office-status.is-off { background: var(--surface-3); color: var(--text-3); }
-.office-summary { line-height: 1.45; overflow-wrap: anywhere; }
+.office-summary { grid-column: 1 / -1; line-height: 1.45; overflow-wrap: anywhere; }
 .office-disclaimer { margin-top: 12px; }
-
-/* 像素動作：steps() 讓動作一格一格跳，比較像像素動畫 */
-.px-desk g { transform-box: fill-box; }
-.px-typing .px-arms { animation: px-type 0.5s steps(2) infinite; }
-.px-typing .px-lines { animation: px-blink 1.6s steps(2) infinite; }
-.px-coffee .px-mug { animation: px-sip 3.2s steps(1) infinite; }
-.px-idle .px-person { animation: px-bob 1.8s steps(2) infinite; }
-@keyframes px-type { 50% { transform: translateY(-1px); } }
-@keyframes px-blink { 50% { opacity: 0.4; } }
-@keyframes px-sip { 0%, 60% { transform: none; } 70%, 90% { transform: translate(-12px, -8px); } }
-@keyframes px-bob { 50% { transform: translateY(1px); } }
-@media (prefers-reduced-motion: reduce) {
-  .px-desk * { animation: none !important; }
-}
 
 /* 報告面板 */
 .report-sample { display: inline-block; margin-bottom: 10px; padding: 2px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-text); font-weight: 700; font-size: 12.5px; }
@@ -1371,12 +1389,14 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .report-debate { display: grid; gap: 4px; }
 .report-disclaimer { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 10px; }
 
+@media (max-width: 1100px) {
+  .office-roster { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 @media (max-width: 860px) {
-  .office-room { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; gap: 10px; }
-  .office-lead { grid-column: 1 / -1; }
-  .office-lead .px-desk { max-width: 140px; }
+  .office-roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) {
-  .office-room { padding: 8px; gap: 8px; }
-  .office-station { padding: 8px 6px 10px; }
+  .office-roster { grid-template-columns: 1fr; gap: 8px; }
+  .office-tag { padding: 0 4px; gap: 3px; font-size: 9px; border-radius: 4px; }
+  .office-tag i { width: 5px; height: 5px; }
 }

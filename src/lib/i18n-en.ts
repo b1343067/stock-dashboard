@@ -822,4 +822,5 @@ export const EN: Record<string, string> = {
   "偏多的理由": "Bullish arguments",
   "偏空的理由": "Bearish arguments",
   "今日重點": "Today's key points",
+  "像素風辦公室：5 位 AI 分析師在座位上工作": "Pixel-art office: 5 AI analysts working at their desks",
 };

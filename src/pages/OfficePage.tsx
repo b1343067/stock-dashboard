@@ -3,11 +3,12 @@
 // 報告讀不到時辦公室照樣顯示（大家休假中），不會整頁壞掉。
 
 import { useCallback, useEffect, useState } from "react";
-import PixelDesk from "../components/office/PixelDesk";
+import OfficeScene from "../components/office/OfficeScene";
 import ReportPanel from "../components/office/ReportPanel";
 import { loadAiReport } from "../lib/data";
 import { doneCount, pick, reportStale, ROLE_NAME, ROLE_ORDER } from "../lib/aiReport";
 import { getLang, t } from "../lib/i18n";
+import { SEATS } from "../lib/iso";
 import type { AiReport, AiRoleKey } from "../lib/types";
 
 interface Props {
@@ -42,6 +43,7 @@ export default function OfficePage({ redUp }: Props) {
   }, []);
 
   const lang = getLang();
+  const present = Object.fromEntries(ROLE_ORDER.map((k) => [k, report?.roles[k].status === "done"])) as Record<AiRoleKey, boolean>;
   const today = new Date().toISOString().slice(0, 10);
   // 範例報告的日期是固定的，不顯示「過期」提醒
   const stale = report && !report.sample && reportStale(report, today);
@@ -75,13 +77,16 @@ export default function OfficePage({ redUp }: Props) {
         </p>
       )}
 
-      <div className="office-room" aria-busy={state === "loading"}>
+      <OfficeScene present={present} loading={state === "loading"} redUp={redUp} onOpen={setOpen} />
+
+      {/* 角色列表：手機上名牌比較小，這裡也可以點；同時顯示每個人今天的摘要 */}
+      <div className="office-roster">
         {ROLE_ORDER.map((key) => {
           const r = report?.roles[key];
           const done = r?.status === "done";
           return (
             <button key={key} type="button" className={`office-station office-${key}`} onClick={() => setOpen(key)} aria-haspopup="dialog">
-              <PixelDesk role={key} present={done} />
+              <span className="office-swatch" style={{ background: `var(${SEATS[key].shirt})` }} aria-hidden="true" />
               <span className="office-name">{t(ROLE_NAME[key])}</span>
               <span className={`office-status ${done ? "is-done" : "is-off"}`}>{state === "loading" ? t("載入中…") : done ? t("已完成") : t("休假中")}</span>
               <span className="office-summary muted small">{done && r ? pick(r.summary, lang) : t(ROLE_DESC[key])}</span>
