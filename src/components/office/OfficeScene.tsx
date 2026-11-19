@@ -1,41 +1,15 @@
-// AI 辦公室（首頁）的像素場景：3/4 俯視角（後牆正對畫面、地板斜看、人物面向畫面）
-// 原創繪製，全部用程式一格一格畫，不用任何外部圖片。版面資料與純函式在 lib/officeLayout.ts。
-//
-// 畫法：
-//   1. 在 320×224 的小畫布上畫像素（牆、地板只在主題改變時畫一次；家具與人物每格重畫）
-//   2. 整數倍（SCALE）放大到大畫布：每個像素都是 S×S，瀏覽器再平滑縮到畫面大小，邊緣才清楚整齊
-//   3. 疊上平滑漸層的光影（吊燈、霓虹燈、螢幕、窗光；深色主題是夜景）
-// 動畫每秒 8 格；分頁在背景時瀏覽器自動暫停；使用者設定「減少動態」時只畫一張靜態圖。
-// 人物頭上的名牌、物件（門、窗、電視、看板、書櫃）上的標籤都是 HTML 連結／按鈕，可以用鍵盤操作；
-// 辦公室頁不顯示底部導覽列，改由這些物件切換頁面。
+// AI 辦公室的等角像素場景（原創，全部用程式畫，不用任何外部圖片）
+// 做法：在 400×316 的小畫布上一格一格畫，再用 CSS 放大（image-rendering: pixelated）。
+// 牆、窗、地板這些不會動的部分只在主題改變時畫一次存起來；家具、角色、螢幕每一格重畫，
+// 大約每秒 8 格；分頁在背景時瀏覽器會自動暫停；使用者設定「減少動態」時只畫一張靜態圖。
+// 角色頭上的名牌、物件（門、窗、電視、看板、書櫃）上的標籤都是 HTML 連結／按鈕，
+// 可以用鍵盤與螢幕報讀器操作；辦公室頁不顯示底部導覽列，改由這些物件切換頁面。
 
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import {
-  hash01,
-  isDarkColor,
-  NAV_SPOTS,
-  SCENE_H,
-  SCENE_W,
-  SEATS,
-  shade,
-  spans,
-  spotPosition,
-  tagPosition,
-  WALL_BOTTOM,
-  WALL_LEFT,
-  WALL_RIGHT,
-  WALL_TOP,
-  type Pt,
-} from "../../lib/officeLayout";
+import { isDarkColor, NAV_SPOTS, project, ROOM, SCENE_H, SCENE_W, SEATS, shade, SIT_Z, spans, spotPosition, tagPosition, WALL_H, type Pt } from "../../lib/iso";
 import { ROLE_NAME, ROLE_ORDER } from "../../lib/aiReport";
 import { t } from "../../lib/i18n";
-import {
-  MARKET_HREF,
-  PORTFOLIO_HREF,
-  SCREENER_HREF,
-  TODAY_HREF,
-  type Page,
-} from "../../lib/route";
+import { MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, TODAY_HREF, type Page } from "../../lib/route";
 import { useThemeColors } from "../../lib/theme";
 import type { AiRoleKey } from "../../lib/types";
 
@@ -56,49 +30,16 @@ type Ctx = CanvasRenderingContext2D;
 type Palette = Record<string, string>;
 
 const VARS = [
-  "--iso-wall",
-  "--iso-floor",
-  "--iso-sky",
-  "--iso-city",
-  "--iso-lit",
-  "--iso-desk",
-  "--iso-metal",
-  "--iso-screen",
-  "--iso-plant",
-  "--iso-pot",
-  "--iso-rug",
-  "--iso-board",
-  "--iso-fire",
-  "--iso-brick",
-  "--iso-beam",
-  "--iso-wood",
-  "--iso-neon",
-  "--office-skin",
-  "--office-hair-1",
-  "--office-hair-2",
-  "--office-hair-3",
-  "--office-ink",
-  "--office-mug",
-  "--office-chair",
-  "--s1",
-  "--s2",
-  "--s3",
-  "--s4",
-  "--accent-strong",
-  "--red",
-  "--green",
+  "--iso-wall", "--iso-floor", "--iso-sky", "--iso-city", "--iso-lit", "--iso-desk", "--iso-metal", "--iso-screen", "--iso-plant", "--iso-pot", "--iso-rug", "--iso-board", "--iso-fire",
+  "--office-skin", "--office-hair-1", "--office-hair-2", "--office-hair-3", "--office-ink", "--office-mug", "--office-chair",
+  "--s1", "--s2", "--s3", "--s4", "--accent-strong", "--red", "--green",
 ];
 
 function readPalette(redUp: boolean): Palette {
   const cs = getComputedStyle(document.documentElement);
   const p: Record<string, string> = {};
   for (const v of VARS) p[v] = cs.getPropertyValue(v).trim() || "#888888";
-  return {
-    ...p,
-    night: isDarkColor(p["--iso-wall"]) ? "1" : "",
-    up: redUp ? p["--red"] : p["--green"],
-    down: redUp ? p["--green"] : p["--red"],
-  };
+  return { ...p, night: isDarkColor(p["--iso-wall"]) ? "1" : "", up: redUp ? p["--red"] : p["--green"], down: redUp ? p["--green"] : p["--red"] };
 }
 
 // ---------------------------------------------------------------------------
@@ -108,31 +49,270 @@ function poly(ctx: Ctx, pts: Pt[], color: string) {
   ctx.fillStyle = color;
   for (const [y, x, w] of spans(pts)) ctx.fillRect(x, y, w, 1);
 }
-function px(
-  ctx: Ctx,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  color: string,
-) {
+function px(ctx: Ctx, x: number, y: number, w: number, h: number, color: string) {
   ctx.fillStyle = color;
   ctx.fillRect(Math.round(x), Math.round(y), w, h);
 }
-/** 有深色外框的長方形（家具的基本形狀） */
-function block(
-  ctx: Ctx,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  color: string,
-  edge = shade(color, -0.5),
-) {
-  px(ctx, x, y, w, h, edge);
-  px(ctx, x + 1, y + 1, w - 2, h - 2, color);
+function line(ctx: Ctx, a: Pt, b: Pt, color: string) {
+  ctx.fillStyle = color;
+  const n = Math.max(1, Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]))));
+  for (let i = 0; i <= n; i++) ctx.fillRect(Math.round(a[0] + ((b[0] - a[0]) * i) / n), Math.round(a[1] + ((b[1] - a[1]) * i) / n), 1, 1);
 }
-/** 像素圓形（葉叢、燈泡） */
+const P = project;
+
+/**
+ * 長方體：看得到上面、+y 面（左前）、+x 面（右前），三面深淺不同就有立體感；
+ * 再沿著輪廓描一圈深色邊，像素畫才有清楚的形狀。
+ */
+function box(ctx: Ctx, x: number, y: number, z: number, w: number, d: number, h: number, color: string, outline = true) {
+  poly(ctx, [P(x, y + d, z), P(x + w, y + d, z), P(x + w, y + d, z + h), P(x, y + d, z + h)], shade(color, -0.12));
+  poly(ctx, [P(x + w, y, z), P(x + w, y + d, z), P(x + w, y + d, z + h), P(x + w, y, z + h)], shade(color, -0.26));
+  poly(ctx, [P(x, y, z + h), P(x + w, y, z + h), P(x + w, y + d, z + h), P(x, y + d, z + h)], color);
+  if (outline && h > 0) {
+    const e = shade(color, -0.5);
+    line(ctx, P(x, y + d, z + h), P(x + w, y + d, z + h), shade(color, 0.25)); // 上緣亮邊
+    line(ctx, P(x + w, y + d, z), P(x + w, y + d, z + h), shade(color, -0.35));
+    line(ctx, P(x, y, z + h), P(x, y + d, z + h), e);
+    line(ctx, P(x, y, z + h), P(x + w, y, z + h), e);
+    line(ctx, P(x + w, y, z + h), P(x + w, y, z), e);
+    line(ctx, P(x, y + d, z + h), P(x, y + d, z), e);
+    line(ctx, P(x, y + d, z), P(x + w, y + d, z), e);
+    line(ctx, P(x + w, y + d, z), P(x + w, y, z), e);
+  }
+}
+/** 地上的影子（半透明菱形） */
+function shadow(ctx: Ctx, x: number, y: number, w: number, d: number, alpha = 0.14) {
+  poly(ctx, [P(x, y), P(x + w, y), P(x + w, y + d), P(x, y + d)], `rgba(0,0,0,${alpha})`);
+}
+/** 左牆（x = 0 平面）上的長方形 */
+function wallL(ctx: Ctx, y0: number, y1: number, z0: number, z1: number, color: string, x = 0) {
+  poly(ctx, [P(x, y0, z0), P(x, y1, z0), P(x, y1, z1), P(x, y0, z1)], color);
+}
+/** 右牆（y = 0 平面）上的長方形 */
+function wallR(ctx: Ctx, x0: number, x1: number, z0: number, z1: number, color: string, y = 0) {
+  poly(ctx, [P(x0, y, z0), P(x1, y, z0), P(x1, y, z1), P(x0, y, z1)], color);
+}
+
+// ---------------------------------------------------------------------------
+// 背景：牆、窗外景色、牆上的東西、地板（不會動的部分，主題改變時才重畫）
+// ---------------------------------------------------------------------------
+function drawRoom(ctx: Ctx, c: Palette) {
+  ctx.clearRect(0, 0, SCENE_W, SCENE_H);
+  const wall = c["--iso-wall"];
+  const wallLc = shade(wall, -0.1);
+
+  // 牆面＋上緣厚邊＋踢腳板
+  wallL(ctx, 0, ROOM, 0, WALL_H, wallLc);
+  wallR(ctx, 0, ROOM, 0, WALL_H, wall);
+  wallL(ctx, 0, ROOM, WALL_H - 4, WALL_H, shade(wall, -0.32));
+  wallR(ctx, 0, ROOM, WALL_H - 4, WALL_H, shade(wall, -0.24));
+  wallL(ctx, 0, ROOM, 0, 4, shade(wall, -0.38));
+  wallR(ctx, 0, ROOM, 0, 4, shade(wall, -0.3));
+  line(ctx, P(0, 0, 0), P(0, 0, WALL_H), shade(wall, -0.3)); // 牆角
+  // 下半部護牆板（腰板）＋上緣飾條：牆面才有層次，不是一整片素色
+  const wain = shade(wall, -0.07);
+  wallL(ctx, 0, ROOM, 4, 30, shade(wain, -0.1));
+  wallR(ctx, 0, ROOM, 4, 30, wain);
+  wallL(ctx, 0, ROOM, 30, 32, shade(wall, 0.12));
+  wallR(ctx, 0, ROOM, 30, 32, shade(wall, 0.15));
+  for (let k = 0.5; k < ROOM; k += 0.5) {
+    line(ctx, P(0, k, 5), P(0, k, 29), shade(wain, -0.18)); // 直條紋
+    line(ctx, P(k, 0, 5), P(k, 0, 29), shade(wain, -0.12));
+  }
+
+  // ---- 左牆：一整排落地窗，窗外是城市（淺色白天、深色夜景）----
+  const y0 = 0.5;
+  const y1 = 5.3;
+  const zb = 14;
+  const zt = 98;
+  const sky = c["--iso-sky"];
+  // 天空漸層：一層一層的色帶（像素畫常見的作法）
+  const bands = 6;
+  for (let i = 0; i < bands; i++) {
+    const za = zb + ((zt - zb) * i) / bands;
+    const zz = zb + ((zt - zb) * (i + 1)) / bands;
+    const k = i / (bands - 1);
+    wallL(ctx, y0, y1, za, zz, c.night ? shade(sky, -0.35 * k) : shade(sky, 0.35 - 0.4 * k));
+  }
+  if (c.night) {
+    for (const [sy, sz] of [[0.9, 92], [1.7, 86], [2.6, 94], [3.3, 89], [4.1, 95], [4.8, 85], [2.1, 80]]) {
+      const [x, y] = P(0, sy, sz);
+      px(ctx, x, y, 1, 1, c["--iso-lit"]);
+    }
+    const [mx, my] = P(0, 4.3, 84); // 月亮
+    px(ctx, mx - 2, my - 2, 4, 4, shade(c["--iso-lit"], 0.4));
+  } else {
+    for (const [cy, cz, cw] of [[1.2, 86, 0.9], [3.2, 90, 1.2], [4.3, 80, 0.7]]) {
+      wallL(ctx, cy, cy + cw, cz, cz + 3, shade(sky, 0.7));
+      wallL(ctx, cy + 0.2, cy + cw - 0.2, cz + 3, cz + 5, shade(sky, 0.7));
+    }
+  }
+  // 遠景大樓（較淡）＋近景大樓（較深、有窗戶）
+  const city = c["--iso-city"];
+  const far = [34, 46, 30, 52, 40, 58, 36, 44, 50, 32, 42, 38];
+  far.forEach((h, i) => {
+    const a = y0 + (i * (y1 - y0)) / far.length;
+    wallL(ctx, a, a + (y1 - y0) / far.length, zb, zb + h, c.night ? shade(city, -0.15) : shade(city, 0.3));
+  });
+  const near = [22, 38, 18, 44, 28, 34, 16, 40, 26, 30];
+  const step = (y1 - y0) / near.length;
+  near.forEach((h, i) => {
+    const a = y0 + i * step;
+    wallL(ctx, a + 0.03, a + step * 0.92, zb, zb + h, city);
+    wallL(ctx, a + 0.03, a + step * 0.92, zb + h - 2, zb + h, shade(city, 0.15));
+    for (let z = zb + 4; z < zb + h - 4; z += 5) {
+      for (let j = 0; j < 2; j++) {
+        if ((i * 3 + z + j * 5) % 4 !== 0) {
+          const wa = a + step * (0.2 + j * 0.38);
+          wallL(ctx, wa, wa + step * 0.18, z, z + 2, c.night ? c["--iso-lit"] : shade(city, -0.2));
+        }
+      }
+    }
+  });
+  // 窗框：上下、每一片之間的直框、窗台
+  const frame = c["--iso-metal"];
+  wallL(ctx, y0 - 0.06, y1 + 0.06, zb - 3, zb, frame);
+  wallL(ctx, y0 - 0.06, y1 + 0.06, zt, zt + 3, frame);
+  for (let i = 0; i <= 4; i++) {
+    const y = y0 + (i * (y1 - y0)) / 4;
+    wallL(ctx, y - 0.05, y + 0.05, zb, zt, frame);
+  }
+  wallL(ctx, y0, y1, 54, 55, shade(frame, 0.3)); // 橫框
+  poly(ctx, [P(0, y0 - 0.06, zb - 3), P(0.25, y0 - 0.06, zb - 3), P(0.25, y1 + 0.06, zb - 3), P(0, y1 + 0.06, zb - 3)], shade(wall, -0.2)); // 窗台
+  // 玻璃反光
+  for (let i = 0; i < 4; i++) {
+    const y = y0 + (i * (y1 - y0)) / 4 + 0.25;
+    line(ctx, P(0, y, zb + 30), P(0, y + 0.35, zb + 52), "rgba(255,255,255,0.25)");
+  }
+
+  // 左牆前段：滅火器、掛畫（山景）
+  wallL(ctx, 5.7, 7.7, 66, 96, shade(c["--iso-floor"], -0.4));
+  wallL(ctx, 5.8, 7.6, 68, 94, c.night ? shade(sky, -0.1) : shade(sky, 0.2));
+  poly(ctx, [P(0, 5.9, 68), P(0, 6.7, 84), P(0, 7.5, 68)], c["--iso-plant"]);
+  poly(ctx, [P(0, 6.4, 68), P(0, 7.0, 78), P(0, 7.5, 68)], shade(c["--iso-plant"], -0.25));
+  wallL(ctx, 6.9, 7.2, 86, 89, c["--iso-lit"]);
+
+  // ---- 右牆：看板（篩選器）、大電視（看盤）、時鐘、門 ----
+  const board = c["--iso-board"];
+  // 看板：三欄（待辦／進行中／完成），每欄幾張卡片
+  wallR(ctx, 0.5, 2.5, 40, 92, shade(board, -0.45));
+  wallR(ctx, 0.58, 2.42, 42, 90, board);
+  const cols = [c["--s1"], c["--s4"], c["--s3"]];
+  cols.forEach((col, i) => {
+    const xa = 0.66 + i * 0.6;
+    wallR(ctx, xa, xa + 0.52, 84, 88, col);
+    for (let k = 0; k < 4 - i; k++) {
+      const zc = 74 - k * 9;
+      wallR(ctx, xa + 0.04, xa + 0.48, zc, zc + 7, shade(col, 0.55));
+      wallR(ctx, xa + 0.08, xa + 0.36, zc + 4, zc + 5, shade(col, -0.2));
+    }
+  });
+  // 電視下的矮櫃在 drawFurniture；電視外框（畫面在 drawWallScreens，會動）
+  wallR(ctx, 2.9, 4.6, 46, 82, c["--iso-metal"]);
+  wallR(ctx, 3.65, 3.85, 42, 46, c["--iso-metal"]);
+  // 門：門框、門板、兩片凹板、把手、上方的綠色出口標示
+  const wood = shade(c["--iso-floor"], -0.15);
+  wallR(ctx, 5.8, 7.1, 0, 78, shade(wood, -0.4));
+  wallR(ctx, 5.9, 7.0, 0, 75, wood);
+  wallR(ctx, 6.05, 6.85, 44, 68, shade(wood, -0.12));
+  wallR(ctx, 6.05, 6.85, 10, 38, shade(wood, -0.12));
+  wallR(ctx, 6.82, 6.92, 36, 40, c["--iso-board"]);
+  wallR(ctx, 6.2, 6.7, 84, 90, "#1f9d55");
+  wallR(ctx, 6.3, 6.6, 86, 88, "#d8f5e3");
+  // 時鐘外框（指針在 drawWallScreens）
+  wallR(ctx, 4.95, 5.45, 76, 92, shade(board, -0.5));
+  wallR(ctx, 5.0, 5.4, 78, 90, board);
+
+  // ---- 地板：木地板（每一條木板深淺略不同、錯開的接縫）----
+  const floor = c["--iso-floor"];
+  const plank = 0.4;
+  for (let k = 0; k < ROOM / plank; k++) {
+    const ya = k * plank;
+    const tone = [0, 0.04, -0.03, 0.02, -0.05][k % 5];
+    poly(ctx, [P(0, ya), P(ROOM, ya), P(ROOM, ya + plank), P(0, ya + plank)], tone >= 0 ? shade(floor, tone) : shade(floor, tone));
+    line(ctx, P(0, ya), P(ROOM, ya), shade(floor, -0.14));
+    for (let xs = (k * 1.3) % 2.4; xs < ROOM; xs += 2.4) line(ctx, P(xs, ya), P(xs, ya + plank), shade(floor, -0.14));
+  }
+  // 木紋：在每條木板上點一些深淺不同的短線（用固定公式決定位置，畫面不會每次不同）
+  for (let k = 0; k < 220; k++) {
+    const fx = ((k * 37) % 97) / 97 * ROOM;
+    const fy = ((k * 61) % 89) / 89 * ROOM;
+    const [gx, gy] = P(fx, fy);
+    px(ctx, gx, gy, 3, 1, k % 3 === 0 ? shade(floor, 0.08) : shade(floor, -0.08));
+  }
+  // 牆邊的陰影（讓牆和地板接得自然）
+  poly(ctx, [P(0, 0), P(0.35, 0.35), P(0.35, ROOM), P(0, ROOM)], "rgba(0,0,0,0.08)");
+  poly(ctx, [P(0, 0), P(ROOM, 0), P(ROOM, 0.35), P(0.35, 0.35)], "rgba(0,0,0,0.08)");
+  // 窗戶照進來的光（白天明顯、晚上淡淡的）
+  for (let i = 0; i < 4; i++) {
+    const a = y0 + (i * (y1 - y0)) / 4 + 0.15;
+    const b = a + (y1 - y0) / 4 - 0.3;
+    poly(ctx, [P(0, a), P(0, b), P(2.4, b + 1.0), P(2.4, a + 1.0)], c.night ? "rgba(140,160,255,0.06)" : "rgba(255,250,220,0.22)");
+  }
+  // ---- 立體模型感：牆的厚度（上緣與兩端）、地板的厚度 ----
+  // 讓房間看起來像一個「剖開的模型」，而不是一張平面貼圖
+  const T = 0.18; // 牆厚（格）
+  const cap = shade(wall, 0.18);
+  poly(ctx, [P(-T, 0, WALL_H), P(0, 0, WALL_H), P(0, ROOM, WALL_H), P(-T, ROOM, WALL_H)], cap);
+  poly(ctx, [P(0, -T, WALL_H), P(ROOM, -T, WALL_H), P(ROOM, 0, WALL_H), P(0, 0, WALL_H)], cap);
+  poly(ctx, [P(-T, -T, WALL_H), P(0, -T, WALL_H), P(0, 0, WALL_H), P(-T, 0, WALL_H)], cap);
+  poly(ctx, [P(-T, ROOM, -8), P(0, ROOM, -8), P(0, ROOM, WALL_H), P(-T, ROOM, WALL_H)], shade(wall, -0.3)); // 左牆末端
+  poly(ctx, [P(ROOM, -T, -8), P(ROOM, 0, -8), P(ROOM, 0, WALL_H), P(ROOM, -T, WALL_H)], shade(wall, -0.42)); // 右牆末端
+  const slab = shade(c["--iso-floor"], -0.45);
+  poly(ctx, [P(0, ROOM, 0), P(ROOM, ROOM, 0), P(ROOM, ROOM, -8), P(0, ROOM, -8)], slab); // 地板左前側面
+  poly(ctx, [P(ROOM, 0, 0), P(ROOM, ROOM, 0), P(ROOM, ROOM, -8), P(ROOM, 0, -8)], shade(slab, -0.25)); // 右前側面
+  line(ctx, P(0, ROOM, 0), P(ROOM, ROOM, 0), shade(c["--iso-floor"], 0.15)); // 地板邊緣亮線
+  line(ctx, P(ROOM, 0, 0), P(ROOM, ROOM, 0), shade(c["--iso-floor"], 0.05));
+  line(ctx, P(-T, 0, WALL_H), P(-T, ROOM, WALL_H), shade(wall, -0.2));
+  line(ctx, P(0, -T, WALL_H), P(ROOM, -T, WALL_H), shade(wall, -0.2));
+
+  // 主管桌下的地毯（有邊框）
+  poly(ctx, [P(5.6, 4.4), P(ROOM - 0.1, 4.4), P(ROOM - 0.1, 7.6), P(5.6, 7.6)], shade(c["--iso-rug"], -0.2));
+  poly(ctx, [P(5.75, 4.55), P(ROOM - 0.25, 4.55), P(ROOM - 0.25, 7.45), P(5.75, 7.45)], c["--iso-rug"]);
+  // 地毯內框與菱形花紋
+  const rugL = shade(c["--iso-rug"], 0.18);
+  line(ctx, P(5.95, 4.75), P(ROOM - 0.45, 4.75), rugL);
+  line(ctx, P(ROOM - 0.45, 4.75), P(ROOM - 0.45, 7.25), rugL);
+  line(ctx, P(ROOM - 0.45, 7.25), P(5.95, 7.25), rugL);
+  line(ctx, P(5.95, 7.25), P(5.95, 4.75), rugL);
+  for (let i = 0; i < 3; i++) {
+    const cy = 5.3 + i * 0.85;
+    const cx = 6.8;
+    poly(ctx, [P(cx, cy - 0.25), P(cx + 0.25, cy), P(cx, cy + 0.25), P(cx - 0.25, cy)], shade(c["--iso-rug"], -0.15));
+  }
+  line(ctx, P(5.95, 5.0), P(ROOM - 0.45, 5.0), shade(c["--iso-rug"], -0.08));
+  line(ctx, P(5.95, 7.0), P(ROOM - 0.45, 7.0), shade(c["--iso-rug"], -0.08));
+}
+
+// ---------------------------------------------------------------------------
+// 會動的牆面：電視上的 K 線、時鐘指針
+// ---------------------------------------------------------------------------
+function drawWallScreens(ctx: Ctx, c: Palette, frame: number) {
+  wallR(ctx, 2.97, 4.53, 48, 80, c["--iso-screen"]);
+  // 格線
+  for (const z of [56, 64, 72]) wallR(ctx, 3.0, 4.5, z, z + 1, shade(c["--iso-screen"], 0.12));
+  // K 線：最後一根會慢慢長（像盤中在跳動）
+  const bars = [[54, 6, 1], [57, 5, 0], [55, 7, 1], [59, 6, 1], [62, 4, 0], [60, 8, 1], [64, 6, 1], [67, 5, 0], [65, 7, 1]];
+  bars.forEach(([z, h, up], i) => {
+    const x = 3.07 + i * 0.15;
+    const hh = i === bars.length - 1 ? 3 + (frame % 8) : h;
+    wallR(ctx, x + 0.04, x + 0.06, z - 2, z + hh + 2, up ? c.up : c.down);
+    wallR(ctx, x, x + 0.1, z, z + hh, up ? c.up : c.down);
+  });
+  // 均線
+  for (let i = 0; i < 8; i++) line(ctx, P(3.1 + i * 0.15, 0, 58 + i * 1.3), P(3.25 + i * 0.15, 0, 58 + (i + 1) * 1.3), c["--s4"]);
+  // 時鐘：秒針每秒走一格（12 個位置）
+  const [cx, cy] = P(5.2, 0, 84);
+  px(ctx, cx, cy - 4, 1, 4, c["--office-ink"]);
+  const sec = Math.floor(frame / 8) % 12;
+  const ang = (sec / 12) * Math.PI * 2;
+  px(ctx, cx + Math.round(Math.sin(ang) * 3), cy - Math.round(Math.cos(ang) * 3), 1, 1, c["--red"]);
+}
+
+// ---------------------------------------------------------------------------
+// 家具
+// ---------------------------------------------------------------------------
+/** 像素圓形（填滿）：葉叢、燈罩這類圓圓的東西 */
 function disc(ctx: Ctx, cx: number, cy: number, r: number, color: string) {
   ctx.fillStyle = color;
   for (let dy = -r; dy <= r; dy++) {
@@ -140,621 +320,167 @@ function disc(ctx: Ctx, cx: number, cy: number, r: number, color: string) {
     ctx.fillRect(Math.round(cx - w), Math.round(cy + dy), w * 2 + 1, 1);
   }
 }
-/** 地上的影子（半透明） */
-function floorShadow(
-  ctx: Ctx,
-  x: number,
-  y: number,
-  w: number,
-  h = 3,
-  a = 0.18,
-) {
-  px(ctx, x + 1, y, w - 2, h, `rgba(0,0,0,${a})`);
-  px(ctx, x + 3, y + h, w - 6, 1, `rgba(0,0,0,${a * 0.6})`);
-}
 
-// 霓虹招牌用的 5×7 像素字（只需要 AI OFFICE 這幾個字母）
-const FONT: Record<string, string[]> = {
-  A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
-  I: ["111", "010", "010", "010", "010", "010", "111"],
-  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
-  F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
-  C: ["01111", "10000", "10000", "10000", "10000", "10000", "01111"],
-  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
-  " ": ["000", "000", "000", "000", "000", "000", "000"],
-};
-const NEON_TEXT = "AI OFFICE";
-const NEON_S = 2;
-function textWidth(s: string) {
-  return [...s].reduce(
-    (w, ch) => w + (FONT[ch][0].length + 1) * NEON_S,
-    -NEON_S,
-  );
-}
-function drawText(ctx: Ctx, s: string, x: number, y: number, color: string) {
-  let cx = x;
-  for (const ch of s) {
-    const g = FONT[ch];
-    g.forEach((row, ry) =>
-      [...row].forEach(
-        (b, rx) =>
-          b === "1" &&
-          px(ctx, cx + rx * NEON_S, y + ry * NEON_S, NEON_S, NEON_S, color),
-      ),
-    );
-    cx += (g[0].length + 1) * NEON_S;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 背景：牆（磚牆、木樑、側牆、窗戶）、地板、牆上的東西（主題改變時才重畫）
-// ---------------------------------------------------------------------------
-const FLOOR: Pt[] = [
-  [WALL_LEFT, WALL_BOTTOM],
-  [WALL_RIGHT, WALL_BOTTOM],
-  [SCENE_W, WALL_BOTTOM + 20],
-  [SCENE_W, SCENE_H],
-  [0, SCENE_H],
-  [0, WALL_BOTTOM + 20],
-];
-const LEFT_WALL: Pt[] = [
-  [0, 0],
-  [WALL_LEFT, WALL_TOP],
-  [WALL_LEFT, WALL_BOTTOM],
-  [0, WALL_BOTTOM + 20],
-];
-const RIGHT_WALL: Pt[] = [
-  [WALL_RIGHT, WALL_TOP],
-  [SCENE_W, 0],
-  [SCENE_W, WALL_BOTTOM + 20],
-  [WALL_RIGHT, WALL_BOTTOM],
-];
-/** 左牆上的窗戶（通往「市場」） */
-const WINDOW: Pt[] = [
-  [3, 18],
-  [15, 22],
-  [15, 62],
-  [3, 72],
-];
-
-function drawRoom(ctx: Ctx, c: Palette) {
-  ctx.clearRect(0, 0, SCENE_W, SCENE_H);
-  const night = !!c.night;
-  const brick = c["--iso-brick"];
-  const beam = c["--iso-beam"];
-  const plaster = c["--iso-wall"];
-
-  // ---- 後牆：磚牆（每塊磚深淺略不同、灰縫、錯開排列）----
-  px(
-    ctx,
-    WALL_LEFT,
-    WALL_TOP,
-    WALL_RIGHT - WALL_LEFT,
-    WALL_BOTTOM - WALL_TOP,
-    shade(brick, -0.35),
-  ); // 灰縫顏色
-  for (let row = 0, y = WALL_TOP + 5; y < WALL_BOTTOM - 3; row++, y += 5) {
-    const off = row % 2 ? 6 : 0;
-    for (let x = WALL_LEFT - off, i = 0; x < WALL_RIGHT; x += 12, i++) {
-      const x0 = Math.max(WALL_LEFT, x);
-      const x1 = Math.min(WALL_RIGHT, x + 11);
-      if (x1 <= x0) continue;
-      const v = hash01(row, i) * 0.16 - 0.08;
-      px(ctx, x0, y, x1 - x0, 4, shade(brick, v));
-      px(ctx, x0, y, x1 - x0, 1, shade(brick, v + 0.1)); // 磚塊上緣亮一點
-    }
-  }
-  // 木樑：上方橫樑、幾根柱子；牆腳的踢腳板
-  px(ctx, WALL_LEFT, WALL_TOP, WALL_RIGHT - WALL_LEFT, 5, beam);
-  px(
-    ctx,
-    WALL_LEFT,
-    WALL_TOP + 4,
-    WALL_RIGHT - WALL_LEFT,
-    1,
-    shade(beam, -0.35),
-  );
-  px(ctx, WALL_LEFT, WALL_TOP, WALL_RIGHT - WALL_LEFT, 1, shade(beam, 0.25));
-  for (const x of [WALL_LEFT, 258, WALL_RIGHT - 4]) {
-    px(ctx, x, WALL_TOP, 4, WALL_BOTTOM - WALL_TOP, beam);
-    px(ctx, x, WALL_TOP, 1, WALL_BOTTOM - WALL_TOP, shade(beam, 0.22));
-    px(ctx, x + 3, WALL_TOP, 1, WALL_BOTTOM - WALL_TOP, shade(beam, -0.3));
-  }
-  px(
-    ctx,
-    WALL_LEFT,
-    WALL_BOTTOM - 3,
-    WALL_RIGHT - WALL_LEFT,
-    3,
-    shade(beam, -0.15),
-  );
-
-  // ---- 地板：木地板（每條木板深淺不同、錯開的接縫、木紋）----
-  const floor = c["--iso-floor"];
-  const floorRows = spans(FLOOR);
-  for (const [yy, x0, w] of floorRows) {
-    const row = Math.floor((yy - WALL_BOTTOM) / 7);
-    px(ctx, x0, yy, w, 1, shade(floor, (hash01(row, 7) - 0.5) * 0.12));
-  }
-  for (let row = 0, y = WALL_BOTTOM; y < SCENE_H; row++, y += 7) {
-    px(ctx, 0, y, SCENE_W, 1, shade(floor, -0.18));
-    for (let k = 0; k < 6; k++) {
-      const sx = Math.floor(hash01(row, k) * SCENE_W);
-      px(ctx, sx, y + 1, 1, 6, shade(floor, -0.14)); // 接縫
-      px(ctx, (sx + 23) % SCENE_W, y + 3, 4, 1, shade(floor, -0.07)); // 木紋
-    }
-  }
-  // ---- 天花板（後牆上方那一條，用深色木頭）----
-  poly(
-    ctx,
-    [
-      [0, 0],
-      [SCENE_W, 0],
-      [WALL_RIGHT, WALL_TOP],
-      [WALL_LEFT, WALL_TOP],
-    ],
-    shade(beam, -0.35),
-  );
-  for (let x = 30; x < SCENE_W; x += 40)
-    px(ctx, x, 0, 2, WALL_TOP - 1, shade(beam, -0.15)); // 天花板木條
-  // ---- 側牆（灰泥牆，比後牆暗一點）----
-  poly(ctx, LEFT_WALL, shade(plaster, night ? -0.05 : -0.22));
-  poly(ctx, RIGHT_WALL, shade(plaster, night ? -0.12 : -0.3));
-  poly(
-    ctx,
-    [
-      [0, 0],
-      [WALL_LEFT, WALL_TOP],
-      [WALL_LEFT, WALL_TOP + 5],
-      [0, 5],
-    ],
-    beam,
-  );
-  poly(
-    ctx,
-    [
-      [WALL_RIGHT, WALL_TOP],
-      [SCENE_W, 0],
-      [SCENE_W, 5],
-      [WALL_RIGHT, WALL_TOP + 5],
-    ],
-    beam,
-  );
-
-  // ---- 左牆的窗戶：天空漸層、城市剪影、窗框 ----
-  const sky = c["--iso-sky"];
-  const city = c["--iso-city"];
-  for (const [y, x0, w] of spans(WINDOW)) {
-    for (let x = x0; x < x0 + w; x++) {
-      const skyline = 46 + Math.floor(hash01(Math.floor(x / 3)) * 14); // 每 3 像素一棟樓
-      let col = night
-        ? shade(sky, -0.3 + (y - 18) / 140)
-        : shade(sky, 0.35 - (y - 18) / 120);
-      if (y > skyline)
-        col =
-          (y + x) % 4 === 0 && night
-            ? c["--iso-lit"]
-            : shade(city, night ? -0.1 : 0.15);
-      px(ctx, x, y, 1, 1, col);
-    }
-  }
-  const frame = c["--iso-beam"];
-  poly(
-    ctx,
-    [
-      [1, 16],
-      [3, 17],
-      [3, 74],
-      [1, 75],
-    ],
-    frame,
-  ); // 左框
-  poly(
-    ctx,
-    [
-      [15, 21],
-      [17, 21],
-      [17, 62],
-      [15, 63],
-    ],
-    frame,
-  ); // 右框
-  poly(
-    ctx,
-    [
-      [2, 17],
-      [16, 21],
-      [16, 23],
-      [2, 19],
-    ],
-    frame,
-  ); // 上框
-  poly(
-    ctx,
-    [
-      [2, 71],
-      [16, 61],
-      [16, 64],
-      [2, 74],
-    ],
-    shade(frame, 0.2),
-  ); // 窗台
-  poly(
-    ctx,
-    [
-      [8, 18],
-      [10, 19],
-      [10, 66],
-      [8, 68],
-    ],
-    frame,
-  ); // 中間直框
-  poly(
-    ctx,
-    [
-      [3, 43],
-      [15, 42],
-      [15, 43],
-      [3, 45],
-    ],
-    frame,
-  ); // 橫框
-
-  // 右牆：時鐘外框（指針在 drawWallAnim）、小掛畫
-  disc(ctx, 311, 30, 5, shade(plaster, -0.55));
-  disc(ctx, 311, 30, 4, c["--iso-board"]);
-  block(ctx, 305, 44, 12, 14, c["--iso-plant"], shade(beam, -0.1));
-  px(ctx, 307, 50, 8, 6, shade(c["--iso-plant"], -0.2));
-
-  // 牆腳的陰影
-  px(
-    ctx,
-    WALL_LEFT,
-    WALL_BOTTOM,
-    WALL_RIGHT - WALL_LEFT,
-    2,
-    "rgba(0,0,0,0.18)",
-  );
-  px(
-    ctx,
-    WALL_LEFT,
-    WALL_BOTTOM + 2,
-    WALL_RIGHT - WALL_LEFT,
-    2,
-    "rgba(0,0,0,0.08)",
-  );
-
-  // ---- 地毯（中間走道）：邊框＋花紋 ----
-  const rug = c["--iso-rug"];
-  block(ctx, 120, 104, 80, 70, rug, shade(rug, -0.3));
-  px(ctx, 124, 108, 72, 62, shade(rug, -0.08));
-  px(ctx, 126, 110, 68, 58, rug);
-  for (let i = 0; i < 4; i++) {
-    const cy = 118 + i * 14;
-    poly(
-      ctx,
-      [
-        [160, cy - 4],
-        [166, cy],
-        [160, cy + 4],
-        [154, cy],
-      ],
-      shade(rug, -0.18),
-    );
-    px(ctx, 159, cy - 1, 2, 2, shade(rug, 0.2));
-  }
-  for (let x = 122; x < 198; x += 4) px(ctx, x, 173, 2, 2, shade(rug, -0.25)); // 流蘇
-
-  // ---- 後牆上的東西：電視外框、看板、門、霓虹招牌鐵架 ----
-  block(ctx, 63, 18, 48, 30, c["--iso-metal"], shade(c["--iso-metal"], -0.5)); // 電視（看盤）
-  px(ctx, 85, 48, 4, 3, shade(c["--iso-metal"], -0.3));
-  const board = c["--iso-board"];
-  block(ctx, 210, 15, 46, 36, board, shade(beam, -0.1)); // 看板（篩選）
-  px(ctx, 211, 16, 44, 1, "#ffffff");
-  [c["--s1"], c["--s4"], c["--s3"]].forEach((col, i) => {
-    const x = 214 + i * 14;
-    px(ctx, x, 19, 12, 3, col);
-    for (let k = 0; k < 3 - (i === 2 ? 1 : 0); k++) {
-      block(ctx, x + 1, 24 + k * 8, 10, 7, shade(col, 0.55), shade(col, -0.1));
-      px(ctx, x + 3, 26 + k * 8, 6, 1, shade(col, -0.25));
-    }
-  });
-  px(ctx, 214, 48, 38, 2, shade(board, -0.3)); // 筆槽
-  px(ctx, 220, 47, 5, 1, c["--red"]);
-  px(ctx, 228, 47, 5, 1, c["--s1"]);
-  const door = shade(c["--iso-wood"], -0.15); // 門（今日）
-  block(
-    ctx,
-    264,
-    22,
-    30,
-    WALL_BOTTOM - 22,
-    shade(door, -0.3),
-    shade(door, -0.6),
-  );
-  px(ctx, 267, 25, 24, WALL_BOTTOM - 25, door);
-  block(ctx, 270, 28, 18, 14, shade(door, -0.08), shade(door, -0.3));
-  block(ctx, 270, 45, 18, 16, shade(door, -0.08), shade(door, -0.3));
-  px(ctx, 286, 44, 2, 3, "#e8c46a");
-  block(ctx, 272, 15, 14, 6, "#1f9d55", "#0d5c31"); // 出口燈
-  px(ctx, 275, 17, 8, 2, "#d8f5e3");
-  const nw = textWidth(NEON_TEXT);
-  const nx = Math.round(160 - nw / 2);
-  px(ctx, nx - 4, 14, nw + 8, 1, shade(c["--iso-metal"], 0.2));
-  px(ctx, nx - 4, 34, nw + 8, 1, shade(c["--iso-metal"], 0.2));
-}
-
-// ---------------------------------------------------------------------------
-// 會動的牆面：霓虹燈、電視 K 線、時鐘
-// ---------------------------------------------------------------------------
-function drawWallAnim(ctx: Ctx, c: Palette, frame: number) {
-  const night = !!c.night;
-  // 霓虹燈：晚上亮、白天是淡淡的燈管顏色；偶爾閃一下
-  const nw = textWidth(NEON_TEXT);
-  const nx = Math.round(160 - nw / 2);
-  const flicker = frame % 97 === 0 || frame % 97 === 2;
-  const tube =
-    night && !flicker
-      ? shade(c["--iso-neon"], 0.45)
-      : shade(c["--iso-neon"], night ? -0.1 : 0.25);
-  drawText(ctx, NEON_TEXT, nx + 1, 19, shade(c["--iso-neon"], -0.55)); // 燈管的影子
-  drawText(ctx, NEON_TEXT, nx, 18, tube);
-  if (night && !flicker)
-    drawText(ctx, NEON_TEXT, nx, 18, "rgba(255,240,250,0.35)"); // 燈管中心的白光
-
-  // 電視：深色畫面、格線、K 線（最後一根會跳動）
-  px(ctx, 65, 20, 44, 26, c["--iso-screen"]);
-  for (const y of [27, 34, 41])
-    px(ctx, 65, y, 44, 1, shade(c["--iso-screen"], 0.1));
-  const bars = [
-    [34, 6, 1],
-    [32, 5, 0],
-    [33, 7, 1],
-    [30, 6, 1],
-    [28, 5, 0],
-    [29, 7, 1],
-    [26, 6, 1],
-    [24, 5, 0],
-    [25, 6, 1],
-    [22, 7, 1],
-  ];
-  bars.forEach(([y, h, up], i) => {
-    const x = 67 + i * 4;
-    const hh = i === bars.length - 1 ? 3 + (frame % 6) : h;
-    const col = up ? c.up : c.down;
-    px(ctx, x + 1, y - 2, 1, hh + 4, col);
-    px(ctx, x, y, 3, hh, col);
-  });
-  for (let i = 0; i < 9; i++)
-    px(ctx, 68 + i * 4, 38 - i * 1.6, 4, 1, c["--s4"]); // 均線
-  px(ctx, 66, 21, 10, 1, "rgba(255,255,255,0.12)"); // 螢幕反光
-
-  // 時鐘（右牆）：秒針每秒走一格
-  const sec = Math.floor(frame / 8) % 12;
-  const ang = (sec / 12) * Math.PI * 2;
-  px(ctx, 311, 27, 1, 3, c["--office-ink"]);
-  px(
-    ctx,
-    311 + Math.round(Math.sin(ang) * 3),
-    30 - Math.round(Math.cos(ang) * 3),
-    1,
-    1,
-    c["--red"],
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 家具
-// ---------------------------------------------------------------------------
-/** 盆栽：陶盆（盆緣、泥土）＋三階明暗的圓形葉叢 */
-function plant(
-  ctx: Ctx,
-  c: Palette,
-  cx: number,
-  floorY: number,
-  size: 1 | 2 | 3,
-) {
+/**
+ * 盆栽：陶盆（有盆緣與泥土）＋一叢一叢的圓形葉子。
+ * 每一叢先畫暗色（下方陰影）、再畫中間色、最後左上角亮色，像素畫常見的三階明暗。
+ * size 3 是角落的大型植物（長葉子），1、2 是桌邊和地上的小盆栽。
+ */
+function plant(ctx: Ctx, c: Palette, x: number, y: number, size: 1 | 2 | 3) {
   const pot = c["--iso-pot"];
-  const pw = 8 + size * 2;
-  const ph = 7 + size * 2;
-  floorShadow(ctx, cx - pw / 2 - 1, floorY - 1, pw + 2);
-  block(ctx, cx - pw / 2, floorY - ph, pw, ph, pot);
-  px(ctx, cx - pw / 2 - 1, floorY - ph, pw + 2, 3, shade(pot, 0.15));
-  px(ctx, cx - pw / 2 + 1, floorY - ph + 3, 2, ph - 4, shade(pot, 0.12));
+  const ph = 6 + size * 3;
+  shadow(ctx, x - 0.1, y - 0.1, 0.8, 0.8);
+  box(ctx, x, y, 0, 0.6, 0.6, ph, pot);
+  box(ctx, x - 0.05, y - 0.05, ph, 0.7, 0.7, 2, shade(pot, 0.12));
+  const [sx, sy] = P(x + 0.3, y + 0.3, ph + 2);
+  px(ctx, sx - 6, sy - 1, 12, 2, "#5a3d2b"); // 泥土
   const g = c["--iso-plant"];
   const dark = shade(g, -0.32);
   const light = shade(g, 0.3);
-  const top = floorY - ph;
-  const clumps: [number, number, number][] =
-    size === 3
-      ? [
-          [-7, -8, 6],
-          [7, -8, 6],
-          [0, -15, 7],
-          [-6, -22, 6],
-          [6, -22, 6],
-          [0, -29, 5],
-          [-9, -15, 5],
-          [9, -15, 5],
-        ]
-      : size === 2
-        ? [
-            [-5, -6, 5],
-            [5, -6, 5],
-            [0, -11, 6],
-            [-3, -16, 4],
-            [4, -16, 4],
-          ]
-        : [
-            [-3, -4, 4],
-            [3, -4, 4],
-            [0, -8, 4],
-          ];
-  for (const [dx, dy, r] of clumps)
-    disc(ctx, cx + dx + 1, top + dy + 1, r, dark);
-  for (const [dx, dy, r] of clumps) disc(ctx, cx + dx, top + dy, r - 1, g);
-  for (const [dx, dy, r] of clumps)
-    disc(ctx, cx + dx - 1, top + dy - 2, Math.max(1, r - 3), light);
-  for (const [dx, dy] of clumps) px(ctx, cx + dx + 2, top + dy + 1, 1, 1, dark);
-}
-
-/** 桌子：桌面＋前擋板＋一側抽屜櫃＋桌腳 */
-function desk(
-  ctx: Ctx,
-  c: Palette,
-  cx: number,
-  top: number,
-  w: number,
-  wood = false,
-) {
-  const col = wood ? c["--iso-wood"] : c["--iso-desk"];
-  const x = Math.round(cx - w / 2);
-  const depth = 10;
-  const h = 15;
-  floorShadow(ctx, x - 1, top + depth + h - 1, w + 2, 4, 0.22);
-  block(ctx, x + w - 6, top + depth, 5, h, shade(col, -0.35)); // 桌腳
-  block(ctx, x + 1, top + depth, 18, h, shade(col, -0.18)); // 抽屜櫃
-  for (const yy of [top + depth + 4, top + depth + 9]) {
-    px(ctx, x + 2, yy, 16, 1, shade(col, -0.45));
-    px(ctx, x + 8, yy + 2, 4, 1, shade(col, 0.3)); // 抽屜把手
-  }
-  block(ctx, x, top + depth - 1, w, 6, shade(col, -0.25)); // 前擋板
-  block(ctx, x, top, w, depth, col, shade(col, -0.45)); // 桌面
-  px(ctx, x + 1, top + 1, w - 2, 1, shade(col, 0.3));
-  if (wood)
-    for (let i = 0; i < 4; i++)
-      px(ctx, x + 4 + i * 17, top + 4 + (i % 2) * 2, 9, 1, shade(col, -0.1)); // 木紋
-}
-
-/** 螢幕：底座、支架、外框、畫面內容（依角色不同）、反光 */
-function monitor(
-  ctx: Ctx,
-  c: Palette,
-  x: number,
-  baseY: number,
-  kind: string,
-  frame: number,
-  on: boolean,
-) {
-  const metal = c["--iso-metal"];
-  px(ctx, x + 6, baseY - 2, 8, 2, shade(metal, 0.2));
-  px(ctx, x + 9, baseY - 5, 2, 3, metal);
-  block(ctx, x, baseY - 19, 20, 15, metal, shade(metal, -0.5));
-  const sx = x + 2;
-  const sy = baseY - 17;
-  px(ctx, sx, sy, 16, 11, c["--iso-screen"]);
-  if (on) {
-    if (kind === "bars") {
-      [4, 7, 5, 9, 6].forEach((h, i) =>
-        px(
-          ctx,
-          sx + 2 + i * 3,
-          sy + 10 - h,
-          2,
-          h,
-          i === 3 ? c["--s3"] : shade(c["--s3"], -0.25),
-        ),
-      );
-    } else if (kind === "split") {
-      px(ctx, sx + 2, sy + 3, 5, 6, c.up);
-      px(ctx, sx + 9, sy + 3, 5, 6, c.down);
-      if (frame % 4 < 2) px(ctx, sx + 3, sy + 1, 3, 1, c.up);
-    } else if (kind === "news") {
-      for (let i = 0; i < 4; i++)
-        px(
-          ctx,
-          sx + 2,
-          sy + 2 + i * 2,
-          i === 0 ? 12 : 8 + ((i + frame) % 4),
-          1,
-          i === 0 ? c["--s2"] : shade(c["--iso-board"], -0.3),
-        );
-    } else {
-      for (let i = 0; i < 5; i++) {
-        const h = 2 + ((i * 3 + frame) % 5);
-        px(
-          ctx,
-          sx + 2 + i * 3,
-          sy + 9 - h,
-          1,
-          h,
-          (i + frame) % 3 ? c.up : c.down,
-        );
+  if (size === 3) {
+    // 大型：龍舌蘭般的長葉子（每片葉子一條亮邊）
+    const blades: [number, number, number][] = [[-9, 26, -1], [-5, 34, -1], [-1, 40, 0], [3, 36, 1], [7, 28, 1], [-12, 18, -1], [10, 20, 1]];
+    for (const [dx, h, lean] of blades) {
+      for (let i = 0; i < h; i++) {
+        const t = i / h;
+        const w = Math.max(1, Math.round(4 * (1 - t)));
+        const xx = sx + dx + Math.round(lean * t * t * 8);
+        px(ctx, xx - Math.floor(w / 2), sy - 2 - i, w, 1, i % 7 < 3 ? g : shade(g, -0.12));
+        px(ctx, xx - Math.floor(w / 2), sy - 2 - i, 1, 1, light);
       }
     }
+    return;
+  }
+  const r = size === 2 ? 6 : 5;
+  const clumps: [number, number][] = size === 2 ? [[-6, -6], [6, -6], [0, -12], [-4, -16], [5, -15]] : [[-4, -5], [4, -5], [0, -10]];
+  for (const [dx, dy] of clumps) disc(ctx, sx + dx + 1, sy + dy + 1, r, dark);
+  for (const [dx, dy] of clumps) disc(ctx, sx + dx, sy + dy, r - 1, g);
+  for (const [dx, dy] of clumps) disc(ctx, sx + dx - 1, sy + dy - 2, Math.max(1, r - 4), light);
+  // 葉脈小點（讓葉叢不會是一整塊色）
+  for (const [dx, dy] of clumps) px(ctx, sx + dx + 2, sy + dy + 1, 1, 1, dark);
+}
+
+function monitor(ctx: Ctx, c: Palette, x: number, y: number, z: number, faceFront: boolean, w = 0.8) {
+  const metal = c["--iso-metal"];
+  box(ctx, x + w / 2 - 0.08, y + 0.02, z, 0.16, 0.12, 4, shade(metal, 0.2), false); // 底座
+  box(ctx, x + w / 2 - 0.04, y + 0.03, z + 4, 0.08, 0.06, 3, metal, false);
+  box(ctx, x, y, z + 7, w, 0.08, 15, metal);
+  if (faceFront) {
+    poly(ctx, [P(x + 0.06, y + 0.08, z + 9), P(x + w - 0.06, y + 0.08, z + 9), P(x + w - 0.06, y + 0.08, z + 20), P(x + 0.06, y + 0.08, z + 20)], c["--iso-screen"]);
+    line(ctx, P(x + w - 0.3, y + 0.08, z + 19), P(x + w - 0.12, y + 0.08, z + 15), "rgba(255,255,255,0.18)"); // 玻璃反光
+    const [lx, ly] = P(x + w - 0.1, y + 0.08, z + 8);
+    px(ctx, lx, ly, 1, 1, "#4ade80"); // 電源燈
   } else {
-    px(ctx, sx + 7, sy + 5, 2, 1, shade(c["--iso-screen"], 0.2)); // 待機燈
+    // 背面：散熱孔
+    for (let i = 0; i < 3; i++) line(ctx, P(x + 0.25 + i * 0.12, y, z + 18), P(x + 0.25 + i * 0.12, y, z + 13), shade(metal, 0.18));
   }
-  px(ctx, sx + 11, sy + 1, 4, 1, "rgba(255,255,255,0.14)"); // 玻璃反光
-  px(ctx, x + 17, baseY - 6, 1, 1, on ? "#4ade80" : "#6b7280"); // 電源燈
 }
 
-/** 鍵盤（桌面上） */
-function keyboard(ctx: Ctx, c: Palette, cx: number, y: number) {
+/** 鍵盤：底座＋一排排鍵帽的小點 */
+function keyboard(ctx: Ctx, c: Palette, x: number, y: number, z: number) {
   const base = shade(c["--iso-metal"], 0.35);
-  block(ctx, cx - 9, y, 18, 5, base, shade(base, -0.4));
+  box(ctx, x, y, z, 0.7, 0.2, 1, base, false);
   for (let r = 0; r < 2; r++)
-    for (let k = 0; k < 7; k++)
-      px(ctx, cx - 7 + k * 2 + (r % 2), y + 1 + r * 2, 1, 1, shade(base, 0.5));
+    for (let k = 0; k < 7; k++) {
+      const [kx, ky] = P(x + 0.06 + k * 0.09, y + 0.05 + r * 0.08, z + 1);
+      px(ctx, kx, ky, 1, 1, shade(base, 0.45));
+    }
 }
 
-/** 辦公椅的椅背（在人的後面） */
-function chairBack(ctx: Ctx, c: Palette, cx: number, deskTop: number) {
-  const col = c["--office-chair"];
-  const x = Math.round(cx);
-  const top = deskTop - 26;
-  block(ctx, x - 10, top + 2, 20, 26, shade(col, 0.05), shade(col, -0.5));
-  px(ctx, x - 9, top + 1, 18, 2, shade(col, -0.5));
-  px(ctx, x - 8, top + 2, 16, 2, shade(col, 0.3));
-  px(ctx, x - 9, top + 10, 18, 1, shade(col, -0.18)); // 頭枕分隔
-}
-
-/** 沙發（左下角休息區） */
-function sofa(ctx: Ctx, c: Palette, x: number, y: number) {
-  const body = shade(c["--s1"], -0.15);
-  floorShadow(ctx, x, y + 24, 46, 3, 0.22);
-  block(ctx, x, y, 46, 14, shade(body, -0.1)); // 椅背
-  block(ctx, x, y + 12, 46, 13, body); // 座墊
-  block(ctx, x - 3, y + 6, 8, 19, shade(body, -0.05)); // 扶手
-  block(ctx, x + 41, y + 6, 8, 19, shade(body, -0.05));
-  for (const cx of [x + 6, x + 24]) {
-    block(ctx, cx, y + 13, 17, 6, shade(body, 0.12));
-    px(ctx, cx + 1, y + 14, 15, 1, shade(body, 0.3));
+/** 螢幕內容（依角色不同：K 線、新聞、長條圖、多空對照） */
+function screenContent(ctx: Ctx, c: Palette, kind: AiRoleKey, x: number, y: number, z: number, frame: number, on: boolean, w = 0.8) {
+  const yy = y + 0.08;
+  const at = (fx: number, fz: number) => P(x + 0.1 + fx * (w - 0.2), yy, z + 10 + fz);
+  if (!on) {
+    const [a, b] = at(0.45, 4);
+    px(ctx, a, b, 2, 1, shade(c["--iso-screen"], 0.2)); // 待機小燈
+    return;
   }
-  block(ctx, x + 30, y + 4, 9, 8, c["--s4"]); // 抱枕
-  px(ctx, x + 31, y + 5, 7, 1, shade(c["--s4"], 0.3));
+  if (kind === "fundamental") {
+    [4, 7, 5, 9, 6].forEach((h, i) => {
+      const [a, b] = at(i / 5, 0);
+      px(ctx, a, b - h, 2, h, i === 3 ? c["--s3"] : shade(c["--s3"], -0.25));
+    });
+  } else if (kind === "debate") {
+    const [a, b] = at(0.05, 2);
+    px(ctx, a, b - 6, 5, 6, c.up);
+    const [d, e] = at(0.55, 2);
+    px(ctx, d, e - 6, 5, 6, c.down);
+    if (frame % 4 < 2) px(ctx, a + 1, b - 9, 3, 1, c.up);
+  } else {
+    for (let i = 0; i < 5; i++) {
+      const [a, b] = at(i / 5, 2 + ((i * 3 + frame) % 5));
+      px(ctx, a, b - 3, 1, 4, (i + frame) % 3 ? c.up : c.down);
+    }
+  }
+}
+
+function chairBack(ctx: Ctx, c: Palette, x: number, y: number, facing: "front" | "back") {
+  const col = c["--office-chair"];
+  const [sx0, sy] = P(x, y);
+  const sx = Math.round(sx0);
+  const edge = shade(col, -0.45);
+  if (facing === "front") {
+    // 面向畫面的人：高椅背在他後面（圓角、有頭枕、上緣亮邊）
+    const top = sy - SIT_Z - 27;
+    px(ctx, sx - 9, top + 1, 18, 25, edge);
+    px(ctx, sx - 8, top, 16, 26, edge);
+    px(ctx, sx - 8, top + 1, 16, 24, shade(col, 0.06));
+    px(ctx, sx - 7, top + 1, 14, 2, shade(col, 0.32));
+    px(ctx, sx - 8, top + 10, 16, 1, shade(col, -0.15)); // 頭枕分隔線
+  } else {
+    // 背對畫面的人：椅背擋住腰部；扶手在兩側
+    const top = sy - SIT_Z - 14;
+    px(ctx, sx - 9, top, 18, 15, edge);
+    px(ctx, sx - 8, top + 1, 16, 13, shade(col, 0.06));
+    px(ctx, sx - 8, top + 1, 16, 2, shade(col, 0.32));
+    px(ctx, sx - 3, top + 5, 6, 1, shade(col, -0.18)); // 椅背上的縫線
+    px(ctx, sx - 11, sy - SIT_Z - 5, 3, 6, edge); // 扶手
+    px(ctx, sx + 8, sy - SIT_Z - 5, 3, 6, edge);
+    px(ctx, sx - 1, sy - SIT_Z + 1, 2, 3, shade(col, -0.5));
+  }
+}
+function chairSeat(ctx: Ctx, c: Palette, x: number, y: number) {
+  const col = c["--office-chair"];
+  const [sx0, sy] = P(x, y);
+  const sx = Math.round(sx0);
+  const edge = shade(col, -0.5);
+  shadow(ctx, x - 0.4, y - 0.4, 0.8, 0.8, 0.18);
+  // 五爪腳＋輪子
+  px(ctx, sx - 9, sy - 1, 18, 1, edge);
+  px(ctx, sx - 5, sy - 2, 10, 1, edge);
+  for (const dx of [-10, -2, 7]) {
+    px(ctx, sx + dx, sy, 3, 2, shade(col, -0.6));
+    px(ctx, sx + dx, sy, 1, 1, shade(col, -0.2));
+  }
+  // 氣壓桿（金屬亮邊）、座墊（有厚度）
+  px(ctx, sx - 1, sy - SIT_Z + 3, 3, SIT_Z - 4, shade(col, -0.35));
+  px(ctx, sx, sy - SIT_Z + 3, 1, SIT_Z - 4, shade(col, 0.2));
+  px(ctx, sx - 9, sy - SIT_Z - 1, 18, 5, edge);
+  px(ctx, sx - 8, sy - SIT_Z, 16, 3, col);
+  px(ctx, sx - 8, sy - SIT_Z, 16, 1, shade(col, 0.3));
 }
 
 // ---------------------------------------------------------------------------
-// 人物：先畫在小畫布（精靈圖），自動描一圈深色外框再貼到場景上（外框是像素畫精緻的關鍵）。
-// 人坐在桌子後面、面向畫面：桌面上緣在精靈圖的 y = SPR_DESK，身體露出、頭 12×11。
+// 角色：先畫在一張小畫布（精靈圖），再自動描一圈深色外框才貼到場景上。
+// 外框是像素畫看起來「精緻」的關鍵：角色和背景分得開，不會糊成一片。
+// 尺寸：頭 12×11、身體 14×13；精靈圖畫布 56×72，腳底在 (28, 68)。
 // ---------------------------------------------------------------------------
-const SPR_W = 52;
-const SPR_H = 52;
-const SPR_X = 22;
-const SPR_DESK = 38;
+const SPR_W = 56;
+const SPR_H = 72;
+const SPR_X = 28;
+const SPR_Y = 68;
 let sprite: HTMLCanvasElement | null = null;
 
 function outlineSprite(sctx: Ctx, color: [number, number, number]) {
   const img = sctx.getImageData(0, 0, SPR_W, SPR_H);
   const d = img.data;
-  const solid = (x: number, y: number) =>
-    x >= 0 &&
-    y >= 0 &&
-    x < SPR_W &&
-    y < SPR_H &&
-    d[(y * SPR_W + x) * 4 + 3] > 200;
+  const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < SPR_W && y < SPR_H && d[(y * SPR_W + x) * 4 + 3] > 200;
   const add: number[] = [];
   for (let y = 0; y < SPR_H; y++)
     for (let x = 0; x < SPR_W; x++) {
       if (d[(y * SPR_W + x) * 4 + 3] !== 0) continue;
-      if (
-        solid(x - 1, y) ||
-        solid(x + 1, y) ||
-        solid(x, y - 1) ||
-        solid(x, y + 1)
-      )
-        add.push((y * SPR_W + x) * 4);
+      if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) add.push((y * SPR_W + x) * 4);
     }
   for (const i of add) {
     d[i] = color[0];
@@ -777,15 +503,11 @@ function person(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) {
   drawPersonSprite(sctx, c, role, frame);
   outlineSprite(sctx, [22, 20, 34]);
   const s = SEATS[role];
-  ctx.drawImage(sprite, Math.round(s.x) - SPR_X, s.desk - SPR_DESK);
+  const [sx, sy] = P(s.x, s.y);
+  ctx.drawImage(sprite, Math.round(sx) - SPR_X, Math.round(sy) - SPR_Y);
 }
 
-function drawPersonSprite(
-  ctx: Ctx,
-  c: Palette,
-  role: AiRoleKey,
-  frame: number,
-) {
+function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) {
   const s = SEATS[role];
   const shirt = c[s.shirt];
   const shirtD = shade(shirt, -0.22);
@@ -797,172 +519,179 @@ function drawPersonSprite(
   const ink = c["--office-ink"];
   const bob = s.action === "idle" && Math.floor(frame / 6) % 2 ? 1 : 0;
   const x = SPR_X;
-  const top = SPR_DESK - 10 + bob; // 肩膀
+  const hip = SPR_Y - SIT_Z + bob;
+  const top = hip - 13;
   const headY = top - 11;
+  const front = s.facing === "front";
 
-  // ---- 身體（只露出桌面以上）----
+  // 腿：背對畫面時，從椅子兩側露出膝蓋與鞋子
+  if (!front) {
+    px(ctx, x - 7, hip - 1, 4, 6, "#2b2f3a");
+    px(ctx, x + 3, hip - 1, 4, 6, "#2b2f3a");
+    px(ctx, x - 8, hip + 4, 5, 2, "#15171d");
+    px(ctx, x + 3, hip + 4, 5, 2, "#15171d");
+  }
+
+  // ---- 身體 ----
   if (role === "lead") {
+    // 主管：深色西裝外套＋白襯衫＋領帶
     const suit = shade(shirt, -0.35);
-    px(ctx, x - 7, top, 14, 11, suit);
+    px(ctx, x - 7, top, 14, 13, suit);
     px(ctx, x - 7, top, 14, 1, shade(suit, 0.25));
-    px(ctx, x - 2, top, 4, 10, c["--iso-board"]);
-    px(ctx, x - 3, top, 1, 6, shade(suit, 0.15));
-    px(ctx, x + 2, top, 1, 6, shade(suit, 0.15));
-    px(ctx, x, top + 1, 1, 1, c["--red"]);
-    px(ctx, x - 1, top + 2, 2, 8, c["--red"]);
-    px(ctx, x - 1, top + 2, 1, 8, shade(c["--red"], 0.25));
-  } else {
-    px(ctx, x - 7, top, 14, 11, shirt);
-    px(ctx, x - 7, top, 14, 1, shirtL);
-    px(ctx, x - 7, top + 1, 1, 10, shirtD);
-    px(ctx, x + 6, top + 1, 1, 10, shirtD);
-    if (role === "tech") {
-      px(ctx, x - 4, top - 1, 8, 2, shirtD); // 連帽
-      px(ctx, x - 2, top + 1, 1, 5, shirtL);
-      px(ctx, x + 1, top + 1, 1, 5, shirtL);
-    } else if (role === "debate") {
-      px(ctx, x - 3, top, 6, 3, c["--iso-board"]); // 襯衫領子
-      px(ctx, x - 1, top + 3, 2, 7, shirtD); // 前襟
-      px(ctx, x, top + 4, 1, 1, shirtL);
-      px(ctx, x, top + 7, 1, 1, shirtL);
+    if (front) {
+      px(ctx, x - 2, top, 4, 9, c["--iso-board"]);
+      px(ctx, x - 3, top, 1, 6, shade(suit, 0.15)); // 翻領
+      px(ctx, x + 2, top, 1, 6, shade(suit, 0.15));
+      px(ctx, x, top + 1, 1, 1, c["--red"]);
+      px(ctx, x - 1, top + 2, 2, 5, c["--red"]);
+      px(ctx, x - 1, top + 2, 1, 5, shade(c["--red"], 0.25));
     } else {
-      px(ctx, x - 2, top, 4, 2, skin); // 圓領
-      px(ctx, x - 2, top + 2, 4, 1, c["--iso-lit"]); // 項鍊
-      if (role === "fundamental") px(ctx, x - 7, top + 5, 14, 1, shirtL); // 條紋
+      px(ctx, x - 1, top + 1, 1, 12, shade(suit, -0.2)); // 背縫
+    }
+  } else {
+    px(ctx, x - 7, top, 14, 13, shirt);
+    px(ctx, x - 7, top, 14, 1, shirtL);
+    px(ctx, x - 7, top + 1, 1, 12, shirtD);
+    px(ctx, x + 6, top + 1, 1, 12, shirtD);
+    if (front) {
+      if (role === "tech") {
+        // 連帽上衣：帽子在脖子後面、兩條帽繩
+        px(ctx, x - 4, top - 1, 8, 2, shirtD);
+        px(ctx, x - 2, top + 1, 1, 5, shirtL);
+        px(ctx, x + 1, top + 1, 1, 5, shirtL);
+        px(ctx, x - 4, top + 8, 8, 1, shirtD); // 口袋
+      } else {
+        // 女生上衣：圓領＋項鍊
+        px(ctx, x - 2, top, 4, 2, skin);
+        px(ctx, x - 2, top + 2, 4, 1, c["--iso-lit"]);
+      }
+    } else {
+      px(ctx, x - 1, top + 1, 2, 12, shirtD); // 衣服背面的陰影
+      if (role === "fundamental") px(ctx, x - 4, top - 1, 8, 2, shirtL); // 領口
     }
   }
 
   // ---- 頭 ----
   px(ctx, x - 6, headY, 12, 11, skin);
   px(ctx, x + 4, headY + 1, 2, 10, skinD);
-  px(ctx, x - 7, headY + 4, 1, 3, skin);
+  px(ctx, x - 7, headY + 4, 1, 3, skin); // 耳朵
   px(ctx, x + 6, headY + 4, 1, 3, skinD);
-  // 髮型
-  px(ctx, x - 6, headY - 2, 12, 4, hair);
-  px(ctx, x - 5, headY - 3, 10, 1, hair);
-  px(ctx, x - 4, headY - 2, 5, 1, hairL);
-  if (s.style === "short") {
-    px(ctx, x - 6, headY + 2, 2, 2, hair);
-    px(ctx, x + 3, headY + 2, 3, 1, hair);
-    px(ctx, x - 3, headY - 4, 2, 1, hair);
-    px(ctx, x + 1, headY - 4, 2, 1, hair);
-  } else if (s.style === "long") {
-    px(ctx, x - 8, headY - 1, 3, 17, hair);
-    px(ctx, x + 5, headY - 1, 3, 17, hair);
-    px(ctx, x - 8, headY, 1, 13, hairL);
-    px(ctx, x - 5, headY + 2, 4, 1, hair);
-    px(ctx, x + 1, headY + 2, 3, 1, hair);
-  } else if (s.style === "neat") {
-    px(ctx, x - 6, headY + 2, 4, 1, hair);
-    px(ctx, x - 6, headY + 3, 1, 2, hair);
-    px(ctx, x + 5, headY + 2, 1, 3, hair);
-  } else if (s.style === "bun") {
-    px(ctx, x - 3, headY - 8, 6, 5, hair);
-    px(ctx, x - 2, headY - 9, 4, 1, hair);
-    px(ctx, x - 2, headY - 7, 2, 2, hairL);
-    px(ctx, x - 4, headY - 3, 8, 1, c["--s2"]); // 髮圈
-    px(ctx, x - 6, headY + 2, 3, 3, hair);
-    px(ctx, x + 3, headY + 2, 3, 3, hair);
-  } else if (s.style === "curly") {
-    for (const [dx, dy] of [
-      [-8, -1],
-      [6, -1],
-      [-8, 3],
-      [6, 3],
-      [-6, -5],
-      [-2, -6],
-      [2, -6],
-      [5, -4],
-      [-8, 7],
-      [6, 7],
-    ]) {
-      px(ctx, x + dx, headY + dy, 3, 3, hair);
-      px(ctx, x + dx, headY + dy, 1, 1, hairL);
+  if (front) {
+    // 髮型
+    px(ctx, x - 6, headY - 2, 12, 4, hair);
+    px(ctx, x - 5, headY - 3, 10, 1, hair);
+    px(ctx, x - 4, headY - 2, 5, 1, hairL); // 頭髮亮光
+    if (s.style === "short") {
+      px(ctx, x - 6, headY + 2, 2, 2, hair);
+      px(ctx, x + 3, headY + 2, 3, 1, hair);
+      px(ctx, x - 3, headY - 4, 2, 1, hair); // 翹起來的頭髮
+      px(ctx, x + 1, headY - 4, 2, 1, hair);
+    } else if (s.style === "long") {
+      px(ctx, x - 8, headY - 1, 3, 16, hair);
+      px(ctx, x + 5, headY - 1, 3, 16, hair);
+      px(ctx, x - 8, headY, 1, 12, hairL);
+      px(ctx, x - 5, headY + 2, 4, 1, hair); // 瀏海
+      px(ctx, x + 1, headY + 2, 3, 1, hair);
+    } else if (s.style === "neat") {
+      px(ctx, x - 6, headY + 2, 4, 1, hair); // 旁分
+      px(ctx, x - 6, headY + 3, 1, 2, hair);
+      px(ctx, x + 5, headY + 2, 1, 3, hair);
+    }
+    // 眉毛、眼睛（眨眼）、眼鏡、腮紅、嘴巴
+    const blink = (frame + role.length * 7) % 44 === 0;
+    if (!s.glasses) {
+      px(ctx, x - 4, headY + 4, 2, 1, shade(hair, -0.1));
+      px(ctx, x + 2, headY + 4, 2, 1, shade(hair, -0.1));
+    }
+    if (blink) {
+      px(ctx, x - 4, headY + 6, 2, 1, ink);
+      px(ctx, x + 2, headY + 6, 2, 1, ink);
+    } else {
+      px(ctx, x - 3, headY + 5, 1, 2, ink);
+      px(ctx, x + 2, headY + 5, 1, 2, ink);
+      px(ctx, x - 4, headY + 5, 1, 1, "#ffffff"); // 眼睛反光
+      px(ctx, x + 3, headY + 5, 1, 1, "#ffffff");
+    }
+    if (s.glasses) {
+      px(ctx, x - 5, headY + 4, 4, 1, ink);
+      px(ctx, x + 1, headY + 4, 4, 1, ink);
+      px(ctx, x - 5, headY + 7, 4, 1, ink);
+      px(ctx, x + 1, headY + 7, 4, 1, ink);
+      px(ctx, x - 1, headY + 5, 2, 1, ink);
+    }
+    px(ctx, x - 5, headY + 8, 2, 1, shade(c["--red"], 0.55));
+    px(ctx, x + 3, headY + 8, 2, 1, shade(c["--red"], 0.55));
+    px(ctx, x - 1, headY + 9, 3, 1, shade(skin, -0.35));
+  } else {
+    // 背面：頭髮蓋住後腦（有亮光一條），露出耳朵、脖子
+    px(ctx, x - 6, headY - 2, 12, 12, hair);
+    px(ctx, x - 5, headY - 3, 10, 1, hair);
+    px(ctx, x - 3, headY - 1, 2, 7, hairL);
+    px(ctx, x - 4, headY + 10, 8, 1, skinD); // 脖子
+    if (s.style === "bun") {
+      px(ctx, x - 3, headY - 8, 6, 5, hair);
+      px(ctx, x - 2, headY - 9, 4, 1, hair);
+      px(ctx, x - 2, headY - 7, 2, 2, hairL);
+      px(ctx, x - 4, headY - 3, 8, 1, c["--s2"]); // 髮圈
+    } else if (s.style === "curly") {
+      for (const [dx, dy] of [[-8, 0], [6, 0], [-8, 4], [6, 4], [-6, -4], [-2, -5], [2, -5], [5, -3], [-8, 7], [6, 7]]) {
+        px(ctx, x + dx, headY + dy, 3, 3, hair);
+        px(ctx, x + dx, headY + dy, 1, 1, hairL);
+      }
     }
   }
-  // 眉毛、眼睛（眨眼、反光）、眼鏡、腮紅、嘴巴
-  const blink = (frame + role.length * 7) % 44 === 0;
-  if (!s.glasses) {
-    px(ctx, x - 4, headY + 4, 2, 1, shade(hair, -0.1));
-    px(ctx, x + 2, headY + 4, 2, 1, shade(hair, -0.1));
-  }
-  if (blink) {
-    px(ctx, x - 4, headY + 6, 2, 1, ink);
-    px(ctx, x + 2, headY + 6, 2, 1, ink);
-  } else {
-    px(ctx, x - 3, headY + 5, 1, 2, ink);
-    px(ctx, x + 2, headY + 5, 1, 2, ink);
-    px(ctx, x - 4, headY + 5, 1, 1, "#ffffff");
-    px(ctx, x + 3, headY + 5, 1, 1, "#ffffff");
-  }
-  if (s.glasses) {
-    px(ctx, x - 5, headY + 4, 4, 1, ink);
-    px(ctx, x + 1, headY + 4, 4, 1, ink);
-    px(ctx, x - 5, headY + 7, 4, 1, ink);
-    px(ctx, x + 1, headY + 7, 4, 1, ink);
-    px(ctx, x - 1, headY + 5, 2, 1, ink);
-  }
-  px(ctx, x - 5, headY + 8, 2, 1, shade(c["--red"], 0.55));
-  px(ctx, x + 3, headY + 8, 2, 1, shade(c["--red"], 0.55));
-  px(ctx, x - 1, headY + 9, 3, 1, shade(skin, -0.35));
 
-  // ---- 手臂與手（手放在桌面上；打字時左右交替）----
+  // ---- 手：打字時左右手交替上下 ----
   const typing = s.action === "typing";
   const flip = frame % 2 === 0;
   const armL = typing && flip ? 1 : 0;
   const armR = typing && !flip ? 1 : 0;
   const sleeve = role === "lead" ? shade(shirt, -0.42) : shirtD;
-  px(ctx, x - 10, top + 2, 3, 9, sleeve);
-  px(ctx, x + 7, top + 2, 3, 9, sleeve);
-  if (role === "news") {
-    px(ctx, x - 10, top + 6, 3, 1, shirtL); // 捲袖
-    px(ctx, x + 7, top + 6, 3, 1, shirtL);
+  if (front) {
+    px(ctx, x - 10, top + 2 - armL, 3, 9, sleeve);
+    px(ctx, x + 7, top + 2 - armR, 3, 9, sleeve);
+    if (role === "news") {
+      // 捲起來的袖子
+      px(ctx, x - 10, top + 7 - armL, 3, 1, shirtL);
+      px(ctx, x + 7, top + 7 - armR, 3, 1, shirtL);
+    }
+    px(ctx, x - 10, top + 11 - armL, 3, 2, skin);
+    px(ctx, x + 7, top + 11 - armR, 3, 2, skin);
+  } else {
+    px(ctx, x - 10, top + 1 + armL, 3, 10, sleeve);
+    px(ctx, x + 7, top + 1 + armR, 3, 10, sleeve);
+    px(ctx, x - 10, top + 1 + armL, 1, 10, shade(sleeve, 0.15));
   }
-  px(ctx, x - 9, SPR_DESK + 1 - armL, 4, 3, skin);
-  px(ctx, x + 5, SPR_DESK + 1 - armR, 4, 3, skin);
 
   // ---- 喝咖啡：每 3 秒舉杯一次，杯子冒熱氣 ----
   if (s.action === "coffee") {
     const sip = frame % 24 >= 18;
-    const mx = x + 9;
-    const my = sip ? headY + 5 : SPR_DESK - 4;
+    const mx = x + 8;
+    const my = sip ? headY + 6 : top + 6;
     px(ctx, mx, my, 5, 6, c["--office-mug"]);
     px(ctx, mx + 5, my + 1, 2, 3, c["--office-mug"]);
-    ctx.clearRect(mx + 5, my + 2, 1, 1);
+    ctx.clearRect(mx + 5, my + 2, 1, 1); // 杯子把手中間是空的
     px(ctx, mx, my, 5, 1, shade(c["--office-mug"], -0.35));
     px(ctx, mx + 1, my + 3, 3, 1, c["--s2"]);
-    if (sip) px(ctx, mx - 2, my + 3, 3, 3, skin);
-    else {
+    px(ctx, mx - 1, my + 3, 2, 3, skin);
+    if (!sip) {
       const st = frame % 6;
-      px(
-        ctx,
-        mx + 1 + (st > 2 ? 1 : 0),
-        my - 3 - (st % 3),
-        1,
-        2,
-        "rgba(255,255,255,0.6)",
-      );
-      px(
-        ctx,
-        mx + 3 - (st > 2 ? 1 : 0),
-        my - 5 - (st % 3),
-        1,
-        2,
-        "rgba(255,255,255,0.45)",
-      );
+      px(ctx, mx + 1 + (st > 2 ? 1 : 0), my - 3 - (st % 3), 1, 2, "rgba(255,255,255,0.6)");
+      px(ctx, mx + 3 - (st > 2 ? 1 : 0), my - 5 - (st % 3), 1, 2, "rgba(255,255,255,0.45)");
     }
   }
 
-  // ---- 辯論中：頭的右邊輪流冒出「漲」「跌」箭頭（顏色跟著紅漲綠跌設定）----
+  // ---- 辯論中：頭上輪流冒出「漲」「跌」箭頭（顏色跟著紅漲綠跌設定）----
   if (s.action === "idle") {
     const phase = Math.floor(frame / 10) % 3;
     if (phase < 2) {
+      // 對話框放在頭的右邊（頭上方是名牌，放上面會被擋住）
       const by = headY - 6;
-      const bx = x + 10;
+      const bx = x + 9;
       const paper = c["--iso-board"];
       px(ctx, bx, by, 15, 11, paper);
       px(ctx, bx - 1, by + 1, 17, 9, paper);
-      px(ctx, bx - 2, by + 8, 3, 2, paper);
+      px(ctx, bx - 2, by + 8, 3, 2, paper); // 對話框的尾巴指向嘴巴
       px(ctx, bx - 3, by + 10, 2, 1, paper);
       const col = phase === 0 ? c.up : c.down;
       const ax = bx + 7;
@@ -983,162 +712,171 @@ function drawPersonSprite(
   }
 }
 
-/** 一個工作站：椅背 → 桌子 → 螢幕 → 人 → 桌面前方的小東西 */
-function workstation(
-  ctx: Ctx,
-  c: Palette,
-  role: AiRoleKey,
-  frame: number,
-  on: boolean,
-) {
-  const s = SEATS[role];
-  const lead = role === "lead";
-  chairBack(ctx, c, s.x, s.desk);
-  desk(ctx, c, s.x, s.desk, s.deskW, lead);
-  const mx = s.monitor === "right" ? s.x + 12 : s.x - 32;
-  const kind =
-    role === "fundamental"
-      ? "bars"
-      : role === "debate"
-        ? "split"
-        : role === "news"
-          ? "news"
-          : "chart";
-  monitor(ctx, c, mx, s.desk + 4, kind, frame, on);
-  if (on) person(ctx, c, role, frame);
-  keyboard(ctx, c, s.x, s.desk + 4);
-  // 桌上的小東西：文件、筆筒、名牌、桌燈
-  const other = s.monitor === "right" ? s.x - 26 : s.x + 14;
-  if (lead) {
-    block(ctx, s.x - 34, s.desk - 9, 3, 11, c["--iso-metal"]); // 桌燈
-    block(ctx, s.x - 37, s.desk - 12, 9, 4, c["--s4"]);
-    block(ctx, s.x - 10, s.desk + 6, 20, 4, c["--iso-beam"]); // 名牌
-    px(ctx, s.x - 7, s.desk + 7, 14, 1, "#e8c46a");
-  } else {
-    block(ctx, other, s.desk + 2, 10, 6, c["--iso-board"]); // 文件
-    px(ctx, other + 2, s.desk + 4, 6, 1, shade(c["--iso-board"], -0.3));
-    block(ctx, other + 3, s.desk - 4, 4, 7, c["--s2"]); // 筆筒
-  }
-}
-
 // ---------------------------------------------------------------------------
-// 整個場景（後面的先畫，前面的蓋上去）
+// 整個場景（依前後順序：後面的先畫，前面的蓋上去）
 // ---------------------------------------------------------------------------
-function drawFrame(
-  ctx: Ctx,
-  bg: HTMLCanvasElement,
-  c: Palette,
-  present: Record<AiRoleKey, boolean>,
-  frame: number,
-) {
+function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<AiRoleKey, boolean>, frame: number) {
   ctx.clearRect(0, 0, SCENE_W, SCENE_H);
   ctx.drawImage(bg, 0, 0);
-  drawWallAnim(ctx, c, frame);
-  const wood = c["--iso-wood"];
+  drawWallScreens(ctx, c, frame);
+  const desk = c["--iso-desk"];
+  const metal = c["--iso-metal"];
+  const on = present;
 
-  // ---- 靠後牆的家具 ----
-  // 書櫃（組合）：外框、四層書、上面一盆小植物
-  const bx = 24;
-  floorShadow(ctx, bx - 1, 81, 36, 3);
-  block(ctx, bx, 22, 34, 60, shade(wood, -0.2));
-  px(ctx, bx + 2, 24, 30, 56, shade(wood, -0.5));
-  const books = [
-    c["--s1"],
-    c["--s2"],
-    c["--s3"],
-    c["--s4"],
-    c["--iso-board"],
-    c["--accent-strong"],
-    c["--s1"],
-    c["--s3"],
-  ];
-  for (let shelf = 0; shelf < 4; shelf++) {
-    const sy = 24 + shelf * 14;
-    px(ctx, bx + 2, sy + 12, 30, 2, shade(wood, -0.1));
-    let x = bx + 3;
-    for (let i = 0; i < 9 && x < bx + 30; i++) {
-      const w = 2 + Math.floor(hash01(shelf, i) * 2);
-      const h = 8 + Math.floor(hash01(i, shelf) * 3);
-      if (hash01(shelf * 3, i * 5) < 0.12) {
-        x += w + 1;
-        continue;
-      }
-      const col = books[(i + shelf * 3) % books.length];
-      px(ctx, x, sy + 12 - h, Math.min(w, bx + 31 - x), h, col);
-      px(ctx, x, sy + 12 - h + 2, Math.min(w, bx + 31 - x), 1, shade(col, 0.4));
-      x += w;
+  // ---- 靠後牆的東西 ----
+  plant(ctx, c, 0.15, 0.15, 3);
+  // 電視下的矮櫃＋小盆栽、文件夾
+  shadow(ctx, 2.9, 0, 1.7, 0.7);
+  box(ctx, 2.9, 0, 0, 1.7, 0.55, 18, shade(c["--iso-floor"], -0.3));
+  line(ctx, P(3.75, 0.55, 2), P(3.75, 0.55, 16), shade(c["--iso-floor"], -0.55));
+  box(ctx, 3.0, 0.1, 18, 0.3, 0.3, 6, c["--iso-pot"]);
+  px(ctx, P(3.15, 0.25, 24)[0] - 3, P(3.15, 0.25, 24)[1] - 6, 6, 6, c["--iso-plant"]);
+  for (let i = 0; i < 3; i++) box(ctx, 4.0 + i * 0.12, 0.1, 18, 0.1, 0.35, 8, [c["--s1"], c["--s2"], c["--s3"]][i], false);
+  // 飲水機
+  shadow(ctx, 4.95, 0.05, 0.6, 0.6);
+  box(ctx, 5.0, 0.05, 0, 0.45, 0.45, 30, c["--iso-board"]);
+  box(ctx, 5.05, 0.1, 30, 0.35, 0.35, 14, c.night ? shade(c["--iso-sky"], 0.3) : c["--iso-sky"]);
+  px(ctx, P(5.2, 0.5, 20)[0] - 1, P(5.2, 0.5, 20)[1], 2, 2, c["--s1"]);
+  plant(ctx, c, 7.25, 0.2, 2);
+  // 印表機（左牆窗戶下）
+  shadow(ctx, 0.05, 5.55, 0.8, 0.8);
+  box(ctx, 0.05, 5.5, 0, 0.7, 0.7, 16, shade(metal, 0.5));
+  box(ctx, 0.1, 5.55, 16, 0.6, 0.6, 7, c["--iso-board"]);
+  box(ctx, 0.2, 5.65, 23, 0.35, 0.4, 1, "#ffffff", false);
+
+  // ---- 後排兩位（面向畫面）：椅背 → 人（桌子會蓋住下半身）----
+  for (const r of ["tech", "news"] as AiRoleKey[]) {
+    const s = SEATS[r];
+    chairBack(ctx, c, s.x, s.y, "front");
+    if (on[r]) person(ctx, c, r, frame);
+  }
+
+  // ---- 長桌 ----
+  const tx0 = 1.2;
+  const tx1 = 6.6;
+  const ty0 = 2.65;
+  const ty1 = 3.95;
+  shadow(ctx, tx0 - 0.1, ty0, tx1 - tx0 + 0.3, ty1 - ty0 + 0.4, 0.12);
+  // 桌腳（兩端的板子）、抽屜櫃
+  box(ctx, tx0 + 0.05, ty0 + 0.1, 0, 0.1, ty1 - ty0 - 0.2, 15, metal);
+  box(ctx, tx1 - 0.15, ty0 + 0.1, 0, 0.1, ty1 - ty0 - 0.2, 15, metal);
+  box(ctx, 3.55, ty0 + 0.6, 0, 0.6, 0.65, 14, shade(desk, -0.15));
+  line(ctx, P(3.6, ty1 - 0.05, 9), P(4.1, ty1 - 0.05, 9), shade(desk, -0.45));
+  line(ctx, P(3.6, ty1 - 0.05, 5), P(4.1, ty1 - 0.05, 5), shade(desk, -0.45));
+  box(ctx, tx0, ty0, 15, tx1 - tx0, ty1 - ty0, 3, desk);
+  // 後排的螢幕（螢幕朝向後排的人，我們看到背面）＋桌上的東西
+  for (const r of ["tech", "news"] as AiRoleKey[]) {
+    const sx = SEATS[r].x;
+    monitor(ctx, c, sx - 0.88, 3.08, 18, false);
+    monitor(ctx, c, sx + 0.08, 3.08, 18, false);
+    keyboard(ctx, c, sx - 0.35, 2.72, 18);
+  }
+  // 中間的隔板（霧面）
+  box(ctx, tx0 + 0.15, 3.28, 18, tx1 - tx0 - 0.3, 0.05, 12, c.night ? shade(c["--iso-sky"], 0.15) : shade(c["--iso-sky"], -0.08));
+  // 前排的螢幕（朝向畫面，看得到內容）
+  for (const r of ["fundamental", "debate"] as AiRoleKey[]) {
+    const sx = SEATS[r].x;
+    for (const [mx, k] of [[sx - 0.88, 0], [sx + 0.08, 1]] as const) {
+      monitor(ctx, c, mx, 3.42, 18, true);
+      screenContent(ctx, c, k === 0 ? r : r === "fundamental" ? "news" : "tech", mx, 3.42, 18, frame + k * 3, on[r]);
     }
+    keyboard(ctx, c, sx - 0.35, 3.62, 18);
+    box(ctx, sx + 0.5, 3.66, 18, 0.12, 0.16, 1, shade(metal, 0.3), false); // 滑鼠
   }
-  plant(ctx, c, bx + 26, 22, 1);
-  // 電視下的矮櫃＋印表機＋小盆栽
-  floorShadow(ctx, 62, 79, 52, 3);
-  block(ctx, 63, 56, 50, 24, shade(wood, -0.1));
-  px(ctx, 64, 57, 48, 2, shade(wood, 0.2));
-  px(ctx, 87, 60, 1, 18, shade(wood, -0.45));
-  px(ctx, 82, 67, 3, 1, "#e8c46a");
-  px(ctx, 90, 67, 3, 1, "#e8c46a");
-  block(ctx, 94, 47, 16, 10, shade(c["--iso-metal"], 0.55)); // 印表機
-  px(ctx, 97, 45, 10, 2, c["--iso-board"]);
-  block(ctx, 66, 50, 8, 7, c["--iso-pot"]);
-  disc(ctx, 70, 46, 4, c["--iso-plant"]);
-  disc(ctx, 69, 45, 2, shade(c["--iso-plant"], 0.3));
-  // 主管兩側的大盆栽、門旁的飲水機
-  plant(ctx, c, 112, 96, 3);
-  plant(ctx, c, 208, 96, 2);
-  floorShadow(ctx, 296, 88, 14, 3);
-  block(ctx, 297, 58, 12, 31, c["--iso-board"]);
-  block(
-    ctx,
-    298,
-    46,
-    10,
-    13,
-    c.night ? shade(c["--iso-sky"], 0.4) : c["--iso-sky"],
-  );
-  px(ctx, 300, 48, 2, 8, "rgba(255,255,255,0.4)");
-  px(ctx, 300, 66, 3, 2, c["--s1"]);
-  px(ctx, 305, 66, 3, 2, c["--red"]);
+  // 桌上的雜物：文件、筆筒、咖啡杯
+  box(ctx, 1.5, 3.5, 18, 0.45, 0.32, 1, c["--iso-board"], false);
+  box(ctx, 1.55, 3.55, 19, 0.4, 0.3, 1, shade(c["--iso-board"], -0.08), false);
+  box(ctx, 6.15, 3.55, 18, 0.15, 0.15, 5, c["--s2"]);
+  box(ctx, 6.2, 2.8, 18, 0.15, 0.15, 4, c["--office-mug"]);
 
-  // ---- 主管（後排中間，霓虹招牌下）----
-  workstation(ctx, c, "lead", frame, present.lead);
-
-  // ---- 左邊：咖啡吧檯（窗戶下）----
-  floorShadow(ctx, 2, 125, 26, 3);
-  block(ctx, 2, 102, 26, 24, shade(wood, -0.15));
-  block(ctx, 1, 98, 28, 6, wood);
-  block(ctx, 6, 86, 10, 13, c["--iso-metal"]); // 咖啡機
-  px(ctx, 8, 92, 6, 3, shade(c["--iso-metal"], 0.4));
-  px(ctx, 13, 88, 2, 1, "#ef4444");
-  block(ctx, 19, 93, 5, 6, c["--office-mug"]);
-
-  // ---- 第一排：技術分析師、新聞分析師；右邊檔案櫃 ----
-  workstation(ctx, c, "tech", frame, present.tech);
-  workstation(ctx, c, "news", frame, present.news);
-  floorShadow(ctx, 288, 167, 26, 3);
-  block(ctx, 288, 128, 26, 40, shade(c["--iso-metal"], 0.45));
-  for (const yy of [131, 144, 157]) {
-    block(ctx, 290, yy, 22, 11, shade(c["--iso-metal"], 0.55));
-    px(ctx, 297, yy + 4, 8, 2, shade(c["--iso-metal"], 0.1));
+  // ---- 前排兩位（背對畫面）：椅座 → 人 → 椅背 ----
+  for (const r of ["fundamental", "debate"] as AiRoleKey[]) {
+    const s = SEATS[r];
+    chairSeat(ctx, c, s.x, s.y);
+    if (on[r]) person(ctx, c, r, frame);
+    chairBack(ctx, c, s.x, s.y, "back");
   }
 
-  // ---- 第二排：基本面分析師、多空辯論；左下沙發、前排盆栽 ----
-  sofa(ctx, c, 6, 178);
-  workstation(ctx, c, "fundamental", frame, present.fundamental);
-  workstation(ctx, c, "debate", frame, present.debate);
-  plant(ctx, c, 296, 214, 3);
-  plant(ctx, c, 160, 222, 2);
+  // ---- 左前方：滅火器、書櫃、盆栽 ----
+  const [fx, fy] = P(0.12, 5.4, 0);
+  px(ctx, fx - 2, fy - 16, 5, 14, c["--iso-fire"]);
+  px(ctx, fx - 2, fy - 16, 5, 2, shade(c["--iso-fire"], -0.4));
+  px(ctx, fx - 1, fy - 19, 3, 3, c["--office-ink"]);
+  px(ctx, fx - 1, fy - 10, 3, 3, c["--iso-board"]);
+  const wood = shade(c["--iso-floor"], -0.25);
+  shadow(ctx, 0, 6.0, 0.7, 1.9);
+  box(ctx, 0, 6.0, 0, 0.55, 1.7, 56, wood);
+  // 每一層的書
+  const books = [c["--s1"], c["--s2"], c["--s3"], c["--s4"], c["--iso-board"], c["--accent-strong"], c["--s1"], c["--s3"]];
+  for (const z of [4, 18, 32, 46]) {
+    box(ctx, 0.02, 6.05, z - 1, 0.5, 1.6, 1, shade(wood, -0.2), false);
+    books.forEach((col, i) => {
+      if ((i + z) % 7 === 0) return; // 少一本，看起來比較自然
+      const bh = 8 + ((i * 3 + z) % 4);
+      const by = 6.12 + i * 0.19;
+      box(ctx, 0.08, by, z, 0.38, 0.14, bh, col, false);
+      line(ctx, P(0.46, by + 0.14, z + bh - 2), P(0.46, by + 0.14, z + bh - 3), shade(col, 0.45)); // 書背上的標籤
+      line(ctx, P(0.08, by + 0.14, z + 2), P(0.46, by + 0.14, z + 2), shade(col, -0.25));
+    });
+  }
+  plant(ctx, c, 1.4, 7.1, 2);
 
-  // ---- 天花板垂下來的燈泡（最前面）----
-  for (const lx of [70, 160, 250]) {
-    px(ctx, lx, 0, 1, 9, shade(c["--iso-metal"], 0.1));
-    block(ctx, lx - 3, 8, 7, 3, c["--iso-metal"]);
-    disc(ctx, lx, 13, 2, c.night ? "#ffe9a8" : "#fff6dc");
+  // ---- 主管：植物 → 椅背 → 人 → 桌子（桌子在人前面）----
+  plant(ctx, c, 7.35, 3.9, 2);
+  const L = SEATS.lead;
+  chairBack(ctx, c, L.x, L.y, "front");
+  if (on.lead) person(ctx, c, "lead", frame);
+  const dx0 = 5.9;
+  const dy0 = 5.55;
+  shadow(ctx, dx0 - 0.1, dy0, 2.1, 1.3);
+  box(ctx, dx0, dy0 + 0.05, 0, 0.12, 0.95, 15, metal);
+  box(ctx, dx0 + 1.75, dy0 + 0.05, 0, 0.12, 0.95, 15, metal);
+  box(ctx, dx0 + 0.15, dy0 + 0.7, 2, 1.55, 0.08, 11, shade(c["--iso-floor"], -0.35)); // 前擋板
+  box(ctx, dx0 - 0.05, dy0, 15, 1.95, 1.05, 3, shade(c["--iso-floor"], -0.2));
+  monitor(ctx, c, dx0 + 0.05, dy0 + 0.12, 18, false, 0.9); // 螢幕放桌子左端，才不會擋住主管的臉
+  box(ctx, dx0 + 0.1, dy0 + 0.45, 18, 0.4, 0.3, 1, c["--iso-board"], false); // 文件
+  box(ctx, dx0 + 1.5, dy0 + 0.4, 18, 0.2, 0.2, 3, c["--iso-lit"]); // 桌燈底座
+  px(ctx, P(dx0 + 1.6, dy0 + 0.5, 21)[0], P(dx0 + 1.6, dy0 + 0.5, 21)[1] - 8, 1, 8, metal);
+  px(ctx, P(dx0 + 1.6, dy0 + 0.5, 29)[0] - 3, P(dx0 + 1.6, dy0 + 0.5, 29)[1] - 2, 6, 3, c["--iso-lit"]);
+  // 訪客椅（背對畫面，空的）
+  chairSeat(ctx, c, 6.3, 7.05);
+  chairBack(ctx, c, 6.3, 7.05, "back");
+
+  // ---- 天花板吊燈（最前面）----
+  for (const lx of [2.0, 4.6]) {
+    const [cx, cy] = P(lx + 0.6, 3.3, WALL_H + 6);
+    const [, ly] = P(lx + 0.6, 3.3, 84);
+    px(ctx, cx, cy, 1, ly - cy, shade(metal, 0.2));
+    box(ctx, lx, 3.2, 80, 1.2, 0.2, 4, shade(metal, 0.55));
+    line(ctx, P(lx + 0.05, 3.4, 80), P(lx + 1.15, 3.4, 80), c["--iso-lit"]);
+    line(ctx, P(lx + 1.2, 3.22, 80), P(lx + 1.2, 3.38, 80), c["--iso-lit"]);
+    if (c.night) poly(ctx, [P(lx - 0.2, 3.0, 18), P(lx + 1.4, 3.0, 18), P(lx + 1.4, 3.7, 18), P(lx - 0.2, 3.7, 18)], "rgba(255,230,150,0.08)");
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // 光影（畫在放大後的高解析度畫布上，用平滑漸層）
+// 像素畫本身維持硬邊；光暈、陰影用柔和的漸層疊上去，看起來比較有氣氛、比較精緻。
 // ---------------------------------------------------------------------------
+type Glow = { x: number; y: number; z: number; r: number; color: string; a: number; sy?: number };
+
+function glow(ctx: Ctx, S: number, g: Glow) {
+  const [px0, py0] = P(g.x, g.y, g.z);
+  const cx = px0 * S;
+  const cy = py0 * S;
+  const sy = g.sy ?? 1;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1, sy); // 地上的光是扁的橢圓（等角視角）
+  const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, g.r * S);
+  grad.addColorStop(0, hexA(g.color, g.a));
+  grad.addColorStop(1, hexA(g.color, 0));
+  ctx.fillStyle = grad;
+  ctx.fillRect(-g.r * S, -g.r * S, g.r * 2 * S, g.r * 2 * S);
+  ctx.restore();
+}
+
 function hexA(hex: string, a: number): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return `rgba(255,255,255,${a})`;
@@ -1146,121 +884,67 @@ function hexA(hex: string, a: number): string {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-function glow(
-  ctx: Ctx,
-  S: number,
-  x: number,
-  y: number,
-  r: number,
-  color: string,
-  a: number,
-  sy = 1,
-) {
+/** 房間底下的柔和影子（畫在房間之前） */
+function drawGroundShadow(ctx: Ctx, S: number) {
+  const [cx, cy] = P(ROOM / 2, ROOM / 2, -8);
   ctx.save();
-  ctx.translate(x * S, y * S);
-  ctx.scale(1, sy);
-  const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * S);
-  grad.addColorStop(0, hexA(color, a));
-  grad.addColorStop(1, hexA(color, 0));
+  ctx.translate(cx * S, (cy + 30) * S);
+  ctx.scale(1, 0.32);
+  const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 190 * S);
+  grad.addColorStop(0, "rgba(0,0,0,0.28)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = grad;
-  ctx.fillRect(-r * S, -r * S, r * 2 * S, r * 2 * S);
+  ctx.fillRect(-190 * S, -190 * S, 380 * S, 380 * S);
   ctx.restore();
 }
 
-function drawLights(
-  ctx: Ctx,
-  S: number,
-  c: Palette,
-  present: Record<AiRoleKey, boolean>,
-  frame: number,
-) {
+/** 燈光：只照在房間有畫東西的地方（source-atop），深色（夜晚）時比較明顯 */
+function drawLights(ctx: Ctx, S: number, c: Palette, present: Record<AiRoleKey, boolean>, frame: number) {
   const night = !!c.night;
-  const k = night ? 1 : 0.5;
+  const k = night ? 1 : 0.45;
   const warm = "#ffd27a";
   const screen = "#8fd3ff";
   ctx.save();
+  ctx.globalCompositeOperation = "source-atop";
+  // 夜晚：整間房間先暗一點、四周更暗（暗角），燈光才顯得出來
   if (night) {
-    // 夜晚：整間房先暗下來、四周更暗（暗角），燈光才顯得出來
-    const g = ctx.createRadialGradient(
-      160 * S,
-      120 * S,
-      40 * S,
-      160 * S,
-      120 * S,
-      230 * S,
-    );
-    g.addColorStop(0, "rgba(6,8,22,0.12)");
-    g.addColorStop(1, "rgba(6,8,22,0.55)");
+    const [cx, cy] = P(ROOM / 2, ROOM / 2, 30);
+    const g = ctx.createRadialGradient(cx * S, cy * S, 40 * S, cx * S, cy * S, 230 * S);
+    g.addColorStop(0, "rgba(5,8,20,0.05)");
+    g.addColorStop(1, "rgba(5,8,20,0.45)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, SCENE_W * S, SCENE_H * S);
-  } else {
-    // 白天：窗戶照進來的一道斜光
-    ctx.fillStyle = "rgba(255,246,214,0.16)";
-    ctx.beginPath();
-    ctx.moveTo(15 * S, 62 * S);
-    ctx.lineTo(3 * S, 74 * S);
-    ctx.lineTo(28 * S, 128 * S);
-    ctx.lineTo(56 * S, 104 * S);
-    ctx.closePath();
-    ctx.fill();
   }
-  if (!night) {
-    const v = ctx.createRadialGradient(
-      160 * S,
-      120 * S,
-      80 * S,
-      160 * S,
-      120 * S,
-      220 * S,
-    );
-    v.addColorStop(0, "rgba(80,50,20,0)");
-    v.addColorStop(1, "rgba(80,50,20,0.16)");
-    ctx.fillStyle = v;
-    ctx.fillRect(0, 0, SCENE_W * S, SCENE_H * S);
+  // 吊燈照在長桌上、燈管本身發光
+  for (const lx of [2.0, 4.6]) {
+    glow(ctx, S, { x: lx + 0.6, y: 3.3, z: 18, r: 70, color: warm, a: 0.32 * k, sy: 0.55 });
+    glow(ctx, S, { x: lx + 0.6, y: 3.3, z: 80, r: 22, color: warm, a: 0.5 * k });
   }
-  ctx.globalCompositeOperation = night ? "lighter" : "source-over";
-  // 燈泡與燈光照到的地板
-  for (const lx of [70, 160, 250]) {
-    glow(ctx, S, lx, 13, 16, warm, 0.55 * k);
-    glow(ctx, S, lx, 110, 70, warm, 0.12 * k, 0.6);
-  }
-  // 霓虹招牌（晚上很亮，偶爾閃一下）
-  const flicker = frame % 97 === 0 || frame % 97 === 2;
-  if (!flicker)
-    glow(ctx, S, 160, 25, 75, c["--iso-neon"], night ? 0.42 : 0.08, 0.45);
   // 主管桌燈
-  glow(ctx, S, SEATS.lead.x - 32, SEATS.lead.desk - 6, 26, warm, 0.45 * k);
-  // 螢幕光（有人在才亮，微微閃）
-  const fl = frame % 6 < 3 ? 1 : 0.85;
-  for (const r of ROLE_ORDER) {
-    if (!present[r]) continue;
-    const s = SEATS[r];
-    const mx = s.monitor === "right" ? s.x + 22 : s.x - 22;
-    glow(ctx, S, mx, s.desk - 8, 22, screen, 0.2 * k * fl);
+  glow(ctx, S, { x: 7.5, y: 6.1, z: 24, r: 38, color: warm, a: 0.4 * k, sy: 0.7 });
+  // 螢幕光（有人在才亮；打字的人螢幕光會微微閃）
+  const flick = frame % 6 < 3 ? 1 : 0.85;
+  for (const [r, x] of [["fundamental", 2.4], ["debate", 5.2]] as const) {
+    if (present[r]) glow(ctx, S, { x, y: 3.6, z: 26, r: 34, color: screen, a: 0.22 * k * flick });
   }
-  glow(ctx, S, 87, 33, 34, screen, 0.15 * k); // 電視
-  glow(ctx, S, 9, 45, 36, night ? "#9fb4ff" : "#fff6dc", night ? 0.18 : 0.3); // 窗戶
+  for (const [r, x] of [["tech", 2.4], ["news", 5.2]] as const) {
+    if (present[r]) glow(ctx, S, { x, y: 2.6, z: 28, r: 26, color: screen, a: 0.2 * k * flick });
+  }
+  // 電視光
+  glow(ctx, S, { x: 3.75, y: 0.2, z: 62, r: 40, color: screen, a: 0.18 * k });
+  // 窗戶的光：白天是暖暖的日光、晚上是月光
+  for (const y of [1.2, 2.4, 3.6, 4.8]) {
+    glow(ctx, S, { x: 0.6, y, z: 40, r: 50, color: night ? "#9fb4ff" : "#fff6dc", a: night ? 0.1 : 0.22 });
+  }
   ctx.restore();
 }
 
-/** 放大倍數：手機（3 倍螢幕、寬約 390px）與桌機都夠清楚 */
+/** 放大倍數：手機（3 倍螢幕、寬約 390px）與桌機（約 1000px）都夠清楚 */
 const SCALE = 4;
 
-const SPOT_HREF: Record<string, string> = {
-  today: TODAY_HREF,
-  market: MARKET_HREF,
-  screener: SCREENER_HREF,
-  portfolio: PORTFOLIO_HREF,
-};
+const SPOT_HREF: Record<string, string> = { today: TODAY_HREF, market: MARKET_HREF, screener: SCREENER_HREF, portfolio: PORTFOLIO_HREF };
 
-export default function OfficeScene({
-  present,
-  loading,
-  redUp,
-  chartHref,
-  onOpen,
-  children,
-}: Props) {
+export default function OfficeScene({ present, loading, redUp, chartHref, onOpen, children }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const theme = useThemeColors(); // 只當作「主題變了」的訊號，顏色另外讀
   const key = ROLE_ORDER.map((r) => (present[r] ? 1 : 0)).join("");
@@ -1270,8 +954,8 @@ export default function OfficeScene({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return; // 沒有 canvas（極舊瀏覽器）：只顯示名牌、標籤與下方內容
     const c = readPalette(redUp);
-    // 為什麼要放大成整數倍？像素畫直接用 CSS 縮放到非整數倍（例如 1.2×）時，
-    // 有的像素變 1 格、有的變 2 格，看起來粗糙。先在程式裡放大 S 倍（每個像素都是 S×S），
+    // 為什麼要放大成整數倍？像素畫直接用 CSS 縮放到非整數倍（例如 0.97×、2.3×）時，
+    // 有的像素變 2 格、有的變 3 格，看起來粗糙不平均。先在程式裡放大 S 倍（每個像素都是 S×S），
     // 再讓瀏覽器平滑縮到畫面大小，邊緣就會又清楚又整齊。
     const S = SCALE;
     canvas.width = SCENE_W * S;
@@ -1292,6 +976,7 @@ export default function OfficeScene({
     const render = (frame: number) => {
       drawFrame(lctx, bg, c, present, frame);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGroundShadow(ctx, S);
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(lo, 0, 0, SCENE_W * S, SCENE_H * S);
       drawLights(ctx, S, c, present, frame);
@@ -1317,88 +1002,46 @@ export default function OfficeScene({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme, redUp, key]);
 
-  const tags = useMemo(
-    () => ROLE_ORDER.map((r) => ({ r, ...tagPosition(r) })),
-    [],
-  );
+  const tags = useMemo(() => ROLE_ORDER.map((r) => ({ r, ...tagPosition(r) })), []);
   const hrefOf = (p: Page) => (p === "chart" ? chartHref : SPOT_HREF[p]);
   const pct = (v: number, total: number) => `${(v / total) * 100}%`;
 
   return (
     <div className="office-scene">
-      {/* 報告日期、完成人數等資訊放在房間上方一列（疊在房間上會擋住物件標籤） */}
-      {children && <div className="office-hud-row">{children}</div>}
-      {/* 名牌與標籤用百分比定位，所以和畫布放在同一個容器（不含上面那一列） */}
-      <div className="office-stage">
-        <canvas
-          ref={canvasRef}
-          width={SCENE_W * SCALE}
-          height={SCENE_H * SCALE}
-          role="img"
-          aria-label={t("像素風辦公室：5 位 AI 分析師在座位上工作")}
+      <canvas ref={canvasRef} width={SCENE_W * SCALE} height={SCENE_H * SCALE} role="img" aria-label={t("像素風辦公室：5 位 AI 分析師在座位上工作")} />
+      {/* 物件的點擊範圍（窗戶、電視、看板、書櫃、門），和標籤連到同一頁 */}
+      {NAV_SPOTS.map((s) => (
+        <a
+          key={`hit-${s.page}`}
+          className="office-spot-hit"
+          href={hrefOf(s.page)}
+          style={{ left: pct(s.hit[0], SCENE_W), top: pct(s.hit[1], SCENE_H), width: pct(s.hit[2], SCENE_W), height: pct(s.hit[3], SCENE_H) }}
+          aria-hidden="true"
+          tabIndex={-1}
         />
-        {/* 物件的點擊範圍（窗戶、電視、看板、書櫃、門），和標籤連到同一頁 */}
-        {NAV_SPOTS.map((s) => (
-          <a
-            key={`hit-${s.page}`}
-            className="office-spot-hit"
-            href={hrefOf(s.page)}
-            style={{
-              left: pct(s.hit[0], SCENE_W),
-              top: pct(s.hit[1], SCENE_H),
-              width: pct(s.hit[2], SCENE_W),
-              height: pct(s.hit[3], SCENE_H),
-            }}
-            aria-hidden="true"
-            tabIndex={-1}
-          />
-        ))}
-        {tags.map(({ r, left, top }) => (
-          <span
-            key={`hit-${r}`}
-            className="office-hit"
-            style={{ left: `${left}%`, top: `${top}%` }}
-            onClick={() => onOpen(r)}
-            aria-hidden="true"
-          />
-        ))}
-        <nav aria-label={t("頁面")}>
-          {NAV_SPOTS.map((s) => {
-            const p = spotPosition(s.at);
-            return (
-              <a
-                key={s.page}
-                className="office-spot"
-                href={hrefOf(s.page)}
-                style={{ left: `${p.left}%`, top: `${p.top}%` }}
-              >
-                {t(s.label)}
-                <span className="office-spot-go" aria-hidden="true">
-                  ›
-                </span>
-              </a>
-            );
-          })}
-        </nav>
-        {tags.map(({ r, left, top }) => (
-          <button
-            key={r}
-            type="button"
-            className={`office-tag ${present[r] ? "is-done" : "is-off"}`}
-            style={{ left: `${left}%`, top: `${top}%` }}
-            onClick={() => onOpen(r)}
-            aria-haspopup="dialog"
-          >
-            <i aria-hidden="true" />
-            {t(ROLE_NAME[r])}
-            {!loading && (
-              <span className={present[r] ? "sr-only" : "office-tag-off"}>
-                {present[r] ? t("已完成") : t("休假中")}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      ))}
+      {tags.map(({ r, left, top }) => (
+        <span key={`hit-${r}`} className="office-hit" style={{ left: `${left}%`, top: `${top}%` }} onClick={() => onOpen(r)} aria-hidden="true" />
+      ))}
+      <nav aria-label={t("頁面")}>
+        {NAV_SPOTS.map((s) => {
+          const p = spotPosition(s.at);
+          return (
+            <a key={s.page} className="office-spot" href={hrefOf(s.page)} style={{ left: `${p.left}%`, top: `${p.top}%` }}>
+              {t(s.label)}
+              <span className="office-spot-go" aria-hidden="true">›</span>
+            </a>
+          );
+        })}
+      </nav>
+      {tags.map(({ r, left, top }) => (
+        <button key={r} type="button" className={`office-tag ${present[r] ? "is-done" : "is-off"}`} style={{ left: `${left}%`, top: `${top}%` }} onClick={() => onOpen(r)} aria-haspopup="dialog">
+          <i aria-hidden="true" />
+          {t(ROLE_NAME[r])}
+          {!loading && <span className={present[r] ? "sr-only" : "office-tag-off"}>{present[r] ? t("已完成") : t("休假中")}</span>}
+        </button>
+      ))}
+      {children}
     </div>
   );
 }
