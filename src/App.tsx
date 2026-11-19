@@ -3,6 +3,7 @@
 //   （空白）／#/today → 今日總覽（pages/TodayPage.tsx，網站打開的第一頁）
 //   #/market    → 市場總覽（pages/MarketPage.tsx）
 //   #/lab       → ML 實驗室（pages/LabPage.tsx）
+//   #/office    → AI 投研辦公室（pages/OfficePage.tsx）
 //   #/代號/週期 → 看盤頁（pages/ChartPage.tsx）
 //   #/compare/A,B → 多檔走勢比較（pages/ComparePage.tsx）
 //   #/screener  → 指標篩選器（pages/ScreenerPage.tsx）
@@ -19,6 +20,7 @@ import AlertBanner from "./components/AlertBanner";
 const TodayPage = lazy(() => import("./pages/TodayPage"));
 const MarketPage = lazy(() => import("./pages/MarketPage"));
 const LabPage = lazy(() => import("./pages/LabPage"));
+const OfficePage = lazy(() => import("./pages/OfficePage"));
 const ChartPage = lazy(() => import("./pages/ChartPage"));
 const ComparePage = lazy(() => import("./pages/ComparePage"));
 const ScreenerPage = lazy(() => import("./pages/ScreenerPage"));
@@ -133,6 +135,8 @@ export default function App() {
             <TodayPage index={index} indexError={indexError} redUp={redUp} />
           ) : route.page === "lab" ? (
             <LabPage />
+          ) : route.page === "office" ? (
+            <OfficePage redUp={redUp} />
           ) : route.page === "market" ? (
             <MarketPage index={index} indexError={indexError} redUp={redUp} />
           ) : route.page === "compare" ? (

@@ -99,3 +99,58 @@ export interface IndexData {
 /** 可以疊加在 K 線上的指標 */
 // ma*、bb 疊在 K 線上；macd、rsi 是下方另外展開的窗格（預設收起來）
 export type OverlayKey = "ma10" | "ma20" | "ma50" | "ma200" | "bb" | "macd" | "rsi";
+
+// ---------------------------------------------------------------------------
+// AI 投研辦公室（#/office）：每日 AI 分析報告的格式
+// 範例：public/ai/sample-report.json；驗證：src/lib/aiReport.ts 的 validateReport
+// ⚠️ 報告只能使用公開資料（觀察清單、config/notify.json），不可以出現任何持股；
+//    不可以給買進／賣出建議或目標價（驗證函式會擋下禁用詞）
+// ---------------------------------------------------------------------------
+
+/** 中英文各一份（網站依語言設定顯示其中一個） */
+export interface LocalText {
+  zh: string;
+  en: string;
+}
+
+/** 報告裡的一點；refs 是提到的股票（網站會做成連結，漲跌依紅漲綠跌設定上色） */
+export interface ReportItem {
+  text: LocalText;
+  refs?: { symbol: string; changePct?: number }[];
+}
+
+export interface ReportSection {
+  heading: LocalText;
+  items: ReportItem[];
+}
+
+export type AiRoleKey = "tech" | "news" | "fundamental" | "debate" | "lead";
+
+export interface AiRoleReport {
+  /** done = 今天有寫報告；off = 休假中（沒有報告） */
+  status: "done" | "off";
+  /** 這段報告使用的資料日期（YYYY-MM-DD） */
+  dataDate: string | null;
+  /** 一句話摘要 */
+  summary: LocalText;
+  sections: ReportSection[];
+  /** 多空辯論專用：偏多理由、偏空理由 */
+  bull?: ReportItem[];
+  bear?: ReportItem[];
+  /** 主管專用：今日重點 3～5 點 */
+  points?: ReportItem[];
+}
+
+export interface AiReport {
+  version: 1;
+  /** true = 範例報告（畫面會清楚標示） */
+  sample: boolean;
+  /** 報告日期（台灣時間的當天） */
+  date: string;
+  generatedAt: string;
+  /** 各資料來源的日期：美股收盤、台股收盤、新聞 */
+  dataDates: { us: string | null; tw: string | null; news: string | null };
+  /** 資料過期時的說明（超過 3 個交易日沒更新）；沒有過期為 null */
+  staleNote: LocalText | null;
+  roles: Record<AiRoleKey, AiRoleReport>;
+}

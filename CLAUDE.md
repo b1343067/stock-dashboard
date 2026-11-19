@@ -43,7 +43,7 @@
 
 ### 前端（`src/`）
 - `App.tsx`：外殼（Header 分頁、資料過期／範例資料 banner、Footer），依 `route.page` 以 `React.lazy` 載入 `pages/` 的頁面
-- `lib/route.ts`：hash 路由：空白或 `#/today`（今日總覽，預設首頁）、`#/market`（市場總覽）、`#/lab`（ML 實驗室）、`#/代號/週期`（daily|weekly|monthly；`#//daily` = 選第一檔）、`#/screener`、`#/portfolio`、`#/analysis`；`chartHref()` 產生看圖連結（測試在 route.test.ts）
+- `lib/route.ts`：hash 路由：空白或 `#/today`（今日總覽，預設首頁）、`#/market`（市場總覽）、`#/lab`（ML 實驗室）、`#/office`（AI 投研辦公室）、`#/代號/週期`（daily|weekly|monthly；`#//daily` = 選第一檔）、`#/screener`、`#/portfolio`、`#/analysis`；`chartHref()` 產生看圖連結（測試在 route.test.ts）
 - `lib/types.ts`：**JSON 格式的 TypeScript 定義，改 Python 輸出時必須同步修改**
 - `lib/data.ts`：讀 JSON（帶快取、驗證）：`loadIndex`、`loadTicker`、`loadScreener`、`loadFxHistory`（沒有檔案回傳 null）
 - `lib/freshness.ts`：`checkFreshness()`，最新資料落後 3 個平日以上就在頁首提醒
@@ -55,7 +55,7 @@
 - 看盤：`pages/ChartPage.tsx`（報價標頭）、`components/StockChart.tsx`（lightweight-charts v5；MACD／RSI 窗格展開才建立；趨勢外推虛線）、`components/StatusCards.tsx`＋`lib/signals.ts`（白話狀態卡）、`components/TrendCard.tsx`、`components/Sparkline.tsx`（觀察清單迷你走勢，資料來自 `index.json` 的 `spark`）
 - 導覽列 5 格（使用者選的）：今日、市場、看盤、篩選、組合；**組合分析放在投資組合頁裡**（`#/analysis` 仍可用，`navActive()` 讓它亮「組合」）
 - 今日總覽（首頁）：`pages/TodayPage.tsx`＋`components/today/`（HoldingsLive、SignalBoard、NewsPanel、EarningsPanel）；計算 `lib/today.ts`（`estimateBar` 用 screener.json 的 `liveBase` 狀態算盤中預估、`isNewSession` 報價日期 > 最後一根才預估、`recentEvents`／`intradayEvents`、`liveHoldings` 今日損益與停利停損排序、`newsTargets`、`bigMovers`）；`lib/live.ts`（`useLiveQuotes` 每 60 秒、分頁在背景暫停；`useNews`／`useEarnings`；失敗一律退回收盤資料）。watch 清單直接 import `config/notify.json`。沒有自己的持股（範例或空的）→ 顯示提示，不顯示範例數字（使用者選 A）
-- Vercel 函式 `api/quote.ts`、`api/news.ts`、`api/earnings.ts`（Web 標準 `export async function GET(request)`；`_lib.ts` 不會變成網址：`getKey`、記憶體 `cached`、`json` 帶 CDN `s-maxage`）。金鑰 `FINNHUB_API_KEY` 只在 Vercel 環境變數，用 `X-Finnhub-Token` 標頭送（不放網址）；**import 要寫 `.js` 副檔名**（package.json 是 `"type": "module"`）；共用解析在 `src/lib/finnhub.ts`（不 import 任何檔案）。本機 `vite preview` 沒有 /api → 404 → 頁面走 fallback；E2E 用 `page.route` 模擬，`helpers.ts` 忽略 /api 的資源載入錯誤。Service Worker 不處理 `/api/`（快取版本 v2）
+- Vercel 函式 `api/quote.ts`、`api/news.ts`、`api/earnings.ts`（Web 標準 `export async function GET(request)`；`_lib.ts` 不會變成網址：`getKey`、記憶體 `cached`、`json` 帶 CDN `s-maxage`）。金鑰 `FINNHUB_API_KEY` 只在 Vercel 環境變數，用 `X-Finnhub-Token` 標頭送（不放網址）；**import 要寫 `.js` 副檔名**（package.json 是 `"type": "module"`）；共用解析在 `src/lib/finnhub.ts`（不 import 任何檔案）。本機 `vite preview` 沒有 /api → 404 → 頁面走 fallback；E2E 用 `page.route` 模擬，`helpers.ts` 忽略 /api 的資源載入錯誤。Service Worker 不處理 `/api/`（快取版本 v3）
 - 頁首：`components/Header.tsx`（分頁、快速搜尋、提醒鈴鐺、紅漲綠跌、深淺色）、`components/BottomNav.tsx`（手機，5 個分頁）
 - 畫圖工具：`lib/drawings.ts`（`handleClick`、`sanitizeDrawings`、key `drawings:代號:週期`）、`components/DrawingTools.tsx`；StockChart 用**容器的原生 click 事件**＋`coordinateToLogical`／`coordinateToPrice` 換算（`chart.subscribeClick` 連點時會被當成雙擊而漏掉），並忽略拖曳（移動 > 5px）；畫的線 `autoscaleInfoProvider: () => null` 不影響 Y 軸。ChartPage 不用 `useStoredState`（key 隨股票變動時它不會重讀）
 - 基本面：`scripts/fundamentals.py`（`price_stats` 從日線算 52 週高低與 TTM 殖利率；`clean_info` 讀 `Ticker.info`；`merge_fundamentals` 抓不到時沿用上次與 `infoDate`；`FETCH_INFO=0` 可跳過）；前端 `lib/fundamentals.ts`、`components/FundamentalsCard.tsx`；篩選器基本面條件 `peBelow`／`yieldAbove`／`near52High`／`near52Low`（`KIND_META.noTf`，不顯示週期）
@@ -63,6 +63,7 @@
 - 效率前緣：`analytics.ts` 的 `simulatePortfolios`（固定種子亂數＋投影到 5%～45%）、`frontierEnvelope`；`components/analysis/FrontierChart.tsx`（SVG，標籤依兩點相對位置擺放避免重疊）
 - PWA：`public/manifest.webmanifest`、`public/icons/`、`public/sw.js`（手寫：頁面與 /data 網路優先、/assets 快取優先；**改快取策略時要改 cache 名稱版本**）；main.tsx 只在 PROD 註冊；App 有離線提示
 - ML 實驗室（`#/lab`）：`pages/LabPage.tsx`＋`components/lab/LabLineChart.tsx`；`lib/ml.ts`（型別、`volConclusion`／`dirConclusion` 由數字產生結論、`pctileLabel`）；`data.ts` 的 `loadMl`／`loadMlVol`（沒有檔案回傳 null）。入口在市場總覽（導覽列維持 5 格，`navActive` 讓它亮「市場」）、看盤頁的 `components/VolForecastCard.tsx`、今日總覽的 `components/RegimeBar.tsx`。狀態顏色 `REGIME_COLOR` 用類別色（不用紅綠，避免和紅漲綠跌混淆），`components/lab/RegimeChart.tsx` 用 LineSeries 的逐點 color 上色。模型名稱寫在 Python，網頁用 `t(name)`，`i18n.test.ts` 會讀 `scripts/ml.py` 檢查翻譯
+- AI 投研辦公室（`#/office`，第一階段）：`pages/OfficePage.tsx`＋`components/office/`（`PixelDesk.tsx` 原創 SVG 像素工作站，`shapeRendering="crispEdges"`，動作 typing／coffee／idle 用 CSS `.px-*` 動畫、`prefers-reduced-motion` 停住；`ReportPanel.tsx` 沿用 `.sheet`）。報告型別 `AiReport` 在 `types.ts`；`lib/aiReport.ts`：`validateReport(raw, symbols?)`（格式、日期、摘要 60 字、每段最多 5 點、每點 80 字、主管 3～5 點、禁用詞「買進／買入／賣出／目標價／加碼／減碼／buy／sell（sell-off 除外）／price target」、refs 必須在觀察清單）、`reportStale`（用 freshness 的 `missedWeekdays`）。`data.ts` 的 `loadAiReport()` 目前讀 `public/ai/sample-report.json`（`sample: true`，畫面標「範例報告」），失敗回傳 null → 大家「休假中」。入口卡片在今日總覽、市場總覽（`.office-entry`），`navActive` 讓 office 亮「今日」。像素畫顏色 `--office-*` 在 styles.css 三處主題區塊。SW 對 `/ai/` 網路優先（快取版本 v3）。E2E `e2e/office.spec.ts`。第二階段（每日報告排程）尚未做
 - 市場總覽（`#/market`）：`pages/MarketPage.tsx`＋`lib/market.ts`（`periodChange`／`breadth`／`topMovers`／`categoryStats`／`heatIntensity`）；只用 index.json（含 spark 算 30 天漲跌），**首頁不可下載個股檔案**（E2E 檢查）
 - 價格提醒：`lib/alerts.ts`（條件、`evaluateAlert`、`alertState`、`acknowledge`）、`lib/alertsStore.ts`（`useSyncExternalStore` 共用狀態、`useAlertQuotes`：只有 RSI 提醒時才載入 screener.json）、`components/AlertsPanel.tsx`（lazy，桌機右側／手機底部滑出）、`components/AlertBanner.tsx`；App 統一計算 triggered
 - 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合；均線交叉 `maCrossUp/Down` 用 `ma`＋`ma2`、成交量 `volSpike` 用 screener.json 的 `volume`，平均不含最新一根）、`pages/ScreenerPage.tsx`、`components/screener/`
@@ -133,6 +134,7 @@
 - [x] ML 實驗室 ①② 波動度預測、漲跌方向實驗
 - [x] ML 實驗室 ③ 市場狀態分群
 - [x] 資料品質：自動修正小問題＋status.json；資料搬到 data 分支（main 不再每天變大）
+- [x] AI 投研辦公室 第一階段（像素辦公室＋範例報告）；第二階段（排程每日報告）待使用者確認
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
 
 ### 已知事實（不要當成 bug 重查）

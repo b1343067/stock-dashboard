@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import Sparkline from "../components/Sparkline";
 import { fmtFixed, pnlClass } from "../lib/format";
 import { breadth, categoryStats, heatIntensity, periodChange, topMovers, type Mover, type Period } from "../lib/market";
-import { chartHref, compareHref, LAB_HREF } from "../lib/route";
+import { chartHref, compareHref, LAB_HREF, OFFICE_HREF } from "../lib/route";
 import { useStoredState } from "../lib/storage";
 import type { IndexData, TickerSummary } from "../lib/types";
 import { t } from "../lib/i18n";
@@ -72,6 +72,16 @@ export default function MarketPage({ index, indexError, redUp }: Props) {
         <span>
           <b>{t("ML 實驗室")}</b>
           <span className="muted small"> {t("機器學習能預測股價嗎？波動度預測與漲跌方向實驗（滾動式驗證）")}</span>
+        </span>
+        <span className="lab-entry-go" aria-hidden="true">›</span>
+      </a>
+
+      {/* AI 投研辦公室入口（導覽列維持 5 格，從這裡進入） */}
+      <a className="lab-entry card office-entry" href={OFFICE_HREF}>
+        <span className="lab-entry-icon" aria-hidden="true">🏢</span>
+        <span>
+          <b>{t("AI 投研辦公室")}</b>
+          <span className="muted small"> {t("5 位 AI 分析師的每日報告：技術、新聞、基本面、多空辯論、主管重點")}</span>
         </span>
         <span className="lab-entry-go" aria-hidden="true">›</span>
       </a>

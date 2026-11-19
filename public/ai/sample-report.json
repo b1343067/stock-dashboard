@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "sample": true,
+  "date": "2026-11-19",
+  "generatedAt": "2026-11-19T00:30:00Z",
+  "dataDates": { "us": "2026-11-18", "tw": "2026-11-18", "news": "2026-11-19" },
+  "staleNote": null,
+  "roles": {
+    "tech": {
+      "status": "done",
+      "dataDate": "2026-11-18",
+      "summary": { "zh": "（範例）大型科技股多數站穩 20 日線，能源股動能轉弱", "en": "(Sample) Most mega-cap tech holds above the 20-day MA; energy momentum fades" },
+      "sections": [
+        {
+          "heading": { "zh": "偏多訊號", "en": "Bullish signals" },
+          "items": [
+            { "text": { "zh": "NVDA MACD 黃金交叉，收盤站上 20 日線（範例）", "en": "NVDA: MACD golden cross, closed above the 20-day MA (sample)" }, "refs": [{ "symbol": "NVDA", "changePct": 2.1 }] },
+            { "text": { "zh": "COST RSI 由 30 以下回升，出現超賣反彈（範例）", "en": "COST: RSI rebounded from below 30, oversold bounce (sample)" }, "refs": [{ "symbol": "COST", "changePct": 1.2 }] }
+          ]
+        },
+        {
+          "heading": { "zh": "危險訊號", "en": "Warning signals" },
+          "items": [
+            { "text": { "zh": "XLE 跌破布林下軌，短線波動變大（範例）", "en": "XLE: broke below the lower Bollinger Band, volatility rising (sample)" }, "refs": [{ "symbol": "XLE", "changePct": -1.8 }] },
+            { "text": { "zh": "TSLA RSI 三天內下跌超過 15，動能急轉直下（範例）", "en": "TSLA: RSI fell more than 15 points in three days (sample)" }, "refs": [{ "symbol": "TSLA", "changePct": -3.4 }] }
+          ]
+        }
+      ]
+    },
+    "news": {
+      "status": "done",
+      "dataDate": "2026-11-19",
+      "summary": { "zh": "（範例）市場關注聯準會會議紀錄與大型零售股財報", "en": "(Sample) Markets watch Fed minutes and big-box retail earnings" },
+      "sections": [
+        {
+          "heading": { "zh": "重大財經新聞", "en": "Market news" },
+          "items": [
+            { "text": { "zh": "聯準會會議紀錄將公布，市場關注降息時程（範例）", "en": "Fed minutes due; focus on the timing of rate cuts (sample)" } },
+            { "text": { "zh": "美國公債殖利率小幅回落（範例）", "en": "US Treasury yields edge lower (sample)" } }
+          ]
+        },
+        {
+          "heading": { "zh": "關注股票新聞", "en": "Watch-list news" },
+          "items": [
+            { "text": { "zh": "LLY 新藥試驗結果公布，市場反應正面（範例）", "en": "LLY releases drug trial results; market reaction positive (sample)" }, "refs": [{ "symbol": "LLY", "changePct": 2.6 }] }
+          ]
+        },
+        {
+          "heading": { "zh": "7 天內財報", "en": "Earnings in the next 7 days" },
+          "items": [
+            { "text": { "zh": "WMT 預計週四盤前公布財報（範例）", "en": "WMT expected to report before Thursday's open (sample)" }, "refs": [{ "symbol": "WMT" }] }
+          ]
+        }
+      ]
+    },
+    "fundamental": {
+      "status": "done",
+      "dataDate": "2026-11-18",
+      "summary": { "zh": "（範例）科技股本益比偏高，必需消費股殖利率較穩定", "en": "(Sample) Tech P/E runs high; consumer staples offer steadier yields" },
+      "sections": [
+        {
+          "heading": { "zh": "本益比", "en": "Valuation (P/E)" },
+          "items": [
+            { "text": { "zh": "AMZN 本益比約 35 倍，高於觀察清單中位數（範例）", "en": "AMZN P/E about 35, above the watch-list median (sample)" }, "refs": [{ "symbol": "AMZN" }] }
+          ]
+        },
+        {
+          "heading": { "zh": "52 週高低點", "en": "52-week range" },
+          "items": [
+            { "text": { "zh": "COST 距 52 週高點約 4%（範例）", "en": "COST is about 4% below its 52-week high (sample)" }, "refs": [{ "symbol": "COST" }] },
+            { "text": { "zh": "XLE 距 52 週低點約 6%（範例）", "en": "XLE is about 6% above its 52-week low (sample)" }, "refs": [{ "symbol": "XLE" }] }
+          ]
+        },
+        {
+          "heading": { "zh": "殖利率", "en": "Dividend yield" },
+          "items": [
+            { "text": { "zh": "KO、PG 殖利率約 3%，波動低於大盤（範例）", "en": "KO and PG yield about 3% with below-market volatility (sample)" }, "refs": [{ "symbol": "KO" }, { "symbol": "PG" }] }
+          ]
+        }
+      ]
+    },
+    "debate": {
+      "status": "done",
+      "dataDate": "2026-11-18",
+      "summary": { "zh": "（範例）多方看企業獲利，空方擔心估值與利率", "en": "(Sample) Bulls cite earnings; bears worry about valuations and rates" },
+      "sections": [],
+      "bull": [
+        { "text": { "zh": "大型科技股獲利仍在成長，AI 需求延續（範例）", "en": "Mega-cap tech earnings keep growing on AI demand (sample)" }, "refs": [{ "symbol": "NVDA" }, { "symbol": "MSFT" }] },
+        { "text": { "zh": "VOO 仍在 200 日線之上，長期趨勢未破（範例）", "en": "VOO remains above its 200-day MA; long-term trend intact (sample)" }, "refs": [{ "symbol": "VOO" }] }
+      ],
+      "bear": [
+        { "text": { "zh": "科技股本益比偏高，獲利不如預期時修正幅度可能較大（範例）", "en": "High tech valuations could mean sharper pullbacks on earnings misses (sample)" } },
+        { "text": { "zh": "能源股跌破支撐，景氣循環股轉弱（範例）", "en": "Energy broke support; cyclicals are weakening (sample)" }, "refs": [{ "symbol": "XLE" }, { "symbol": "XOM" }] }
+      ]
+    },
+    "lead": {
+      "status": "done",
+      "dataDate": "2026-11-18",
+      "summary": { "zh": "（範例）大盤穩健但類股分歧，留意能源與高估值股", "en": "(Sample) Market steady but sectors diverge; watch energy and richly valued names" },
+      "sections": [],
+      "points": [
+        { "text": { "zh": "大盤維持在長期均線之上，市場狀態偏平穩（範例）", "en": "The market stays above long-term averages; regime looks calm (sample)" }, "refs": [{ "symbol": "VOO" }] },
+        { "text": { "zh": "關注股 XLE、TSLA 出現危險訊號，波動可能放大（範例）", "en": "Watch-list XLE and TSLA show warning signals; volatility may rise (sample)" }, "refs": [{ "symbol": "XLE" }, { "symbol": "TSLA" }] },
+        { "text": { "zh": "WMT 財報與聯準會紀錄是本週主要事件（範例）", "en": "WMT earnings and the Fed minutes are this week's key events (sample)" }, "refs": [{ "symbol": "WMT" }] },
+        { "text": { "zh": "以上為範例內容，不代表真實市場狀況", "en": "The above is sample content, not real market conditions" } }
+      ]
+    }
+  }
+}

@@ -5,6 +5,8 @@ import type { IndexData, SeriesData, TickerData } from "./types";
 import type { ScreenerData } from "./screener";
 import { validMl, validMlVol, type MlData, type MlVolData } from "./ml";
 import { getLang, t } from "./i18n";
+import { validateReport } from "./aiReport";
+import type { AiReport } from "./types";
 
 const DATA_BASE = `${import.meta.env.BASE_URL}data`;
 
@@ -123,4 +125,18 @@ export function loadMlVol(): Promise<MlVolData | null> {
       .catch(() => null);
   }
   return mlVolPromise;
+}
+
+// ---- AI 投研辦公室（#/office）----
+// 第一階段只有範例報告（public/ai/sample-report.json）。
+// 讀不到或格式不對都回傳 null：辦公室畫面照樣顯示（大家「休假中」），不會壞。
+let aiPromise: Promise<AiReport | null> | null = null;
+
+export function loadAiReport(): Promise<AiReport | null> {
+  if (!aiPromise) {
+    aiPromise = fetchJson<unknown>(`${import.meta.env.BASE_URL}ai/sample-report.json`)
+      .then((d) => validateReport(d).report)
+      .catch(() => null);
+  }
+  return aiPromise;
 }

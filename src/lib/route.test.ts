@@ -7,6 +7,7 @@ describe("parseHash", () => {
     for (const h of ["", "#", "#/", "#/today"]) expect(parseHash(h).page).toBe("today");
     expect(parseHash("#/market").page).toBe("market");
     expect(parseHash("#/lab").page).toBe("lab");
+    expect(parseHash("#/office").page).toBe("office");
   });
   it("看盤頁：代號與週期", () => {
     expect(parseHash("#/NVDA/weekly")).toEqual({ page: "chart", symbol: "NVDA", timeframe: "weekly" });

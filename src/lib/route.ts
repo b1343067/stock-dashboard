@@ -2,6 +2,7 @@
 //   （空白）或 #/today → 今日總覽（網站打開的第一頁：持股即時損益、訊號、新聞、財報）
 //   #/market      → 市場總覽
 //   #/lab         → ML 實驗室（從市場總覽、看盤頁的波動預測卡片進入）
+//   #/office      → AI 投研辦公室（從今日總覽、市場總覽的入口卡片進入）
 //   #/代號/週期   → 看盤頁，例如 #/0050.TW/weekly
 //   #/compare/A,B → 多檔走勢比較（最多 4 檔）
 //   #/screener    → 指標篩選器
@@ -12,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Timeframe } from "./types";
 
-export type Page = "today" | "market" | "lab" | "chart" | "compare" | "screener" | "portfolio" | "analysis";
+export type Page = "today" | "market" | "lab" | "office" | "chart" | "compare" | "screener" | "portfolio" | "analysis";
 
 export interface Route {
   page: Page;
@@ -28,6 +29,7 @@ export function parseHash(hash: string): Route {
   if (first === undefined || (first === "" && tf === undefined) || first === "today") return { page: "today", symbol: null, timeframe: "daily" };
   if (first === "market") return { page: "market", symbol: null, timeframe: "daily" };
   if (first === "lab") return { page: "lab", symbol: null, timeframe: "daily" };
+  if (first === "office") return { page: "office", symbol: null, timeframe: "daily" };
   if (first === "screener" || first === "portfolio" || first === "analysis") return { page: first, symbol: null, timeframe: "daily" };
   // 比較頁：symbol 欄位放「逗號分隔的代號」（例如 NVDA,AMD），由比較頁自己解析
   if (first === "compare") return { page: "compare", symbol: tf ? decodeURIComponent(tf) : null, timeframe: "daily" };
@@ -46,6 +48,7 @@ export function chartHref(symbol: string, timeframe: Timeframe = "daily"): strin
 export const TODAY_HREF = "#/today";
 export const MARKET_HREF = "#/market";
 export const LAB_HREF = "#/lab";
+export const OFFICE_HREF = "#/office";
 
 /** 比較頁連結，例如 compareHref(["NVDA","AMD"]) → "#/compare/NVDA,AMD" */
 export function compareHref(symbols: string[]): string {
@@ -72,6 +75,8 @@ export function useHashRoute() {
         ? MARKET_HREF
         : r.page === "lab"
         ? LAB_HREF
+        : r.page === "office"
+        ? OFFICE_HREF
         : r.page === "compare"
         ? `#/compare/${r.symbol ?? ""}`
         : r.page === "screener"

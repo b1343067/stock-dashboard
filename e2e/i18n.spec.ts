@@ -40,7 +40,7 @@ test("英文版：自動選英文、各頁沒有漏翻、可以切回中文", as
   await expect(page.locator(".footer")).toContainText("not investment advice");
   await expect(page.locator(".footer")).toContainText("本網站僅供學習參考，非投資建議"); // 規定的中文聲明保留
 
-  for (const hash of ["#/today", "#/market", "#/lab", "#/NVDA/daily", "#/compare/VOO,QQQ", "#/screener", "#/portfolio", "#/analysis"]) {
+  for (const hash of ["#/today", "#/market", "#/lab", "#/office", "#/NVDA/daily", "#/compare/VOO,QQQ", "#/screener", "#/portfolio", "#/analysis"]) {
     await page.goto(`/${hash}`);
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(300);
