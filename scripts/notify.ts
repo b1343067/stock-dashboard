@@ -7,14 +7,14 @@
 //   NOTIFY_FORCE=1       同一天的資料已經通知過也再送一次（測試用）
 //   NOTIFY_STRICT=1      失敗時結束碼 1（「測試 Discord 通知」用，讓失敗在 Actions 顯示紅色）
 //   FINNHUB_API_KEY      Finnhub 金鑰（GitHub Secrets）：重大財經新聞、關注股票新聞、財報提醒。
-//                        沒設定或 API 失敗時略過新聞區塊，其他通知照常送出
+//                        沒設定或 API 失敗時略過新聞區塊，其他通知照常送出（抓新聞在 scripts/news.ts）
 //
 // 安全設計：任何錯誤都只印出來、結束碼 0，不會讓每日資料更新失敗。
 
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { finnhubGet, isUsSymbol, parseEarnings, parseNews, ymd, type NewsItem } from "../src/lib/finnhub";
-import { buildMessages, buildState, dataKeyOf, sanitizeNotifyConfig, type DiscordMessage, type NewsBundle, type NotifyConfig, type NotifyState } from "../src/lib/notify";
+import { loadOrFetchNews } from "./news";
+import { buildMessages, buildState, dataKeyOf, sanitizeNotifyConfig, type DiscordMessage, type NotifyState } from "../src/lib/notify";
 import type { ScreenerData } from "../src/lib/screener";
 
 const ROOT = join(__dirname, "..");
@@ -50,50 +50,6 @@ async function postDiscord(url: string, msg: DiscordMessage): Promise<void> {
   throw new Error("Discord 送出失敗（已重試 3 次）");
 }
 
-/**
- * 抓新聞與財報。每一部分各自失敗就各自略過（null），不影響其他部分和整個通知。
- * 金鑰只從環境變數讀，用標頭送出；錯誤訊息只印狀態碼，不會印出金鑰。
- */
-async function fetchNews(cfg: NotifyConfig): Promise<NewsBundle | null> {
-  const key = process.env.FINNHUB_API_KEY?.trim();
-  if (!key) {
-    console.log("沒有設定 FINNHUB_API_KEY，略過新聞與財報。");
-    return null;
-  }
-  const now = new Date();
-  const from = ymd(new Date(now.getTime() - 2 * 86_400_000));
-  const to = ymd(now);
-  const watch = cfg.watch.filter(isUsSymbol); // Finnhub 免費版沒有台股新聞
-
-  let market: NewsItem[] | null = null;
-  try {
-    market = parseNews(await finnhubGet("/news", { category: "general" }, key), null);
-  } catch (e) {
-    console.log(`市場新聞抓取失敗，略過：${e instanceof Error ? e.message : e}`);
-  }
-
-  let watchNews: Record<string, NewsItem[]> | null = {};
-  let ok = 0;
-  for (const s of watch) {
-    try {
-      watchNews[s] = parseNews(await finnhubGet("/company-news", { symbol: s, from, to }, key), s);
-      ok++;
-    } catch (e) {
-      console.log(`${s} 新聞抓取失敗，略過：${e instanceof Error ? e.message : e}`);
-    }
-  }
-  if (watch.length > 0 && ok === 0) watchNews = null;
-
-  let earnings = null;
-  try {
-    const until = ymd(new Date(now.getTime() + 7 * 86_400_000));
-    earnings = parseEarnings(await finnhubGet("/calendar/earnings", { from: to, to: until }, key));
-  } catch (e) {
-    console.log(`財報日曆抓取失敗，略過：${e instanceof Error ? e.message : e}`);
-  }
-  return { market, watch: watchNews, earnings };
-}
-
 async function main(): Promise<void> {
   const cfg = sanitizeNotifyConfig(readJson(join(ROOT, "config", "notify.json")));
   if (!readJson(join(ROOT, "config", "notify.json"))) return console.log("沒有 config/notify.json，不通知。");
@@ -113,7 +69,8 @@ async function main(): Promise<void> {
     return console.log(`這份資料（${dataKey}）已經通知過了（例如備援排程或推程式碼觸發的重跑），這次不送。`);
   }
 
-  const news = await fetchNews(cfg);
+  // 新聞：先用這次更新剛存的 news.json（scripts/save-news.ts），太舊或沒有才重抓
+  const news = await loadOrFetchNews(cfg, join(DATA, "news.json"));
   // 市場狀態（ML 實驗室 ③）：ML 步驟在通知之前執行；沒有檔案就不列
   const regime = readJson<{ regime?: Record<string, never> }>(join(DATA, "ml-vol.json"))?.regime ?? null;
   const messages = buildMessages(data, cfg, dataDate, previous, news, Math.floor(Date.now() / 1000), regime);

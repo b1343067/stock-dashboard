@@ -126,6 +126,15 @@ jobs:
         if: steps.fresh.outputs.skip != 'true'
         run: npm ci --no-audit --no-fund
 
+      # AI 投研辦公室的每日報告（Claude Code 排程任務）沒有 Finnhub 金鑰，所以在這裡把新聞存成 news.json，
+      # 隨資料推到 data 分支；通知也直接用這份，不重複抓。抓不到就保留舊檔。
+      - name: 存今天的新聞（news.json）
+        if: steps.fresh.outputs.skip != 'true'
+        continue-on-error: true
+        env:
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: npx vite-node scripts/save-news.ts
+
       - name: 送出每日篩選通知
         if: steps.fresh.outputs.skip != 'true'
         continue-on-error: true

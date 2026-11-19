@@ -1,0 +1,25 @@
+# AI 投研辦公室的每日報告推上 main 時，檢查報告有沒有問題（npm run check:report）
+# 為什麼另外一個 workflow？報告每天一份，只改 public/ai/，不需要每次都跑整套建置與瀏覽器測試（ci.yml 會略過這個資料夾）。
+# 檢查失敗時這裡會顯示紅色；網站那邊讀到格式錯誤的報告會自動不顯示（大家休假中），不會壞。
+name: 檢查 AI 報告
+
+on:
+  push:
+    branches: [main]
+    paths: ["public/ai/**"]
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: 報告格式與規則
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: 檢查 public/ai 底下的所有報告
+        run: npm run check:report

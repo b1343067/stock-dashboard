@@ -5,7 +5,7 @@ import type { IndexData, SeriesData, TickerData } from "./types";
 import type { ScreenerData } from "./screener";
 import { validMl, validMlVol, type MlData, type MlVolData } from "./ml";
 import { getLang, t } from "./i18n";
-import { validateReport } from "./aiReport";
+import { validateReport, validIndex, type AiIndex } from "./aiReport";
 import type { AiReport } from "./types";
 
 const DATA_BASE = `${import.meta.env.BASE_URL}data`;
@@ -127,16 +127,37 @@ export function loadMlVol(): Promise<MlVolData | null> {
   return mlVolPromise;
 }
 
-// ---- AI 投研辦公室（#/office）----
-// 第一階段只有範例報告（public/ai/sample-report.json）。
+// ---- AI 投研辦公室（首頁）----
+// public/ai/index.json 列出有哪些日期的報告（排程任務每天發布，新的在前）；
+// 還沒有任何正式報告時顯示範例報告（sample-report.json，畫面會標「範例報告」）。
 // 讀不到或格式不對都回傳 null：辦公室畫面照樣顯示（大家「休假中」），不會壞。
-let aiPromise: Promise<AiReport | null> | null = null;
+const AI_BASE = `${import.meta.env.BASE_URL}ai`;
+let aiIndexPromise: Promise<AiIndex | null> | null = null;
+const aiReportCache = new Map<string, Promise<AiReport | null>>();
 
-export function loadAiReport(): Promise<AiReport | null> {
-  if (!aiPromise) {
-    aiPromise = fetchJson<unknown>(`${import.meta.env.BASE_URL}ai/sample-report.json`)
-      .then((d) => validateReport(d).report)
+export function loadAiIndex(): Promise<AiIndex | null> {
+  if (!aiIndexPromise) {
+    aiIndexPromise = fetchJson<unknown>(`${AI_BASE}/index.json`)
+      .then((d) => (validIndex(d) ? d : null))
       .catch(() => null);
   }
-  return aiPromise;
+  return aiIndexPromise;
+}
+
+function loadReportFile(path: string): Promise<AiReport | null> {
+  let p = aiReportCache.get(path);
+  if (!p) {
+    p = fetchJson<unknown>(`${AI_BASE}/${path}`)
+      .then((d) => validateReport(d).report)
+      .catch(() => null);
+    aiReportCache.set(path, p);
+  }
+  return p;
+}
+
+/** 指定日期的報告；不指定 = 最新一份（沒有正式報告時用範例） */
+export async function loadAiReport(date?: string): Promise<AiReport | null> {
+  if (date) return loadReportFile(`reports/${encodeURIComponent(date)}.json`);
+  const index = await loadAiIndex();
+  return index && index.dates.length > 0 ? loadReportFile("latest.json") : loadReportFile("sample-report.json");
 }

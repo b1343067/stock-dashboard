@@ -4,7 +4,8 @@ name: 檢查程式
 on:
   push:
     branches: [main]
-    paths-ignore: [".data-version"]   # 每日資料更新只改這個檔，不需要重跑檢查
+    # 每日資料更新只改 .data-version；每日 AI 報告只改 public/ai/（由「檢查 AI 報告」另外檢查），都不需要重跑整套測試
+    paths-ignore: [".data-version", "public/ai/**"]
   pull_request:
 
 jobs:
@@ -23,6 +24,8 @@ jobs:
         run: bash scripts/pull-data.sh
       - name: 前端單元測試
         run: npm test
+      - name: 檢查 AI 報告（格式、禁用詞、只提到觀察清單）
+        run: npm run check:report
       - name: 建置
         run: npm run build
       - uses: actions/setup-python@v5

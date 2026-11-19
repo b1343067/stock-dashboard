@@ -81,3 +81,34 @@ describe("reportStale / pick", () => {
     expect(pick({ zh: "中", en: "en" }, "zh")).toBe("中");
   });
 });
+
+import { addToIndex, checkDailyReport, validIndex } from "./aiReport";
+
+describe("每日報告發布規則", () => {
+  const real = (): AiReport => ({ ...clone(), sample: false });
+  it("範例不能當正式報告發布", () => {
+    expect(checkDailyReport(sample, symbols).join()).toContain("sample 必須是 false");
+    expect(checkDailyReport(real(), symbols)).toEqual([]);
+  });
+  it("資料過期一定要有 staleNote", () => {
+    const r = { ...real(), date: "2026-11-25" };
+    for (const k of ["tech", "news", "fundamental", "debate", "lead"] as const) r.roles[k].dataDate = "2026-11-18";
+    expect(checkDailyReport(r, symbols).join()).toContain("staleNote");
+    r.staleNote = { zh: "美股資料停在 11/18", en: "US data stopped at 11/18" };
+    expect(checkDailyReport(r, symbols)).toEqual([]);
+  });
+  it("dataDate 不能晚於報告日期", () => {
+    const r = real();
+    r.roles.tech.dataDate = "2026-11-20";
+    expect(checkDailyReport(r, symbols).join()).toContain("不能晚於");
+  });
+  it("索引：新到舊、同一天不重複、超過上限的要刪", () => {
+    const { index, removed } = addToIndex({ dates: ["2026-11-18", "2026-11-17"] }, "2026-11-19", 2);
+    expect(index.dates).toEqual(["2026-11-19", "2026-11-18"]);
+    expect(removed).toEqual(["2026-11-17"]);
+    expect(addToIndex(index, "2026-11-19").index.dates).toEqual(["2026-11-19", "2026-11-18"]);
+    expect(addToIndex(null, "2026-11-19").index.dates).toEqual(["2026-11-19"]);
+    expect(validIndex({ dates: ["2026-11-19"] })).toBe(true);
+    expect(validIndex({ dates: ["bad"] })).toBe(false);
+  });
+});

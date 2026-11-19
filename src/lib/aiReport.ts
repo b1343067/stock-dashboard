@@ -136,3 +136,48 @@ export function reportStale(report: AiReport, today: string): boolean {
   if (dates.length === 0) return true;
   return missedWeekdays(dates[dates.length - 1], today) >= STALE_THRESHOLD;
 }
+
+// ---------------------------------------------------------------------------
+// 第二階段：每日報告的發布規則（scripts/publish-report.ts、check-report.ts 用）
+// ---------------------------------------------------------------------------
+
+/** public/ai/index.json：有哪些日期的報告（新的在前，最多保留 HISTORY_DAYS 份） */
+export interface AiIndex {
+  dates: string[];
+}
+
+export const HISTORY_DAYS = 30;
+
+export function validIndex(raw: unknown): raw is AiIndex {
+  const o = raw as AiIndex;
+  return !!o && Array.isArray(o.dates) && o.dates.every((d) => isDate(d));
+}
+
+/**
+ * 加入一天的報告：同一天重跑會覆蓋（不重複），依日期新到舊排序，超過 30 份的舊報告要刪掉。
+ * 回傳新的索引與要刪除的日期。
+ */
+export function addToIndex(prev: AiIndex | null, date: string, max = HISTORY_DAYS): { index: AiIndex; removed: string[] } {
+  const all = [...new Set([date, ...(prev?.dates ?? [])])].sort().reverse();
+  return { index: { dates: all.slice(0, max) }, removed: all.slice(max) };
+}
+
+/**
+ * 正式報告比範例更嚴格：
+ * - 不能是範例（sample 必須是 false）
+ * - 每個有寫報告的角色都要註明資料日期，而且不能晚於報告日期
+ * - 資料超過 3 個交易日沒更新時，staleNote 一定要寫（報告要說清楚資料舊了）
+ */
+export function checkDailyReport(raw: unknown, symbols: Set<string>): string[] {
+  const { report, errors } = validateReport(raw, symbols);
+  if (!report) return errors;
+  const out: string[] = [];
+  if (report.sample) out.push("正式報告的 sample 必須是 false");
+  for (const key of ROLE_ORDER) {
+    const r = report.roles[key];
+    if (r.status === "done" && r.dataDate && r.dataDate > report.date) out.push(`${ROLE_NAME[key]}：dataDate（${r.dataDate}）不能晚於報告日期（${report.date}）`);
+  }
+  if (reportStale(report, report.date) && !report.staleNote) out.push("資料已超過 3 個交易日沒更新，staleNote 必須說明（中英文）");
+  if (doneCount(report) === 0) out.push("至少要有一位角色完成報告（全部休假就不要發布）");
+  return out;
+}

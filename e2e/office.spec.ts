@@ -86,3 +86,26 @@ test("手機版：物件切換頁面、不顯示底部導覽列、報告從底�
   await expect(page).toHaveURL(/#\/screener/);
   await errs.expectNoErrors();
 });
+
+test("正式報告：沒有範例標示、可以切換歷史日期", async ({ page }) => {
+  const errs = trackErrors(page);
+  const base = (await (await page.request.get("/ai/sample-report.json")).json()) as Record<string, unknown> & { roles: { lead: { summary: { zh: string } } } };
+  const mk = (date: string, word: string) => {
+    const r = JSON.parse(JSON.stringify(base));
+    r.sample = false;
+    r.date = date;
+    r.roles.lead.summary.zh = `${word}的主管摘要`;
+    return r;
+  };
+  await page.route("**/ai/index.json", (r) => r.fulfill({ json: { dates: ["2026-11-19", "2026-11-18"] } }));
+  await page.route("**/ai/latest.json", (r) => r.fulfill({ json: mk("2026-11-19", "今天") }));
+  await page.route("**/ai/reports/2026-11-18.json", (r) => r.fulfill({ json: mk("2026-11-18", "昨天") }));
+  await page.goto("/");
+  await expect(page.locator(".office-brief")).toContainText("今天的主管摘要");
+  await expect(page.locator(".office-hud-left")).not.toContainText("範例報告");
+  await page.getByLabel("報告日期").selectOption("2026-11-18");
+  await expect(page.locator(".office-brief")).toContainText("昨天的主管摘要");
+  await page.getByLabel("報告日期").selectOption("2026-11-19");
+  await expect(page.locator(".office-brief")).toContainText("今天的主管摘要");
+  await errs.expectNoErrors();
+});
