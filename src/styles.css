@@ -1339,33 +1339,41 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
   min-width: min(100%, 560px);
   margin: 0 auto;
 }
-.office-scene canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
+.office-scene canvas { display: block; width: 100%; height: auto; } /* 畫布本身已放大 4 倍，讓瀏覽器平滑縮小就好 */
+/* 角色名牌：半透明深色＋霧面，小而清楚（不搶畫面） */
 .office-tag {
   position: absolute; z-index: 4; transform: translate(-50%, -100%);
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 7px; border-radius: 6px; white-space: nowrap;
-  font: 700 clamp(10px, 1.15vw, 13px) / 1.3 var(--font-sans);
-  background: rgba(16, 18, 28, 0.82); color: #f4f5f8; border: 1px solid rgba(255, 255, 255, 0.18);
-  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px 2px 6px; border-radius: 999px; white-space: nowrap;
+  font: 700 clamp(10px, 1.1vw, 12.5px) / 1.35 var(--font-sans); letter-spacing: 0.02em;
+  background: rgba(14, 16, 26, 0.72); color: #f4f5f8;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  cursor: pointer; transition: background 0.15s, transform 0.15s;
 }
-.office-tag::after { content: ""; position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); border: 4px solid transparent; border-bottom: 0; border-top-color: rgba(16, 18, 28, 0.82); }
+.office-tag::after { content: ""; position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); border: 4px solid transparent; border-bottom: 0; border-top-color: rgba(14, 16, 26, 0.72); }
 .office-tag:hover, .office-tag:focus-visible { background: var(--accent-strong); outline: none; }
-.office-tag i { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex: none; }
-.office-tag.is-off i { background: #9ca3af; }
-.office-tag-off { font-weight: 600; opacity: 0.75; }
+.office-tag:hover::after, .office-tag:focus-visible::after { border-top-color: var(--accent-strong); }
+.office-tag i { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80; flex: none; }
+.office-tag.is-off i { background: #9ca3af; box-shadow: none; }
+.office-tag-off { font-weight: 600; opacity: 0.7; }
 /* 物件標籤（門、窗、電視、看板、書櫃）：點了切換頁面，取代辦公室頁的底部導覽列 */
 .office-spot {
   position: absolute; z-index: 3; transform: translate(-50%, -50%);
-  display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
-  font: 800 clamp(10px, 1.2vw, 13px) / 1.3 var(--font-sans);
-  background: var(--accent-strong); color: #fff; text-decoration: none;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
-  animation: spot-pulse 2.4s ease-in-out infinite;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 6px 2px 9px; border-radius: 999px; white-space: nowrap;
+  font: 800 clamp(10px, 1.1vw, 12.5px) / 1.35 var(--font-sans); letter-spacing: 0.04em;
+  background: rgba(99, 102, 241, 0.88); color: #fff; text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 14px rgba(49, 46, 129, 0.35);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: spot-pulse 2.8s ease-in-out infinite;
 }
+.office-spot-go { opacity: 0.8; font-weight: 700; }
 .office-spot:hover, .office-spot:focus-visible { background: #4f46e5; outline: 2px solid #fff; outline-offset: 1px; }
 /* 外圈光暈一閃一閃（不移動位置：會動的按鈕不好點） */
-@keyframes spot-pulse { 0%, 100% { box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 0 0 0 rgba(99, 102, 241, 0.55); } 50% { box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 0 0 5px rgba(99, 102, 241, 0); } }
+@keyframes spot-pulse { 0%, 100% { box-shadow: 0 4px 14px rgba(49, 46, 129, 0.35), 0 0 0 0 rgba(129, 140, 248, 0.5); } 50% { box-shadow: 0 4px 14px rgba(49, 46, 129, 0.35), 0 0 0 6px rgba(129, 140, 248, 0); } }
 @media (prefers-reduced-motion: reduce) { .office-spot { animation: none; } }
 .office-spot-hit { position: absolute; z-index: 1; border-radius: 6px; }
 .office-spot-hit:hover { background: rgba(255, 255, 255, 0.12); outline: 2px dashed rgba(99, 102, 241, 0.7); }
@@ -1388,15 +1396,18 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .hud-sample { background: var(--warn-bg); color: var(--warn-text); border-color: transparent; }
 .hud-warn { background: var(--warn-bg); color: var(--warn-text); border-color: transparent; white-space: normal; }
 /* 主管的一句話摘要 */
+/* 主管的今日重點卡片 */
 .office-brief {
-  display: flex; align-items: center; gap: 10px; width: min(100%, 720px); margin: 4px auto 0;
-  padding: 10px 14px; border-radius: 999px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer;
+  width: min(100%, 720px); margin: 6px auto 0; padding: 14px 16px;
+  border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface);
 }
-.office-brief:hover { border-color: var(--accent); }
-.office-brief-who { flex: none; font-size: 12px; font-weight: 800; color: #fff; background: var(--accent-strong); padding: 2px 9px; border-radius: 999px; }
-.office-brief-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.office-brief-go { flex: none; color: var(--accent); font-weight: 700; font-size: 13px; }
+.office-brief-head { display: flex; align-items: flex-start; gap: 10px; }
+.office-brief-who { flex: none; font-size: 12px; font-weight: 800; color: #fff; background: var(--accent-strong); padding: 2px 9px; border-radius: 999px; margin-top: 1px; }
+.office-brief-text { flex: 1; min-width: 0; line-height: 1.5; }
+.office-brief-points { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 6px; color: var(--text-2); line-height: 1.55; }
+.office-brief-points li::marker { color: var(--accent); font-weight: 800; }
+.office-brief-go { display: block; margin: 10px 0 0 auto; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+.office-brief-go:hover { text-decoration: underline; }
 .office-disclaimer { margin-top: 10px; text-align: center; }
 
 /* 報告面板 */
@@ -1413,7 +1424,6 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 
 @media (max-width: 480px) {
   .hud-chip { font-size: 10px; padding: 1px 7px; }
-  .office-brief { border-radius: var(--radius-sm); }
   .office-tag { padding: 0 4px; gap: 3px; font-size: 9px; border-radius: 4px; }
   .office-spot { padding: 1px 6px; font-size: 10px; }
   /* 手機：場景滿版，看起來大一點 */

@@ -828,4 +828,5 @@ export const EN: Record<string, string> = {
   "資料超過 3 個交易日沒更新": "Data not updated for over 3 trading days",
   "看報告": "Read report",
   "報告日期": "Report date",
+  "看完整報告": "Read full report",
 };

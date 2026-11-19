@@ -1,11 +1,15 @@
 // AI 投研辦公室（首頁）：範例報告、點角色看報告、物件當選單、讀取失敗不會壞、手機版
 import { expect, test } from "@playwright/test";
-import { expectNoHorizontalScroll, trackErrors } from "./helpers";
+import { expectNoHorizontalScroll, trackErrors, type Page } from "./helpers";
+
+/** 固定用範例報告（main 上已經有每天的正式報告，內容每天不同，測試不能依賴） */
+const useSample = (page: Page) => page.route("**/ai/index.json", (r) => r.fulfill({ json: { dates: [] } }));
 
 const ROLES = ["技術分析師", "新聞分析師", "基本面分析師", "多空辯論", "主管"];
 
 test("首頁就是辦公室：範例標示、5 位角色、點名牌打開報告", async ({ page }) => {
   const errs = trackErrors(page);
+  await useSample(page);
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "AI 投研辦公室" })).toBeAttached();
   await expect(page.locator(".office-hud-left")).toContainText("範例報告");
@@ -27,8 +31,9 @@ test("首頁就是辦公室：範例標示、5 位角色、點名牌打開報告
   await expect(page.getByRole("dialog")).toContainText("偏多的理由");
   await expect(page.getByRole("dialog")).toContainText("偏空的理由");
   await page.getByRole("button", { name: "關閉" }).click();
-  // 主管摘要列 → 主管報告
-  await page.locator(".office-brief").click();
+  // 主管今日重點卡片 → 主管報告
+  await expect(page.locator(".office-brief li")).toHaveCount(4);
+  await page.getByRole("button", { name: /看完整報告/ }).click();
   const points = await page.getByRole("dialog", { name: "主管" }).locator(".report-section", { hasText: "今日重點" }).locator("li").count();
   expect(points).toBeGreaterThanOrEqual(3);
   expect(points).toBeLessThanOrEqual(5);
@@ -58,6 +63,7 @@ test("等角場景：畫布有畫出東西", async ({ page }) => {
 
 test("報告讀取失敗或格式錯誤：辦公室照樣顯示、大家休假中", async ({ page }) => {
   const errs = trackErrors(page);
+  await useSample(page);
   await page.route("**/ai/sample-report.json", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ version: 1, roles: {} }) }));
   await page.goto("/");
   await expect(page.locator(".office-tag.is-off")).toHaveCount(5);
@@ -70,6 +76,7 @@ test("報告讀取失敗或格式錯誤：辦公室照樣顯示、大家休假�
 
 test("手機版：物件切換頁面、不顯示底部導覽列、報告從底部滑出、沒有橫向捲軸 @mobile", async ({ page }) => {
   const errs = trackErrors(page);
+  await useSample(page);
   await page.goto("/");
   await expect(page.locator(".office-spot")).toHaveCount(5);
   await expect(page.locator(".bottom-nav")).toBeHidden();

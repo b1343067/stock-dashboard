@@ -1,5 +1,6 @@
 // 測試共用工具
 import { expect, type Page } from "@playwright/test";
+export type { Page };
 
 /**
  * 收集頁面上的 JavaScript 錯誤。測試結束時呼叫 expectNoErrors()，

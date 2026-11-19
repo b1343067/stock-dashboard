@@ -128,17 +128,24 @@ export default function OfficePage({ redUp, chartHref }: Props) {
         )}
       </OfficeScene>
 
-      {/* 主管的一句話摘要（點了看完整報告） */}
+      {/* 主管的今日重點（摘要＋3～5 點；點「看完整報告」打開主管報告） */}
       {lead?.status === "done" && (
-        <button
-          type="button"
-          className="office-brief"
-          onClick={() => setOpen("lead")}
-        >
-          <span className="office-brief-who">{t("主管")}</span>
-          <span className="office-brief-text">{pick(lead.summary, lang)}</span>
-          <span className="office-brief-go">{t("看報告")} ›</span>
-        </button>
+        <section className="office-brief" aria-label={t("今日重點")}>
+          <div className="office-brief-head">
+            <span className="office-brief-who">{t("主管")}</span>
+            <b className="office-brief-text">{pick(lead.summary, lang)}</b>
+          </div>
+          {lead.points && lead.points.length > 0 && (
+            <ol className="office-brief-points">
+              {lead.points.map((p, i) => (
+                <li key={i}>{pick(p.text, lang)}</li>
+              ))}
+            </ol>
+          )}
+          <button type="button" className="office-brief-go" onClick={() => setOpen("lead")}>
+            {t("看完整報告")} ›
+          </button>
+        </section>
       )}
 
       <p className="office-disclaimer muted small">

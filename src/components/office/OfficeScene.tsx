@@ -232,6 +232,23 @@ function drawRoom(ctx: Ctx, c: Palette) {
     const b = a + (y1 - y0) / 4 - 0.3;
     poly(ctx, [P(0, a), P(0, b), P(2.4, b + 1.0), P(2.4, a + 1.0)], c.night ? "rgba(140,160,255,0.06)" : "rgba(255,250,220,0.22)");
   }
+  // ---- 立體模型感：牆的厚度（上緣與兩端）、地板的厚度 ----
+  // 讓房間看起來像一個「剖開的模型」，而不是一張平面貼圖
+  const T = 0.18; // 牆厚（格）
+  const cap = shade(wall, 0.18);
+  poly(ctx, [P(-T, 0, WALL_H), P(0, 0, WALL_H), P(0, ROOM, WALL_H), P(-T, ROOM, WALL_H)], cap);
+  poly(ctx, [P(0, -T, WALL_H), P(ROOM, -T, WALL_H), P(ROOM, 0, WALL_H), P(0, 0, WALL_H)], cap);
+  poly(ctx, [P(-T, -T, WALL_H), P(0, -T, WALL_H), P(0, 0, WALL_H), P(-T, 0, WALL_H)], cap);
+  poly(ctx, [P(-T, ROOM, -8), P(0, ROOM, -8), P(0, ROOM, WALL_H), P(-T, ROOM, WALL_H)], shade(wall, -0.3)); // 左牆末端
+  poly(ctx, [P(ROOM, -T, -8), P(ROOM, 0, -8), P(ROOM, 0, WALL_H), P(ROOM, -T, WALL_H)], shade(wall, -0.42)); // 右牆末端
+  const slab = shade(c["--iso-floor"], -0.45);
+  poly(ctx, [P(0, ROOM, 0), P(ROOM, ROOM, 0), P(ROOM, ROOM, -8), P(0, ROOM, -8)], slab); // 地板左前側面
+  poly(ctx, [P(ROOM, 0, 0), P(ROOM, ROOM, 0), P(ROOM, ROOM, -8), P(ROOM, 0, -8)], shade(slab, -0.25)); // 右前側面
+  line(ctx, P(0, ROOM, 0), P(ROOM, ROOM, 0), shade(c["--iso-floor"], 0.15)); // 地板邊緣亮線
+  line(ctx, P(ROOM, 0, 0), P(ROOM, ROOM, 0), shade(c["--iso-floor"], 0.05));
+  line(ctx, P(-T, 0, WALL_H), P(-T, ROOM, WALL_H), shade(wall, -0.2));
+  line(ctx, P(0, -T, WALL_H), P(ROOM, -T, WALL_H), shade(wall, -0.2));
+
   // 主管桌下的地毯（有邊框）
   poly(ctx, [P(5.6, 4.4), P(ROOM - 0.1, 4.4), P(ROOM - 0.1, 7.6), P(5.6, 7.6)], shade(c["--iso-rug"], -0.2));
   poly(ctx, [P(5.75, 4.55), P(ROOM - 0.25, 4.55), P(ROOM - 0.25, 7.45), P(5.75, 7.45)], c["--iso-rug"]);
@@ -622,6 +639,94 @@ function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// 光影（畫在放大後的高解析度畫布上，用平滑漸層）
+// 像素畫本身維持硬邊；光暈、陰影用柔和的漸層疊上去，看起來比較有氣氛、比較精緻。
+// ---------------------------------------------------------------------------
+type Glow = { x: number; y: number; z: number; r: number; color: string; a: number; sy?: number };
+
+function glow(ctx: Ctx, S: number, g: Glow) {
+  const [px0, py0] = P(g.x, g.y, g.z);
+  const cx = px0 * S;
+  const cy = py0 * S;
+  const sy = g.sy ?? 1;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1, sy); // 地上的光是扁的橢圓（等角視角）
+  const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, g.r * S);
+  grad.addColorStop(0, hexA(g.color, g.a));
+  grad.addColorStop(1, hexA(g.color, 0));
+  ctx.fillStyle = grad;
+  ctx.fillRect(-g.r * S, -g.r * S, g.r * 2 * S, g.r * 2 * S);
+  ctx.restore();
+}
+
+function hexA(hex: string, a: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return `rgba(255,255,255,${a})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+/** 房間底下的柔和影子（畫在房間之前） */
+function drawGroundShadow(ctx: Ctx, S: number) {
+  const [cx, cy] = P(ROOM / 2, ROOM / 2, -8);
+  ctx.save();
+  ctx.translate(cx * S, (cy + 30) * S);
+  ctx.scale(1, 0.32);
+  const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 190 * S);
+  grad.addColorStop(0, "rgba(0,0,0,0.28)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(-190 * S, -190 * S, 380 * S, 380 * S);
+  ctx.restore();
+}
+
+/** 燈光：只照在房間有畫東西的地方（source-atop），深色（夜晚）時比較明顯 */
+function drawLights(ctx: Ctx, S: number, c: Palette, present: Record<AiRoleKey, boolean>, frame: number) {
+  const night = !!c.night;
+  const k = night ? 1 : 0.45;
+  const warm = "#ffd27a";
+  const screen = "#8fd3ff";
+  ctx.save();
+  ctx.globalCompositeOperation = "source-atop";
+  // 夜晚：整間房間先暗一點、四周更暗（暗角），燈光才顯得出來
+  if (night) {
+    const [cx, cy] = P(ROOM / 2, ROOM / 2, 30);
+    const g = ctx.createRadialGradient(cx * S, cy * S, 40 * S, cx * S, cy * S, 230 * S);
+    g.addColorStop(0, "rgba(5,8,20,0.05)");
+    g.addColorStop(1, "rgba(5,8,20,0.45)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, SCENE_W * S, SCENE_H * S);
+  }
+  // 吊燈照在長桌上、燈管本身發光
+  for (const lx of [2.0, 4.6]) {
+    glow(ctx, S, { x: lx + 0.6, y: 3.3, z: 18, r: 70, color: warm, a: 0.32 * k, sy: 0.55 });
+    glow(ctx, S, { x: lx + 0.6, y: 3.3, z: 80, r: 22, color: warm, a: 0.5 * k });
+  }
+  // 主管桌燈
+  glow(ctx, S, { x: 7.5, y: 6.1, z: 24, r: 38, color: warm, a: 0.4 * k, sy: 0.7 });
+  // 螢幕光（有人在才亮；打字的人螢幕光會微微閃）
+  const flick = frame % 6 < 3 ? 1 : 0.85;
+  for (const [r, x] of [["fundamental", 2.4], ["debate", 5.2]] as const) {
+    if (present[r]) glow(ctx, S, { x, y: 3.6, z: 26, r: 34, color: screen, a: 0.22 * k * flick });
+  }
+  for (const [r, x] of [["tech", 2.4], ["news", 5.2]] as const) {
+    if (present[r]) glow(ctx, S, { x, y: 2.6, z: 28, r: 26, color: screen, a: 0.2 * k * flick });
+  }
+  // 電視光
+  glow(ctx, S, { x: 3.75, y: 0.2, z: 62, r: 40, color: screen, a: 0.18 * k });
+  // 窗戶的光：白天是暖暖的日光、晚上是月光
+  for (const y of [1.2, 2.4, 3.6, 4.8]) {
+    glow(ctx, S, { x: 0.6, y, z: 40, r: 50, color: night ? "#9fb4ff" : "#fff6dc", a: night ? 0.1 : 0.22 });
+  }
+  ctx.restore();
+}
+
+/** 放大倍數：手機（3 倍螢幕、寬約 390px）與桌機（約 1000px）都夠清楚 */
+const SCALE = 4;
+
 const SPOT_HREF: Record<string, string> = { today: TODAY_HREF, market: MARKET_HREF, screener: SCREENER_HREF, portfolio: PORTFOLIO_HREF };
 
 export default function OfficeScene({ present, loading, redUp, chartHref, onOpen, children }: Props) {
@@ -632,14 +737,35 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return; // 沒有 canvas（極舊瀏覽器）：只顯示名牌、標籤與下方列表
+    if (!canvas || !ctx) return; // 沒有 canvas（極舊瀏覽器）：只顯示名牌、標籤與下方內容
     const c = readPalette(redUp);
-    const bg = document.createElement("canvas");
-    bg.width = SCENE_W;
-    bg.height = SCENE_H;
+    // 為什麼要放大成整數倍？像素畫直接用 CSS 縮放到非整數倍（例如 0.97×、2.3×）時，
+    // 有的像素變 2 格、有的變 3 格，看起來粗糙不平均。先在程式裡放大 S 倍（每個像素都是 S×S），
+    // 再讓瀏覽器平滑縮到畫面大小，邊緣就會又清楚又整齊。
+    const S = SCALE;
+    canvas.width = SCENE_W * S;
+    canvas.height = SCENE_H * S;
+    const mk = () => {
+      const el = document.createElement("canvas");
+      el.width = SCENE_W;
+      el.height = SCENE_H;
+      return el;
+    };
+    const bg = mk();
+    const lo = mk();
     const bctx = bg.getContext("2d");
-    if (!bctx) return;
+    const lctx = lo.getContext("2d");
+    if (!bctx || !lctx) return;
     drawRoom(bctx, c);
+
+    const render = (frame: number) => {
+      drawFrame(lctx, bg, c, present, frame);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGroundShadow(ctx, S);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(lo, 0, 0, SCENE_W * S, SCENE_H * S);
+      drawLights(ctx, S, c, present, frame);
+    };
 
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
@@ -648,11 +774,11 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
       const frame = Math.floor(now / 125); // 每秒 8 格
       if (frame !== last) {
         last = frame;
-        drawFrame(ctx, bg, c, present, frame);
+        render(frame);
       }
       raf = requestAnimationFrame(tick);
     };
-    if (still) drawFrame(ctx, bg, c, present, 1);
+    if (still) render(1);
     else raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf);
@@ -667,7 +793,7 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
 
   return (
     <div className="office-scene">
-      <canvas ref={canvasRef} width={SCENE_W} height={SCENE_H} role="img" aria-label={t("像素風辦公室：5 位 AI 分析師在座位上工作")} />
+      <canvas ref={canvasRef} width={SCENE_W * SCALE} height={SCENE_H * SCALE} role="img" aria-label={t("像素風辦公室：5 位 AI 分析師在座位上工作")} />
       {/* 物件的點擊範圍（窗戶、電視、看板、書櫃、門），和標籤連到同一頁 */}
       {NAV_SPOTS.map((s) => (
         <a
@@ -687,8 +813,8 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
           const p = spotPosition(s.at);
           return (
             <a key={s.page} className="office-spot" href={hrefOf(s.page)} style={{ left: `${p.left}%`, top: `${p.top}%` }}>
-              <span aria-hidden="true">{s.icon}</span>
               {t(s.label)}
+              <span className="office-spot-go" aria-hidden="true">›</span>
             </a>
           );
         })}
