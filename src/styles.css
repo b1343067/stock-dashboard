@@ -67,6 +67,7 @@
   --iso-pot: #c46b4b;
   --iso-rug: #c7cbf3;
   --iso-board: #fbfbfd;
+  --iso-fire: #d63a3a;
   --office-chair: #4b5063;
   --office-skin: #f2c9a0;
   --office-ink: #1b1c22;
@@ -122,6 +123,7 @@
     --iso-pot: #a85a3f;
     --iso-rug: #383b66;
     --iso-board: #e2e5ec;
+    --iso-fire: #c43434;
     --office-chair: #3c3f50;
     --office-skin: #e3b98f;
     --office-ink: #0c0d12;
@@ -181,6 +183,7 @@
   --iso-pot: #a85a3f;
   --iso-rug: #383b66;
   --iso-board: #e2e5ec;
+  --iso-fire: #c43434;
   --office-chair: #3c3f50;
   --office-skin: #e3b98f;
   --office-ink: #0c0d12;
@@ -1342,7 +1345,7 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 }
 .office-scene canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
 .office-tag {
-  position: absolute; z-index: 2; transform: translate(-50%, -100%);
+  position: absolute; z-index: 4; transform: translate(-50%, -100%);
   display: inline-flex; align-items: center; gap: 4px;
   padding: 2px 7px; border-radius: 6px; white-space: nowrap;
   font: 700 clamp(10px, 1.15vw, 13px) / 1.3 var(--font-sans);
@@ -1354,8 +1357,30 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .office-tag i { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex: none; }
 .office-tag.is-off i { background: #9ca3af; }
 .office-tag-off { font-weight: 600; opacity: 0.75; }
+/* 物件標籤（門、窗、電視、看板、書櫃）：點了切換頁面，取代辦公室頁的底部導覽列 */
+.office-spot {
+  position: absolute; z-index: 3; transform: translate(-50%, -50%);
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  font: 800 clamp(10px, 1.2vw, 13px) / 1.3 var(--font-sans);
+  background: var(--accent-strong); color: #fff; text-decoration: none;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+  animation: spot-pulse 2.4s ease-in-out infinite;
+}
+.office-spot:hover, .office-spot:focus-visible { background: #4f46e5; outline: 2px solid #fff; outline-offset: 1px; }
+/* 外圈光暈一閃一閃（不移動位置：會動的按鈕不好點） */
+@keyframes spot-pulse { 0%, 100% { box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 0 0 0 rgba(99, 102, 241, 0.55); } 50% { box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 0 0 5px rgba(99, 102, 241, 0); } }
+@media (prefers-reduced-motion: reduce) { .office-spot { animation: none; } }
+.office-spot-hit { position: absolute; z-index: 1; border-radius: 6px; }
+.office-spot-hit:hover { background: rgba(255, 255, 255, 0.12); outline: 2px dashed rgba(99, 102, 241, 0.7); }
+/* 辦公室頁：不顯示網站名稱與底部導覽列（改由辦公室裡的物件切換頁面，使用者要求） */
+.page-office .brand-name { display: none; }
+.page-office .bottom-nav { display: none !important; }
+@media (max-width: 860px) {
+  .page-office .footer { padding-bottom: 24px; }
+}
 /* 角色身上的點擊範圍（名牌下方） */
-.office-hit { position: absolute; z-index: 1; width: 7%; height: 15%; transform: translate(-50%, 0); cursor: pointer; }
+.office-hit { position: absolute; z-index: 2; width: 6%; height: 13%; transform: translate(-50%, 0); cursor: pointer; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* 角色列表 */
@@ -1398,5 +1423,8 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 @media (max-width: 480px) {
   .office-roster { grid-template-columns: 1fr; gap: 8px; }
   .office-tag { padding: 0 4px; gap: 3px; font-size: 9px; border-radius: 4px; }
+  .office-spot { padding: 1px 6px; font-size: 10px; }
+  /* 手機：場景滿版，看起來大一點 */
+  .office-scene { margin: 0 -14px; border-radius: 0; border-left: 0; border-right: 0; }
   .office-tag i { width: 5px; height: 5px; }
 }

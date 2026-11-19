@@ -97,7 +97,7 @@ export default function App() {
   );
 
   return (
-    <div className="app" key={lang}>
+    <div className={`app page-${route.page}`} key={lang}>
       <Header
         index={index}
         redUp={redUp}
@@ -136,7 +136,7 @@ export default function App() {
           ) : route.page === "lab" ? (
             <LabPage />
           ) : route.page === "office" ? (
-            <OfficePage redUp={redUp} />
+            <OfficePage redUp={redUp} chartHref={lastChart} />
           ) : route.page === "market" ? (
             <MarketPage index={index} indexError={indexError} redUp={redUp} />
           ) : route.page === "compare" ? (

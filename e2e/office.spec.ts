@@ -7,7 +7,7 @@ const ROLES = ["技術分析師", "新聞分析師", "基本面分析師", "多�
 test("辦公室：5 位角色、範例報告標示、點角色打開報告", async ({ page }) => {
   const errs = trackErrors(page);
   await page.goto("/#/office");
-  await expect(page.getByRole("heading", { name: "AI 投研辦公室" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "AI 投研辦公室" })).toBeAttached();
   await expect(page.locator(".office-banner").first()).toContainText("範例報告");
   await expect(page.locator(".office-station")).toHaveCount(5);
   await expect(page.locator(".office-status.is-done")).toHaveCount(5);
@@ -89,5 +89,20 @@ test("等角場景：畫布有畫出東西、點名牌打開報告", async ({ pa
   await expect(page.locator(".office-tag")).toHaveCount(5);
   await page.locator(".office-tag", { hasText: "技術分析師" }).click();
   await expect(page.getByRole("dialog", { name: "技術分析師" })).toBeVisible();
+  await errs.expectNoErrors();
+});
+
+test("辦公室物件切換頁面；手機版不顯示底部導覽列 @mobile", async ({ page }) => {
+  const errs = trackErrors(page);
+  await page.goto("/#/office");
+  await expect(page.locator(".office-spot")).toHaveCount(5);
+  await expect(page.locator(".bottom-nav")).toBeHidden();
+  await expectNoHorizontalScroll(page);
+  await page.locator(".office-spot", { hasText: "市場" }).click();
+  await expect(page).toHaveURL(/#\/market/);
+  await expect(page.locator(".bottom-nav")).toBeVisible(); // 其他頁照常有底部導覽列
+  await page.goBack();
+  await page.locator(".office-spot", { hasText: "篩選" }).click();
+  await expect(page).toHaveURL(/#\/screener/);
   await errs.expectNoErrors();
 });

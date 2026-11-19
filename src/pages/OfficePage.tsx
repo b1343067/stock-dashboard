@@ -13,6 +13,8 @@ import type { AiReport, AiRoleKey } from "../lib/types";
 
 interface Props {
   redUp: boolean;
+  /** 看盤頁連結（電視那個入口用，記得上次看的股票） */
+  chartHref: string;
 }
 
 /** 角色的工作內容（中文原文，畫面用 t()） */
@@ -24,7 +26,7 @@ const ROLE_DESC: Record<AiRoleKey, string> = {
   lead: "讀完大家的報告，整理今日重點",
 };
 
-export default function OfficePage({ redUp }: Props) {
+export default function OfficePage({ redUp, chartHref }: Props) {
   const [report, setReport] = useState<AiReport | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
   const [open, setOpen] = useState<AiRoleKey | null>(null);
@@ -50,13 +52,8 @@ export default function OfficePage({ redUp }: Props) {
 
   return (
     <div className="office-page">
-      <div className="market-head">
-        <div>
-          <h2>{t("AI 投研辦公室")}</h2>
-          <p className="muted small">{t("5 位 AI 分析師每天整理公開資料（觀察清單、指標、新聞），點角色看報告")}</p>
-        </div>
-      </div>
-
+      {/* 使用者要求畫面上不顯示標題（沉浸式辦公室）；保留給螢幕報讀器 */}
+      <h2 className="sr-only">{t("AI 投研辦公室")}</h2>
       {report?.sample && (
         <div className="banner office-banner" role="status">
           <b>{t("範例報告")}</b>
@@ -77,7 +74,7 @@ export default function OfficePage({ redUp }: Props) {
         </p>
       )}
 
-      <OfficeScene present={present} loading={state === "loading"} redUp={redUp} onOpen={setOpen} />
+      <OfficeScene present={present} loading={state === "loading"} redUp={redUp} chartHref={chartHref} onOpen={setOpen} />
 
       {/* 角色列表：手機上名牌比較小，這裡也可以點；同時顯示每個人今天的摘要 */}
       <div className="office-roster">

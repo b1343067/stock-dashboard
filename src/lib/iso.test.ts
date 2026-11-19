@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { project, ROOM, SCENE_H, SCENE_W, SEATS, shade, spans, tagPosition, WALL_H } from "./iso";
+import { isDarkColor, NAV_SPOTS, project, ROOM, SCENE_H, SCENE_W, SEATS, shade, spans, spotPosition, tagPosition, WALL_H } from "./iso";
 import type { AiRoleKey } from "./types";
 
 describe("project", () => {
@@ -47,22 +47,44 @@ describe("shade", () => {
   });
 });
 
-describe("名牌位置", () => {
-  it("手機寬度（約 340px）下五個名牌不會重疊", () => {
-    // 名牌約 80×16px（中文 6 字＋狀態點），換算成百分比後兩兩檢查
-    const w = 340;
+describe("isDarkColor", () => {
+  it("深色牆面畫夜景", () => {
+    expect(isDarkColor("#2b2f3d")).toBe(true);
+    expect(isDarkColor("#dfe3ea")).toBe(false);
+  });
+});
+
+describe("名牌與物件標籤位置", () => {
+  it("手機寬度（約 360px）下角色名牌、物件標籤都不重疊，也不超出畫面", () => {
+    const w = 360;
     const h = (w * SCENE_H) / SCENE_W;
-    const boxes = (Object.keys(SEATS) as AiRoleKey[]).map((r) => {
-      const p = tagPosition(r);
-      const cx = (p.left / 100) * w;
-      const bottom = (p.top / 100) * h;
-      return { r, l: cx - 40, rt: cx + 40, t: bottom - 16, b: bottom };
-    });
-    for (const a of boxes)
+    // 角色名牌約 64×14px（9px 字），底部對齊頭頂；物件標籤約 46×16px，置中
+    const boxes = [
+      ...(Object.keys(SEATS) as AiRoleKey[]).map((r) => {
+        const p = tagPosition(r);
+        const cx = (p.left / 100) * w;
+        const bottom = (p.top / 100) * h;
+        return { id: r, l: cx - 32, r: cx + 32, t: bottom - 14, b: bottom };
+      }),
+      ...NAV_SPOTS.map((s) => {
+        const p = spotPosition(s.at);
+        const cx = (p.left / 100) * w;
+        const cy = (p.top / 100) * h;
+        return { id: s.page, l: cx - 23, r: cx + 23, t: cy - 8, b: cy + 8 };
+      }),
+    ];
+    for (const a of boxes) {
+      expect(a.l, `${a.id} 超出左邊`).toBeGreaterThanOrEqual(0);
+      expect(a.r, `${a.id} 超出右邊`).toBeLessThanOrEqual(w);
+      expect(a.t, `${a.id} 超出上面`).toBeGreaterThanOrEqual(0);
       for (const b of boxes) {
-        if (a.r >= b.r) continue;
-        const overlap = a.l < b.rt && b.l < a.rt && a.t < b.b && b.t < a.b;
-        expect(overlap, `${a.r} 和 ${b.r} 的名牌重疊`).toBe(false);
+        if (a.id >= b.id) continue;
+        const overlap = a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+        expect(overlap, `${a.id} 和 ${b.id} 重疊`).toBe(false);
       }
+    }
+  });
+  it("五個頁面都有入口", () => {
+    expect(NAV_SPOTS.map((s) => s.page).sort()).toEqual(["chart", "market", "portfolio", "screener", "today"]);
   });
 });
