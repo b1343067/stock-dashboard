@@ -68,6 +68,10 @@
   --iso-rug: #c7cbf3;
   --iso-board: #fbfbfd;
   --iso-fire: #d63a3a;
+  --iso-brick: #b9694d;
+  --iso-beam: #7d5233;
+  --iso-wood: #b98552;
+  --iso-neon: #f472b6;
   --office-chair: #4b5063;
   --office-skin: #f2c9a0;
   --office-ink: #1b1c22;
@@ -124,6 +128,10 @@
     --iso-rug: #383b66;
     --iso-board: #e2e5ec;
     --iso-fire: #c43434;
+    --iso-brick: #6e3d30;
+    --iso-beam: #4a311f;
+    --iso-wood: #7d5536;
+    --iso-neon: #f472b6;
     --office-chair: #3c3f50;
     --office-skin: #e3b98f;
     --office-ink: #0c0d12;
@@ -184,6 +192,10 @@
   --iso-rug: #383b66;
   --iso-board: #e2e5ec;
   --iso-fire: #c43434;
+  --iso-brick: #6e3d30;
+  --iso-beam: #4a311f;
+  --iso-wood: #7d5536;
+  --iso-neon: #f472b6;
   --office-chair: #3c3f50;
   --office-skin: #e3b98f;
   --office-ink: #0c0d12;
@@ -1335,7 +1347,7 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .office-scene {
   position: relative;
   /* 房間直接浮在頁面背景上（不加卡片框）；寬度同時受畫面高度限制，桌機一眼看完整個房間 */
-  width: min(100%, calc((100vh - 150px) * 400 / 316));
+  width: min(100%, calc((100vh - 150px) * 320 / 224));
   min-width: min(100%, 560px);
   margin: 0 auto;
 }
@@ -1388,9 +1400,10 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* 房間角落的小標籤（報告日期、範例標示、完成人數） */
-.office-hud { position: absolute; top: 2%; z-index: 5; display: flex; flex-wrap: wrap; gap: 6px; max-width: 48%; pointer-events: none; }
-.office-hud-left { left: 0; }
-.office-hud-right { right: 0; justify-content: flex-end; }
+.office-stage { position: relative; }
+.office-hud-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.office-hud { display: flex; flex-wrap: wrap; gap: 6px; }
+.office-hud-right { justify-content: flex-end; margin-left: auto; }
 .hud-chip { pointer-events: auto; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); white-space: nowrap; }
 .hud-select { font-family: inherit; cursor: pointer; appearance: auto; }
 .hud-sample { background: var(--warn-bg); color: var(--warn-text); border-color: transparent; }
@@ -1428,8 +1441,6 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
   .office-spot { padding: 1px 6px; font-size: 10px; }
   /* 手機：場景滿版，看起來大一點 */
   .office-scene { width: auto; min-width: 0; margin: 0 -14px; }
-  .office-hud { top: 1%; }
-  .office-hud-left { left: 14px; }
-  .office-hud-right { right: 14px; }
+  .office-hud-row { padding: 0 14px; }
   .office-tag i { width: 5px; height: 5px; }
 }
