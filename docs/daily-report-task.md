@@ -24,7 +24,7 @@
 ## 1. 準備
 
 ```bash
-git checkout main && git pull --rebase origin main
+git fetch origin main && git checkout -B main origin/main   # 不要用 git reset --hard（排程的安全機制會擋，執行紀錄會出現紅色）
 npm ci --no-audit --no-fund          # 已經裝過可以略過
 npm run data:pull                    # 下載 data 分支的最新資料到 public/data（不要 commit）
 npm run ai:context > /tmp/ai-context.json
