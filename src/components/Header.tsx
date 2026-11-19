@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { IndexData, TickerSummary } from "../lib/types";
 import { useStoredState } from "../lib/storage";
-import { MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, TODAY_HREF, type Page } from "../lib/route";
+import { MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, TODAY_HREF, type Page, OFFICE_HREF } from "../lib/route";
 import { matchesQuery } from "../lib/watchlist";
 import { getLang, locale, setLang, t, useLang } from "../lib/i18n";
 
@@ -36,9 +36,9 @@ export const NAV_ITEMS = (chartHref: string): [Page, string, string, string][] =
   ["portfolio", t("投資組合"), t("組合"), PORTFOLIO_HREF],
 ];
 
-/** 目前頁面對應到哪一個分頁（分析頁 → 組合；比較頁 → 看盤；ML 實驗室 → 市場；AI 辦公室 → 今日） */
+/** 目前頁面對應到哪一個分頁（分析頁 → 組合；比較頁 → 看盤；ML 實驗室 → 市場；辦公室是首頁，不對應任何分頁） */
 export function navActive(page: Page): Page {
-  return page === "analysis" ? "portfolio" : page === "compare" ? "chart" : page === "lab" ? "market" : page === "office" ? "today" : page;
+  return page === "analysis" ? "portfolio" : page === "compare" ? "chart" : page === "lab" ? "market" : page;
 }
 
 export default function Header({ index, redUp, onToggleRedUp, page, chartHref, onPickSymbol, alertCount, onOpenAlerts }: Props) {
@@ -55,7 +55,7 @@ export default function Header({ index, redUp, onToggleRedUp, page, chartHref, o
 
   return (
     <header className="header">
-      <a className="brand" href={TODAY_HREF} aria-label={t("投資看盤首頁（今日總覽）")}>
+      <a className="brand" href={OFFICE_HREF} aria-label={t("回首頁（AI 投研辦公室）")} title={t("回首頁（AI 投研辦公室）")}>
         <span className="brand-mark" aria-hidden="true">
           <svg width="15" height="15" viewBox="0 0 14 14">
             <path d="M2 10 L5.5 6 L8 8.5 L12 3" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />

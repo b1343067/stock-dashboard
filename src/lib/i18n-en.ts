@@ -823,4 +823,8 @@ export const EN: Record<string, string> = {
   "偏空的理由": "Bearish arguments",
   "今日重點": "Today's key points",
   "像素風辦公室：5 位 AI 分析師在座位上工作": "Pixel-art office: 5 AI analysts working at their desks",
+  "回首頁（AI 投研辦公室）": "Home (AI Research Office)",
+  "報告 {0}": "Report {0}",
+  "資料超過 3 個交易日沒更新": "Data not updated for over 3 trading days",
+  "看報告": "Read report",
 };

@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import EarningsPanel from "../components/today/EarningsPanel";
 import HoldingsLive from "../components/today/HoldingsLive";
 import RegimeBar from "../components/RegimeBar";
-import { OFFICE_HREF } from "../lib/route";
 import NewsPanel from "../components/today/NewsPanel";
 import SignalBoard from "../components/today/SignalBoard";
 import notifyConfig from "../../config/notify.json";
@@ -114,15 +113,6 @@ export default function TodayPage({ index, indexError, redUp }: Props) {
       </div>
       {indexError && <p className="error">{t("無法讀取股票清單：{0}", [indexError])}</p>}
       <RegimeBar />
-      {/* AI 投研辦公室入口（導覽列維持 5 格，從這裡進入） */}
-      <a className="lab-entry card office-entry" href={OFFICE_HREF}>
-        <span className="lab-entry-icon" aria-hidden="true">🏢</span>
-        <span>
-          <b>{t("AI 投研辦公室")}</b>
-          <span className="muted small"> {t("5 位 AI 分析師的每日報告：技術、新聞、基本面、多空辯論、主管重點")}</span>
-        </span>
-        <span className="lab-entry-go" aria-hidden="true">›</span>
-      </a>
 
       <HoldingsLive summary={summary} settings={settings} fx={fx} redUp={redUp} status={summary ? live.status : "idle"} updatedAt={live.updatedAt} />
 

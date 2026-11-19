@@ -55,7 +55,7 @@ test("今日總覽：即時損益、停損排最前、異常波動＋新聞、�
   });
   await seedHoldings(page);
   await mockApi(page);
-  await page.goto("/");
+  await page.goto("/#/today");
 
   await expect(page.getByRole("heading", { name: "今日總覽" })).toBeVisible();
   await expect(page.getByRole("link", { name: "今日", exact: true }).first()).toHaveAttribute("aria-current", "page");
@@ -92,7 +92,7 @@ test("今日總覽：/api 失敗 → 顯示收盤資料並標示非即時", asyn
   const t = trackErrors(page);
   await seedHoldings(page);
   await page.route("**/api/**", (r) => r.fulfill({ status: 503, json: { error: "not-configured" } }));
-  await page.goto("/");
+  await page.goto("/#/today");
   await expect(page.locator(".live-badge")).toContainText("非即時");
   await expect(page.locator(".lv-tag").first()).toHaveText("收盤");
   await expect(page.getByText("新聞暫時無法取得。")).toBeVisible();
@@ -101,7 +101,7 @@ test("今日總覽：/api 失敗 → 顯示收盤資料並標示非即時", asyn
 
 test("今日總覽：這台裝置沒有持股 → 顯示提示，不顯示範例數字", async ({ page }) => {
   const t = trackErrors(page);
-  await page.goto("/");
+  await page.goto("/#/today");
   await expect(page.locator(".today-holdings")).toContainText("這台裝置還沒有持股資料");
   await expect(page.locator(".today-holdings .lv-row")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "到投資組合輸入或匯入持股 →" })).toBeVisible();
@@ -127,7 +127,7 @@ test("今日總覽：盤中預估（即時價當作今天收盤，會觸發突�
     await r.fulfill({ response: res, json });
   });
   await page.route("**/api/quote**", (r) => r.fulfill({ json: { quotes: { NVDA: { symbol: "NVDA", price: 130, prevClose: 99, change: 31, changePct: 31, time: now() } } } }));
-  await page.goto("/");
+  await page.goto("/#/today");
   const est = page.locator(".sig-bull .sig-intraday");
   await expect(est).toContainText("盤中預估");
   await expect(est).toContainText("NVDA");
@@ -139,7 +139,7 @@ test("今日總覽手機版：持股在最上面、一頁滑完、沒有橫向�
   const t = trackErrors(page);
   await seedHoldings(page);
   await mockApi(page);
-  await page.goto("/");
+  await page.goto("/#/today");
   await expect(page.locator(".lv-row").first()).toBeVisible();
   const order = await page.evaluate(() => ["today-holdings", "today-signals", "today-news", "today-earnings"].map((id) => document.getElementById(id)?.getBoundingClientRect().top ?? -1));
   expect([...order].sort((a, b) => a - b)).toEqual(order);
@@ -160,7 +160,7 @@ test("今日總覽：新聞很多時先顯示 12 則；資料載入後才查新�
     calls.push("earnings");
     return r.fulfill({ json: { items: [] } });
   });
-  await page.goto("/");
+  await page.goto("/#/today");
   await expect(page.locator(".news-item")).toHaveCount(12);
   await page.getByRole("button", { name: "顯示全部 20 則" }).click();
   await expect(page.locator(".news-item")).toHaveCount(20);

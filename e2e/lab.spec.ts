@@ -102,7 +102,7 @@ test("ML 實驗室：方法、兩個實驗的結果與自動產生的結論", as
 test("今日總覽：最上面顯示市場狀態，點了進 ML 實驗室", async ({ page }) => {
   const t = trackErrors(page);
   await mockMl(page);
-  await page.goto("/");
+  await page.goto("/#/today");
   const bar = page.locator(".regime-bar");
   await expect(bar).toContainText("美股（VOO）");
   await expect(bar).toContainText("修正下跌");

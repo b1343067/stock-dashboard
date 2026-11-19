@@ -5,7 +5,7 @@
 // 角色頭上的名牌、物件（門、窗、電視、看板、書櫃）上的標籤都是 HTML 連結／按鈕，
 // 可以用鍵盤與螢幕報讀器操作；辦公室頁不顯示底部導覽列，改由這些物件切換頁面。
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { isDarkColor, NAV_SPOTS, project, ROOM, SCENE_H, SCENE_W, SEATS, shade, SIT_Z, spans, spotPosition, tagPosition, WALL_H, type Pt } from "../../lib/iso";
 import { ROLE_NAME, ROLE_ORDER } from "../../lib/aiReport";
 import { t } from "../../lib/i18n";
@@ -21,6 +21,8 @@ interface Props {
   /** 看盤頁的連結（記得上次看的股票） */
   chartHref: string;
   onOpen: (role: AiRoleKey) => void;
+  /** 疊在房間上的資訊（報告日期、範例標示等） */
+  children?: ReactNode;
 }
 
 type Ctx = CanvasRenderingContext2D;
@@ -622,7 +624,7 @@ function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<
 
 const SPOT_HREF: Record<string, string> = { today: TODAY_HREF, market: MARKET_HREF, screener: SCREENER_HREF, portfolio: PORTFOLIO_HREF };
 
-export default function OfficeScene({ present, loading, redUp, chartHref, onOpen }: Props) {
+export default function OfficeScene({ present, loading, redUp, chartHref, onOpen, children }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const theme = useThemeColors(); // 只當作「主題變了」的訊號，顏色另外讀
   const key = ROLE_ORDER.map((r) => (present[r] ? 1 : 0)).join("");
@@ -698,6 +700,7 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
           {!loading && <span className={present[r] ? "sr-only" : "office-tag-off"}>{present[r] ? t("已完成") : t("休假中")}</span>}
         </button>
       ))}
+      {children}
     </div>
   );
 }

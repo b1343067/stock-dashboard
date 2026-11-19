@@ -4,7 +4,8 @@ import { chartHref, compareHref, parseHash } from "./route";
 
 describe("parseHash", () => {
   it("剛打開網站（沒有 hash）→ 市場總覽", () => {
-    for (const h of ["", "#", "#/", "#/today"]) expect(parseHash(h).page).toBe("today");
+    for (const h of ["", "#", "#/", "#/office"]) expect(parseHash(h).page).toBe("office");
+    expect(parseHash("#/today").page).toBe("today");
     expect(parseHash("#/market").page).toBe("market");
     expect(parseHash("#/lab").page).toBe("lab");
     expect(parseHash("#/office").page).toBe("office");

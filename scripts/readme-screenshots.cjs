@@ -13,7 +13,7 @@ const SAMPLE = [["VOO",10,500,"core",null,null],["MSFT",5,400,"core",null,null],
   const D = { viewport: { width: 1280, height: 860 }, deviceScaleFactor: 2 };
   // 首頁：只截持股損益＋訊號（不截新聞標題）
   { const c = await ctx({ ...D, colorScheme: 'light', viewport: { width: 1280, height: 2000 } }, true); const p = await c.newPage();
-    await p.goto(U); await p.waitForSelector('.lv-row'); await p.waitForTimeout(3000); await p.mouse.move(1, 1);
+    await p.goto(U + '#/today'); await p.waitForSelector('.lv-row'); await p.waitForTimeout(3000); await p.mouse.move(1, 1);
     const top = await p.locator('.today .market-head').boundingBox(); const sig = await p.locator('#today-signals').locator('xpath=..').boundingBox();
     await p.screenshot({ path: `${out}/today.png`, clip: { x: 0, y: 0, width: 1280, height: Math.ceil(sig.y + sig.height + 16) } }); await c.close(); }
   const shot = async (opts, url, file, fn, seed = false) => { const c = await ctx(opts, seed); const p = await c.newPage(); await p.goto(U + url); await p.waitForTimeout(2500); if (fn) await fn(p); await p.mouse.move(1, 1); await p.screenshot({ path: `${out}/${file}` }); await c.close(); };
@@ -25,6 +25,6 @@ const SAMPLE = [["VOO",10,500,"core",null,null],["MSFT",5,400,"core",null,null],
     const box = await p.locator('.card', { hasText: '相關係數熱力圖' }).boundingBox(); await p.setViewportSize({ width: 1280, height: Math.ceil(box.y + box.height + 16) }); });
   { const c = await ctx({ viewport: { width: 1280, height: 1400 }, deviceScaleFactor: 1.5, colorScheme: 'light' }); const p = await c.newPage();
     await p.goto(U + '#/analysis'); await p.waitForTimeout(3000); await p.locator('.card', { hasText: '回測：買進持有' }).screenshot({ path: `${out}/backtest.png` }); await c.close(); }
-  await shot({ ...devices['iPhone 13'], colorScheme: 'dark' }, '', 'mobile.png', async (p) => { await p.waitForSelector('.lv-row'); await p.waitForTimeout(1500); }, true);
+  await shot({ ...devices['iPhone 13'], colorScheme: 'dark' }, '#/today', 'mobile.png', async (p) => { await p.waitForSelector('.lv-row'); await p.waitForTimeout(1500); }, true);
   await b.close();
 })();

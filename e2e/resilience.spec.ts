@@ -15,8 +15,10 @@ test("總表讀不到：顯示錯誤訊息，頁首與免責聲明仍在", async
   await page.route("**/data/index.json", (r) => r.fulfill({ status: 500, body: "error" }));
   await page.goto("/#/market");
   await expect(page.locator(".market, .card").first()).toContainText("無法讀取市場資料"); // 市場總覽
+  await page.goto("/#/today");
+  await expect(page.locator(".today")).toContainText("無法讀取股票清單"); // 今日總覽
   await page.goto("/");
-  await expect(page.locator(".today")).toContainText("無法讀取股票清單"); // 首頁（今日總覽）
+  await expect(page.locator(".office-scene")).toBeVisible(); // 首頁（辦公室）不依賴總表
   await page.goto("/#//daily");
   await expect(page.locator(".sidebar")).toContainText("無法讀取股票清單");
   await expect(page.locator(".footer")).toContainText("非投資建議");

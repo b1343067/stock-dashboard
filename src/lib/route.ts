@@ -1,8 +1,9 @@
 // 極簡的網址路由（不用 react-router，自己處理 hash 就夠了）
-//   （空白）或 #/today → 今日總覽（網站打開的第一頁：持股即時損益、訊號、新聞、財報）
+//   （空白）      → AI 投研辦公室（網站打開的第一頁；辦公室裡的門、窗、電視、看板、書櫃通往各頁）
+//   #/today       → 今日總覽（持股即時損益、訊號、新聞、財報；辦公室的「門」）
 //   #/market      → 市場總覽
 //   #/lab         → ML 實驗室（從市場總覽、看盤頁的波動預測卡片進入）
-//   #/office      → AI 投研辦公室（從今日總覽、市場總覽的入口卡片進入）
+//   #/office      → 同首頁（AI 投研辦公室）
 //   #/代號/週期   → 看盤頁，例如 #/0050.TW/weekly
 //   #/compare/A,B → 多檔走勢比較（最多 4 檔）
 //   #/screener    → 指標篩選器
@@ -25,11 +26,11 @@ const TIMEFRAMES: Timeframe[] = ["daily", "weekly", "monthly"];
 
 export function parseHash(hash: string): Route {
   const [, first, tf] = hash.replace(/^#/, "").split("/");
-  // 沒有指定頁面（剛打開網站）→ 今日總覽
-  if (first === undefined || (first === "" && tf === undefined) || first === "today") return { page: "today", symbol: null, timeframe: "daily" };
+  // 沒有指定頁面（剛打開網站）→ AI 投研辦公室（使用者要的首頁）
+  if (first === undefined || (first === "" && tf === undefined) || first === "office") return { page: "office", symbol: null, timeframe: "daily" };
+  if (first === "today") return { page: "today", symbol: null, timeframe: "daily" };
   if (first === "market") return { page: "market", symbol: null, timeframe: "daily" };
   if (first === "lab") return { page: "lab", symbol: null, timeframe: "daily" };
-  if (first === "office") return { page: "office", symbol: null, timeframe: "daily" };
   if (first === "screener" || first === "portfolio" || first === "analysis") return { page: first, symbol: null, timeframe: "daily" };
   // 比較頁：symbol 欄位放「逗號分隔的代號」（例如 NVDA,AMD），由比較頁自己解析
   if (first === "compare") return { page: "compare", symbol: tf ? decodeURIComponent(tf) : null, timeframe: "daily" };

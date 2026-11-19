@@ -1331,17 +1331,13 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .regime-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--text-2); margin-top: 6px; }
 
 /* ---------------- AI 投研辦公室（#/office） ---------------- */
-.office-banner { margin-bottom: 12px; }
-.office-dates { margin: 0 0 10px; }
 /* 等角像素場景：畫布原始 352×252，等比例放大；名牌用百分比定位在角色頭上 */
 .office-scene {
   position: relative;
-  max-width: 920px;
+  /* 房間直接浮在頁面背景上（不加卡片框）；寬度同時受畫面高度限制，桌機一眼看完整個房間 */
+  width: min(100%, calc((100vh - 150px) * 400 / 316));
+  min-width: min(100%, 560px);
   margin: 0 auto;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: radial-gradient(ellipse at 50% 40%, var(--surface-2), var(--surface-3));
-  overflow: hidden;
 }
 .office-scene canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
 .office-tag {
@@ -1383,24 +1379,24 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .office-hit { position: absolute; z-index: 2; width: 6%; height: 13%; transform: translate(-50%, 0); cursor: pointer; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* 角色列表 */
-.office-roster { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
-.office-station {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 8px;
-  min-width: 0; padding: 10px 12px;
-  background: var(--surface); color: var(--text);
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  cursor: pointer; font: inherit; text-align: left;
+/* 房間角落的小標籤（報告日期、範例標示、完成人數） */
+.office-hud { position: absolute; top: 2%; z-index: 5; display: flex; flex-wrap: wrap; gap: 6px; max-width: 48%; pointer-events: none; }
+.office-hud-left { left: 0; }
+.office-hud-right { right: 0; justify-content: flex-end; }
+.hud-chip { pointer-events: auto; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); white-space: nowrap; }
+.hud-sample { background: var(--warn-bg); color: var(--warn-text); border-color: transparent; }
+.hud-warn { background: var(--warn-bg); color: var(--warn-text); border-color: transparent; white-space: normal; }
+/* 主管的一句話摘要 */
+.office-brief {
+  display: flex; align-items: center; gap: 10px; width: min(100%, 720px); margin: 4px auto 0;
+  padding: 10px 14px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer;
 }
-.office-station:hover { border-color: var(--accent); }
-.office-station:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.office-swatch { width: 10px; height: 10px; border-radius: 3px; }
-.office-name { font-weight: 800; min-width: 0; }
-.office-status { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
-.office-status.is-done { background: var(--accent-soft); color: var(--accent); }
-.office-status.is-off { background: var(--surface-3); color: var(--text-3); }
-.office-summary { grid-column: 1 / -1; line-height: 1.45; overflow-wrap: anywhere; }
-.office-disclaimer { margin-top: 12px; }
+.office-brief:hover { border-color: var(--accent); }
+.office-brief-who { flex: none; font-size: 12px; font-weight: 800; color: #fff; background: var(--accent-strong); padding: 2px 9px; border-radius: 999px; }
+.office-brief-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.office-brief-go { flex: none; color: var(--accent); font-weight: 700; font-size: 13px; }
+.office-disclaimer { margin-top: 10px; text-align: center; }
 
 /* 報告面板 */
 .report-sample { display: inline-block; margin-bottom: 10px; padding: 2px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-text); font-weight: 700; font-size: 12.5px; }
@@ -1414,17 +1410,15 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .report-debate { display: grid; gap: 4px; }
 .report-disclaimer { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 10px; }
 
-@media (max-width: 1100px) {
-  .office-roster { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 860px) {
-  .office-roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (max-width: 480px) {
-  .office-roster { grid-template-columns: 1fr; gap: 8px; }
+  .hud-chip { font-size: 10px; padding: 1px 7px; }
+  .office-brief { border-radius: var(--radius-sm); }
   .office-tag { padding: 0 4px; gap: 3px; font-size: 9px; border-radius: 4px; }
   .office-spot { padding: 1px 6px; font-size: 10px; }
   /* 手機：場景滿版，看起來大一點 */
-  .office-scene { margin: 0 -14px; border-radius: 0; border-left: 0; border-right: 0; }
+  .office-scene { width: auto; min-width: 0; margin: 0 -14px; }
+  .office-hud { top: 1%; }
+  .office-hud-left { left: 14px; }
+  .office-hud-right { right: 14px; }
   .office-tag i { width: 5px; height: 5px; }
 }
