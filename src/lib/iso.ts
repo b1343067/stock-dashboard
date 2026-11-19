@@ -95,9 +95,9 @@ export const SEATS: Record<AiRoleKey, { x: number; y: number; facing: Facing; ac
   lead: { x: 6.9, y: 5.0, facing: "front", action: "coffee", shirt: "--accent-strong", hair: "--office-hair-2", style: "neat", glasses: true },
 };
 
-/** 坐著的角色：屁股離地 13px；頭頂離地 = 13 + 身體 12 + 頭 10 + 頭髮 1 */
+/** 坐著的角色：屁股離地 13px；頭頂離地 = 13 + 身體 13 + 頭 11 + 頭髮 3 */
 export const SIT_Z = 13;
-export const HEAD_TOP = 36;
+export const HEAD_TOP = 40;
 
 /** 名牌位置（畫布寬高的百分比）：頭頂上方 */
 export function tagPosition(role: AiRoleKey): { left: number; top: number } {
