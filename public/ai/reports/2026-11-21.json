@@ -1,0 +1,818 @@
+{
+  "version": 1,
+  "sample": false,
+  "date": "2026-11-21",
+  "generatedAt": "2026-11-21T09:56:12Z",
+  "dataDates": {
+    "us": "2026-11-20",
+    "tw": "2026-11-20",
+    "news": "2026-11-21"
+  },
+  "staleNote": null,
+  "roles": {
+    "tech": {
+      "status": "done",
+      "dataDate": "2026-11-20",
+      "summary": {
+        "zh": "危險訊號 16 檔、偏多僅 1 檔，NVDA 重挫 14.01%，半導體與大型科技股多檔跌破布林下軌",
+        "en": "16 warning signals vs only 1 bullish; NVDA plunged 14.01% and many chip and big-tech names broke below the lower Bollinger Band"
+      },
+      "sections": [
+        {
+          "heading": {
+            "zh": "關注股票",
+            "en": "Watch list"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "COST 上漲 0.76%，出現 50／200 日線黃金交叉，MACD 偏多、均線多頭排列，RSI 69.7 接近 70",
+                "en": "COST rose 0.76% with a 50/200-day golden cross; MACD bullish, MAs in bullish alignment, RSI 69.7 near 70"
+              },
+              "refs": [
+                {
+                  "symbol": "COST",
+                  "changePct": 0.76
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "TSLA 下跌 7.64% 並跌破布林下軌，MACD 偏空、均線盤整，RSI 37.8",
+                "en": "TSLA fell 7.64% and broke below the lower Bollinger Band; MACD bearish, MAs range-bound, RSI 37.8"
+              },
+              "refs": [
+                {
+                  "symbol": "TSLA",
+                  "changePct": -7.64
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "AMZN 下跌 4.1%，出現 MACD 死亡交叉，均線盤整，RSI 42.3",
+                "en": "AMZN fell 4.1% with a MACD death cross; MAs range-bound, RSI 42.3"
+              },
+              "refs": [
+                {
+                  "symbol": "AMZN",
+                  "changePct": -4.1
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "XLE 下跌 0.62%，MACD 偏空、均線盤整，RSI 34.7 偏低",
+                "en": "XLE fell 0.62%; MACD bearish, MAs range-bound, RSI 34.7 on the low side"
+              },
+              "refs": [
+                {
+                  "symbol": "XLE",
+                  "changePct": -0.62
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "LLY 下跌 0.3%，MACD 偏空、均線盤整，RSI 49.7",
+                "en": "LLY fell 0.3%; MACD bearish, MAs range-bound, RSI 49.7"
+              },
+              "refs": [
+                {
+                  "symbol": "LLY",
+                  "changePct": -0.3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "heading": {
+            "zh": "危險訊號",
+            "en": "Warning signals"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "NVDA 重挫 14.01%、SMH 下跌 10.6%、TSM 下跌 9.48%，三者都跌破布林下軌",
+                "en": "NVDA plunged 14.01%, SMH fell 10.6% and TSM fell 9.48%; all three broke below the lower Bollinger Band"
+              },
+              "refs": [
+                {
+                  "symbol": "NVDA",
+                  "changePct": -14.01
+                },
+                {
+                  "symbol": "SMH",
+                  "changePct": -10.6
+                },
+                {
+                  "symbol": "TSM",
+                  "changePct": -9.48
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "AMD 下跌 13.25%，同時出現 MACD 死亡交叉並跌破 200 日線",
+                "en": "AMD fell 13.25% with a MACD death cross and a break below its 200-day MA"
+              },
+              "refs": [
+                {
+                  "symbol": "AMD",
+                  "changePct": -13.25
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "聯發科（2454.TW）下跌 9.95%，MACD 死亡交叉、跌破 200 日線與布林下軌三個訊號同時出現",
+                "en": "MediaTek (2454.TW) fell 9.95%, triggering a MACD death cross, a break below the 200-day MA and the lower Bollinger Band at once"
+              },
+              "refs": [
+                {
+                  "symbol": "2454.TW",
+                  "changePct": -9.95
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "QQQ 下跌 5.67%、ORCL 下跌 8.48%、MSFT 下跌 2.77%，皆跌破布林下軌",
+                "en": "QQQ fell 5.67%, ORCL 8.48% and MSFT 2.77%; all broke below the lower Bollinger Band"
+              },
+              "refs": [
+                {
+                  "symbol": "QQQ",
+                  "changePct": -5.67
+                },
+                {
+                  "symbol": "ORCL",
+                  "changePct": -8.48
+                },
+                {
+                  "symbol": "MSFT",
+                  "changePct": -2.77
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "META、GOOGL、GE 出現 MACD 死亡交叉；BRK-B、XLV 出現 RSI 急轉直下",
+                "en": "META, GOOGL and GE posted MACD death crosses; BRK-B and XLV showed sharp RSI drops"
+              },
+              "refs": [
+                {
+                  "symbol": "META",
+                  "changePct": -5.93
+                },
+                {
+                  "symbol": "GOOGL",
+                  "changePct": -2.7
+                },
+                {
+                  "symbol": "GE",
+                  "changePct": -2.9
+                },
+                {
+                  "symbol": "BRK-B",
+                  "changePct": -0.36
+                },
+                {
+                  "symbol": "XLV",
+                  "changePct": -0.12
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "heading": {
+            "zh": "偏多訊號",
+            "en": "Bullish signals"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "偏多訊號只有 COST 一檔（50／200 日線黃金交叉），在全面下跌中相對獨立",
+                "en": "COST is the only bullish signal (50/200-day golden cross), standing apart from the broad decline"
+              },
+              "refs": [
+                {
+                  "symbol": "COST",
+                  "changePct": 0.76
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "news": {
+      "status": "done",
+      "dataDate": "2026-11-21",
+      "summary": {
+        "zh": "AI 類股拋售讓那斯達克抹去今年漲幅，NVDA 傳出會計受 SEC 調查，中東局勢仍緊張",
+        "en": "An AI-stock sell-off erased the Nasdaq's 2026 gains, NVDA's accounting reportedly faces an SEC probe, and Middle East tensions persist"
+      },
+      "sections": [
+        {
+          "heading": {
+            "zh": "重大財經新聞",
+            "en": "Major financial news"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "CNBC：AI 類股跌勢加劇，那斯達克 2026 年漲幅全部抹去，Alphabet 被點名為科技股中的亮點",
+                "en": "CNBC: an intensifying AI rout wiped out the Nasdaq's 2026 gains, with Alphabet cited as a tech bright spot"
+              },
+              "refs": [
+                {
+                  "symbol": "GOOGL",
+                  "changePct": -2.7
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "Reuters 獨家：消息人士稱 NVIDIA 的會計處理是美國 SEC 調查的重點",
+                "en": "Reuters exclusive: sources say Nvidia's accounting is a focus of a US SEC investigation"
+              },
+              "refs": [
+                {
+                  "symbol": "NVDA",
+                  "changePct": -14.01
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "伊朗局勢：伊朗外長表示希望以外交結束戰爭，川普稱條件無法接受；美國財政部制裁替伊朗收取石油收入的人士",
+                "en": "Iran: its foreign minister says Iran wants diplomacy to end the war while Trump calls the terms unacceptable; US Treasury sanctioned 'trustees' collecting Iranian oil revenue"
+              },
+              "refs": []
+            },
+            {
+              "text": {
+                "zh": "沙烏地阿拉伯表示攔截三枚胡塞飛彈；川普稱與普丁就烏克蘭談得不錯，但未承諾安全保證",
+                "en": "Saudi Arabia says it intercepted three Houthi missiles; Trump cited good talks with Putin on Ukraine but held back on security guarantees"
+              },
+              "refs": []
+            }
+          ]
+        },
+        {
+          "heading": {
+            "zh": "關注股票新聞",
+            "en": "Watch-list news"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "COST：系統當機潮帶動囤貨，推升 Costco 銷售；另有報導談股市拋售與債市買盤對房貸利率的影響",
+                "en": "COST: outages are spurring bulk shopping and a wave of Costco sales; another story covers how the sell-off and bond demand affect mortgage rates"
+              },
+              "refs": [
+                {
+                  "symbol": "COST",
+                  "changePct": 0.76
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "TSLA：Cybercab 擴展到達拉斯；另有報導討論 AI 在華爾街的熱潮是否已結束",
+                "en": "TSLA: Cybercab expands to Dallas; another story asks whether AI's honeymoon on Wall Street has ended"
+              },
+              "refs": [
+                {
+                  "symbol": "TSLA",
+                  "changePct": -7.64
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "AMZN：re:Invent 大會將於 11 月 30 日開始，報導回顧過去 10 次大會後一個月的股價表現",
+                "en": "AMZN: re:Invent starts Nov. 30; a story reviews the stock's moves in the month after the last 10 conferences"
+              },
+              "refs": [
+                {
+                  "symbol": "AMZN",
+                  "changePct": -4.1
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "XLE：能源類股週五下午一度走高，收盤轉為下跌",
+                "en": "XLE: energy stocks advanced Friday afternoon but closed lower"
+              },
+              "refs": [
+                {
+                  "symbol": "XLE",
+                  "changePct": -0.62
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "LLY：ObesityWeek 後的評價討論，以及與 Merck、AbbVie 的比較文章",
+                "en": "LLY: valuation discussion after ObesityWeek and comparison pieces versus Merck and AbbVie"
+              },
+              "refs": [
+                {
+                  "symbol": "LLY",
+                  "changePct": -0.3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "heading": {
+            "zh": "7 天內財報",
+            "en": "Earnings in 7 days"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "素材中未來 7 天沒有觀察清單股票公布財報",
+                "en": "No watch-list earnings reports in the next 7 days in the materials"
+              },
+              "refs": []
+            }
+          ]
+        }
+      ]
+    },
+    "fundamental": {
+      "status": "done",
+      "dataDate": "2026-11-20",
+      "summary": {
+        "zh": "多檔科技股貼近 52 週低點，NVDA 距低點僅 0.83%；COST、SGOV 則在 52 週高點附近",
+        "en": "Several tech names sit near 52-week lows, NVDA just 0.83% above its low; COST and SGOV are near 52-week highs"
+      },
+      "sections": [
+        {
+          "heading": {
+            "zh": "本益比",
+            "en": "P/E ratio"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "本益比最高：TSLA 380.02、PLTR 101.05、AMD 98.24、聯發科 57.04、COST 53.09",
+                "en": "Highest P/E: TSLA 380.02, PLTR 101.05, AMD 98.24, MediaTek 57.04, COST 53.09"
+              },
+              "refs": [
+                {
+                  "symbol": "TSLA",
+                  "changePct": -7.64
+                },
+                {
+                  "symbol": "PLTR"
+                },
+                {
+                  "symbol": "AMD",
+                  "changePct": -13.25
+                },
+                {
+                  "symbol": "2454.TW",
+                  "changePct": -9.95
+                },
+                {
+                  "symbol": "COST",
+                  "changePct": 0.76
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "本益比最低：GS 11.37、鴻海 12.79、JPM 13.43、GOOGL 13.85、VXUS 13.87",
+                "en": "Lowest P/E: GS 11.37, Hon Hai 12.79, JPM 13.43, GOOGL 13.85, VXUS 13.87"
+              },
+              "refs": [
+                {
+                  "symbol": "GS"
+                },
+                {
+                  "symbol": "2317.TW",
+                  "changePct": -4.76
+                },
+                {
+                  "symbol": "JPM"
+                },
+                {
+                  "symbol": "GOOGL",
+                  "changePct": -2.7
+                },
+                {
+                  "symbol": "VXUS"
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "NVDA 本益比 15.67、預估本益比 7.56，在大跌後落在觀察清單偏低的位置",
+                "en": "NVDA trades at a P/E of 15.67 and forward P/E of 7.56, on the low end of the watch list after the drop"
+              },
+              "refs": [
+                {
+                  "symbol": "NVDA",
+                  "changePct": -14.01
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "heading": {
+            "zh": "殖利率",
+            "en": "Dividend yield"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "殖利率最高：006208.TW 4.26%、BND 4.14%、VNQ 3.68%、SGOV 3.62%、CVX 3.42%",
+                "en": "Highest yields: 006208.TW 4.26%, BND 4.14%, VNQ 3.68%, SGOV 3.62%, CVX 3.42%"
+              },
+              "refs": [
+                {
+                  "symbol": "006208.TW"
+                },
+                {
+                  "symbol": "BND"
+                },
+                {
+                  "symbol": "VNQ"
+                },
+                {
+                  "symbol": "SGOV"
+                },
+                {
+                  "symbol": "CVX"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "heading": {
+            "zh": "52 週高低點",
+            "en": "52-week range"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "接近 52 週低點：GOOGL 0.4%、CAT 0.46%、GLD 0.6%、NVDA 0.83%、ORCL 0.94%（距低點）",
+                "en": "Near 52-week lows: GOOGL 0.4%, CAT 0.46%, GLD 0.6%, NVDA 0.83%, ORCL 0.94% above their lows"
+              },
+              "refs": [
+                {
+                  "symbol": "GOOGL",
+                  "changePct": -2.7
+                },
+                {
+                  "symbol": "CAT"
+                },
+                {
+                  "symbol": "GLD"
+                },
+                {
+                  "symbol": "NVDA",
+                  "changePct": -14.01
+                },
+                {
+                  "symbol": "ORCL",
+                  "changePct": -8.48
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "ORCL 距 52 週高點 -59.27%、CAT -52.25%、NVDA -48.42%，回檔幅度最深",
+                "en": "ORCL is 59.27% below its 52-week high, CAT 52.25% and NVDA 48.42%, the deepest pullbacks"
+              },
+              "refs": [
+                {
+                  "symbol": "ORCL",
+                  "changePct": -8.48
+                },
+                {
+                  "symbol": "CAT"
+                },
+                {
+                  "symbol": "NVDA",
+                  "changePct": -14.01
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "接近 52 週高點：SGOV 0%、COST -1.92%、BND -2.23%、PG -2.43%",
+                "en": "Near 52-week highs: SGOV 0%, COST -1.92%, BND -2.23%, PG -2.43%"
+              },
+              "refs": [
+                {
+                  "symbol": "SGOV"
+                },
+                {
+                  "symbol": "COST",
+                  "changePct": 0.76
+                },
+                {
+                  "symbol": "BND"
+                },
+                {
+                  "symbol": "PG"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "heading": {
+            "zh": "關注股票",
+            "en": "Watch list"
+          },
+          "items": [
+            {
+              "text": {
+                "zh": "TSLA 本益比 380.02、距高點 -30.67%；AMZN 本益比 19.95、距高點 -14.06%",
+                "en": "TSLA: P/E 380.02, 30.67% below its high; AMZN: P/E 19.95, 14.06% below its high"
+              },
+              "refs": [
+                {
+                  "symbol": "TSLA",
+                  "changePct": -7.64
+                },
+                {
+                  "symbol": "AMZN",
+                  "changePct": -4.1
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "LLY 本益比 43.85、距高點 -8.69%；XLE 本益比 15.11、殖利率 2.52%",
+                "en": "LLY: P/E 43.85, 8.69% below its high; XLE: P/E 15.11, yield 2.52%"
+              },
+              "refs": [
+                {
+                  "symbol": "LLY",
+                  "changePct": -0.3
+                },
+                {
+                  "symbol": "XLE",
+                  "changePct": -0.62
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "debate": {
+      "status": "done",
+      "dataDate": "2026-11-20",
+      "summary": {
+        "zh": "跌勢集中在 AI 與半導體，防禦股逆勢上漲；多方看評價下修，空方看恐慌狀態與 SEC 消息",
+        "en": "Losses centered on AI and chips while defensives rose; bulls point to lower valuations, bears to the panic regime and SEC news"
+      },
+      "bull": [
+        {
+          "text": {
+            "zh": "漲幅前三名為 UNH 2.84%、WMT 1.52%、JNJ 1.25%，資金轉向防禦類股，並非全面撤出",
+            "en": "Top gainers were UNH 2.84%, WMT 1.52% and JNJ 1.25%, suggesting rotation into defensives rather than a full exit"
+          },
+          "refs": [
+            {
+              "symbol": "UNH",
+              "changePct": 2.84
+            },
+            {
+              "symbol": "WMT",
+              "changePct": 1.52
+            },
+            {
+              "symbol": "JNJ",
+              "changePct": 1.25
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "NVDA 大跌後預估本益比 7.56、GOOGL 本益比 13.85，評價已明顯下修",
+            "en": "After the drop NVDA's forward P/E is 7.56 and GOOGL's P/E is 13.85, showing a clear valuation reset"
+          },
+          "refs": [
+            {
+              "symbol": "NVDA",
+              "changePct": -14.01
+            },
+            {
+              "symbol": "GOOGL",
+              "changePct": -2.7
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "COST 出現 50／200 日線黃金交叉，均線多頭排列，距 52 週高點僅 -1.92%",
+            "en": "COST posted a 50/200-day golden cross with MAs in bullish alignment, only 1.92% below its 52-week high"
+          },
+          "refs": [
+            {
+              "symbol": "COST",
+              "changePct": 0.76
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "新聞提到 Alphabet 是科技股中的亮點，AMZN 的 re:Invent 大會將在 11 月 30 日登場",
+            "en": "News cites Alphabet as a tech bright spot, and AMZN's re:Invent conference begins Nov. 30"
+          },
+          "refs": [
+            {
+              "symbol": "GOOGL",
+              "changePct": -2.7
+            },
+            {
+              "symbol": "AMZN",
+              "changePct": -4.1
+            }
+          ]
+        }
+      ],
+      "bear": [
+        {
+          "text": {
+            "zh": "VOO 與 0050 都進入「高波動（恐慌）」狀態，VOO 近 20 日 -9%、0050 近 20 日 -16.6%",
+            "en": "Both VOO and 0050 are in the 'high volatility (panic)' regime; VOO is -9% over 20 days and 0050 -16.6%"
+          },
+          "refs": [
+            {
+              "symbol": "VOO",
+              "changePct": -3.41
+            },
+            {
+              "symbol": "0050.TW"
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "QQQ 單日 -5.67%、30 天 -18.44%，漲跌家數 14 比 34，上漲比例僅約 29%",
+            "en": "QQQ fell 5.67% on the day and 18.44% over 30 days; breadth was 14 up vs 34 down, only about 29% advancing"
+          },
+          "refs": [
+            {
+              "symbol": "QQQ",
+              "changePct": -5.67
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "報導稱 NVIDIA 會計受 SEC 調查，NVDA、AMD、AVGO 單日跌幅都超過 12%",
+            "en": "Reports say Nvidia's accounting faces an SEC probe; NVDA, AMD and AVGO each fell more than 12% on the day"
+          },
+          "refs": [
+            {
+              "symbol": "NVDA",
+              "changePct": -14.01
+            },
+            {
+              "symbol": "AMD",
+              "changePct": -13.25
+            },
+            {
+              "symbol": "AVGO",
+              "changePct": -12.19
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "GOOGL、CAT、NVDA、ORCL 距 52 週低點都不到 1%，低點支撐面臨考驗",
+            "en": "GOOGL, CAT, NVDA and ORCL are all within 1% of their 52-week lows, testing support"
+          },
+          "refs": [
+            {
+              "symbol": "GOOGL",
+              "changePct": -2.7
+            },
+            {
+              "symbol": "CAT"
+            },
+            {
+              "symbol": "NVDA",
+              "changePct": -14.01
+            },
+            {
+              "symbol": "ORCL",
+              "changePct": -8.48
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "伊朗、胡塞飛彈與烏克蘭等地緣政治消息仍多，增加不確定性",
+            "en": "Geopolitical headlines on Iran, Houthi missiles and Ukraine keep uncertainty elevated"
+          },
+          "refs": []
+        }
+      ],
+      "sections": []
+    },
+    "lead": {
+      "status": "done",
+      "dataDate": "2026-11-20",
+      "summary": {
+        "zh": "AI 與半導體股重挫，美股與台股同處恐慌狀態，防禦股相對抗跌",
+        "en": "AI and chip stocks plunged, US and Taiwan markets are both in the panic regime, and defensives held up better"
+      },
+      "points": [
+        {
+          "text": {
+            "zh": "半導體領跌：NVDA -14.01%、AMD -13.25%、AVGO -12.19%，QQQ 單日 -5.67%，VOO 進入恐慌狀態",
+            "en": "Chips led the decline: NVDA -14.01%, AMD -13.25%, AVGO -12.19%; QQQ fell 5.67% and VOO entered the panic regime"
+          },
+          "refs": [
+            {
+              "symbol": "NVDA",
+              "changePct": -14.01
+            },
+            {
+              "symbol": "AMD",
+              "changePct": -13.25
+            },
+            {
+              "symbol": "AVGO",
+              "changePct": -12.19
+            },
+            {
+              "symbol": "QQQ",
+              "changePct": -5.67
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "新聞面：AI 類股拋售讓那斯達克抹去今年漲幅，NVIDIA 會計傳出受 SEC 調查",
+            "en": "News: an AI sell-off erased the Nasdaq's 2026 gains, and Nvidia's accounting is reportedly under SEC investigation"
+          },
+          "refs": [
+            {
+              "symbol": "NVDA",
+              "changePct": -14.01
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "危險訊號 16 檔、偏多僅 COST 一檔；台股 0050 已連續 9 天處於恐慌狀態，近 20 日 -16.6%",
+            "en": "16 warning signals vs only COST as bullish; Taiwan's 0050 has been in the panic regime for 9 days, -16.6% over 20 days"
+          },
+          "refs": [
+            {
+              "symbol": "COST",
+              "changePct": 0.76
+            },
+            {
+              "symbol": "0050.TW"
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "防禦類股逆勢：UNH +2.84%、WMT +1.52%、JNJ +1.25%；COST、SGOV、BND 接近 52 週高點",
+            "en": "Defensives bucked the trend: UNH +2.84%, WMT +1.52%, JNJ +1.25%; COST, SGOV and BND are near 52-week highs"
+          },
+          "refs": [
+            {
+              "symbol": "UNH",
+              "changePct": 2.84
+            },
+            {
+              "symbol": "WMT",
+              "changePct": 1.52
+            },
+            {
+              "symbol": "JNJ",
+              "changePct": 1.25
+            },
+            {
+              "symbol": "COST",
+              "changePct": 0.76
+            }
+          ]
+        }
+      ],
+      "sections": []
+    }
+  }
+}
