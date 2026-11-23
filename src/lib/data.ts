@@ -6,7 +6,8 @@ import type { ScreenerData } from "./screener";
 import { validMl, validMlVol, type MlData, type MlVolData } from "./ml";
 import { getLang, t } from "./i18n";
 import { validateReport, validIndex, type AiIndex } from "./aiReport";
-import type { AiReport } from "./types";
+import type { AiReport, AiWeekly } from "./types";
+import { validateWeekly, validWeeklyIndex } from "./aiWeekly";
 // 只 import 型別：signalStats.ts 會帶進整個篩選器程式，首頁不需要
 import type { SignalStatsFile } from "./signalStats";
 
@@ -177,4 +178,20 @@ export async function loadAiReport(date?: string): Promise<AiReport | null> {
   if (date) return loadReportFile(`reports/${encodeURIComponent(date)}.json`);
   const index = await loadAiIndex();
   return index && index.dates.length > 0 ? loadReportFile("latest.json") : loadReportFile("sample-report.json");
+}
+
+// ---- AI 週報（每週一整理上週的每日報告；public/ai/weekly/）----
+let aiWeeklyPromise: Promise<AiWeekly | null> | null = null;
+
+/** 最新一份週報；還沒有正式週報時用範例（sample-weekly.json，畫面標「範例」）；讀不到或格式不對 → null */
+export function loadAiWeekly(): Promise<AiWeekly | null> {
+  if (!aiWeeklyPromise) {
+    aiWeeklyPromise = (async () => {
+      const idx = await fetchJson<unknown>(`${AI_BASE}/weekly/index.json`).catch(() => null);
+      const path = validWeeklyIndex(idx) && idx.weeks.length > 0 ? `weekly/${encodeURIComponent(idx.weeks[0])}.json` : "sample-weekly.json";
+      const d = await fetchJson<unknown>(`${AI_BASE}/${path}`).catch(() => null);
+      return validateWeekly(d).weekly;
+    })();
+  }
+  return aiWeeklyPromise;
 }

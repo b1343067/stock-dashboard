@@ -38,7 +38,7 @@ export function findForbidden(text: string): string | null {
   return null;
 }
 
-const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
+export const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
 const isText = (v: unknown): v is LocalText => {
   const o = v as LocalText;
   return !!o && typeof o.zh === "string" && typeof o.en === "string" && o.zh.trim() !== "" && o.en.trim() !== "";
@@ -47,6 +47,35 @@ const isText = (v: unknown): v is LocalText => {
 export interface ValidationResult {
   report: AiReport | null;
   errors: string[];
+}
+
+/**
+ * 共用的文字與條列檢查（每日報告、週報都用）：中英文都要有、中文字數上限、禁用詞、refs 只能是觀察清單。
+ * 發現問題就 push 到 errors。
+ */
+export function makeCheckers(errors: string[], symbols?: Set<string>) {
+  const checkText = (t: unknown, where: string, zhMax: number) => {
+    if (!isText(t)) return errors.push(`${where}：必須有 zh 和 en 兩個非空字串`);
+    if ([...t.zh].length > zhMax) errors.push(`${where}：中文超過 ${zhMax} 字（${[...t.zh].length} 字）`);
+    if (t.en.length > zhMax * LIMITS.enFactor * 2) errors.push(`${where}：英文太長`);
+    for (const s of [t.zh, t.en]) {
+      const bad = findForbidden(s);
+      if (bad) errors.push(`${where}：出現禁用詞「${bad}」（不可以給買賣建議或目標價）`);
+    }
+  };
+  const checkItems = (items: unknown, where: string, max: number, min = 0) => {
+    if (!Array.isArray(items)) return errors.push(`${where}：必須是陣列`);
+    if (items.length > max || items.length < min) errors.push(`${where}：要 ${min}～${max} 點（現在 ${items.length} 點）`);
+    (items as ReportItem[]).forEach((it, i) => {
+      checkText(it?.text, `${where} 第 ${i + 1} 點`, LIMITS.itemZh);
+      for (const ref of it?.refs ?? []) {
+        if (typeof ref?.symbol !== "string") errors.push(`${where} 第 ${i + 1} 點：refs 的 symbol 必須是字串`);
+        else if (symbols && !symbols.has(ref.symbol)) errors.push(`${where} 第 ${i + 1} 點：${ref.symbol} 不在觀察清單（只能用公開資料）`);
+        if (ref?.changePct !== undefined && !Number.isFinite(ref.changePct)) errors.push(`${where} 第 ${i + 1} 點：changePct 必須是數字`);
+      }
+    });
+  };
+  return { checkText, checkItems };
 }
 
 /**
@@ -71,27 +100,7 @@ export function validateReport(raw: unknown, symbols?: Set<string>): ValidationR
     return { report: null, errors };
   }
 
-  const checkText = (t: unknown, where: string, zhMax: number) => {
-    if (!isText(t)) return errors.push(`${where}：必須有 zh 和 en 兩個非空字串`);
-    if ([...t.zh].length > zhMax) errors.push(`${where}：中文超過 ${zhMax} 字（${[...t.zh].length} 字）`);
-    if (t.en.length > zhMax * LIMITS.enFactor * 2) errors.push(`${where}：英文太長`);
-    for (const s of [t.zh, t.en]) {
-      const bad = findForbidden(s);
-      if (bad) errors.push(`${where}：出現禁用詞「${bad}」（不可以給買賣建議或目標價）`);
-    }
-  };
-  const checkItems = (items: unknown, where: string, max: number, min = 0) => {
-    if (!Array.isArray(items)) return errors.push(`${where}：必須是陣列`);
-    if (items.length > max || items.length < min) errors.push(`${where}：要 ${min}～${max} 點（現在 ${items.length} 點）`);
-    (items as ReportItem[]).forEach((it, i) => {
-      checkText(it?.text, `${where} 第 ${i + 1} 點`, LIMITS.itemZh);
-      for (const ref of it?.refs ?? []) {
-        if (typeof ref?.symbol !== "string") errors.push(`${where} 第 ${i + 1} 點：refs 的 symbol 必須是字串`);
-        else if (symbols && !symbols.has(ref.symbol)) errors.push(`${where} 第 ${i + 1} 點：${ref.symbol} 不在觀察清單（只能用公開資料）`);
-        if (ref?.changePct !== undefined && !Number.isFinite(ref.changePct)) errors.push(`${where} 第 ${i + 1} 點：changePct 必須是數字`);
-      }
-    });
-  };
+  const { checkText, checkItems } = makeCheckers(errors, symbols);
 
   for (const key of ROLE_ORDER) {
     const role = r.roles[key] as AiRoleReport;

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "sample": true,
+  "week": "2026-11-09",
+  "basedOn": ["2026-11-10", "2026-11-11", "2026-11-12", "2026-11-13", "2026-11-14"],
+  "generatedAt": "2026-11-17T00:30:00Z",
+  "summary": {
+    "zh": "（範例）大盤先漲後跌，科技股波動加大，防禦類股相對穩定",
+    "en": "(Sample) The market rose then slipped; tech got more volatile while defensive stocks held up"
+  },
+  "points": [
+    {
+      "text": { "zh": "（範例）VOO 週初連漲兩天，週四回落，整週小幅收低", "en": "(Sample) VOO rose for two days early in the week, pulled back on Thursday and ended slightly lower" },
+      "refs": [{ "symbol": "VOO" }]
+    },
+    {
+      "text": { "zh": "（範例）半導體股的危險訊號從週一 3 檔增加到週五 8 檔", "en": "(Sample) Warning signals among chip stocks grew from 3 on Monday to 8 on Friday" },
+      "refs": [{ "symbol": "NVDA" }, { "symbol": "AMD" }]
+    },
+    {
+      "text": { "zh": "（範例）醫療與必需消費類股多次出現在偏多訊號", "en": "(Sample) Healthcare and consumer staples appeared in bullish signals several times" },
+      "refs": [{ "symbol": "COST" }]
+    }
+  ],
+  "sections": [
+    {
+      "heading": { "zh": "本週新聞主題", "en": "News themes this week" },
+      "items": [
+        { "text": { "zh": "（範例）利率與通膨數據是本週最常出現的新聞主題", "en": "(Sample) Rates and inflation data were the most common news themes" } }
+      ]
+    },
+    {
+      "heading": { "zh": "下週觀察", "en": "To watch next week" },
+      "items": [
+        { "text": { "zh": "（範例）留意危險訊號是否持續增加，以及財報公布後的波動", "en": "(Sample) Watch whether warning signals keep rising, and volatility after earnings" } }
+      ]
+    }
+  ]
+}

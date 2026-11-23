@@ -883,4 +883,11 @@ export const EN: Record<string, string> = {
   "美股休市，整理一下這週的筆記。": "US market is closed — tidying up this week's notes.",
   "早安，美股剛收盤。": "Morning! The US market just closed.",
   "美股快開盤了嗎？": "Is the US market opening soon?",
+  // AI 週報
+  "週報": "Weekly report",
+  "週報 {0}": "Weekly {0}",
+  "範例週報": "Sample weekly report",
+  "看週報": "Read weekly report",
+  "本週重點": "Key points this week",
+  "整理自 {0} 份每日報告（{1}）": "Compiled from {0} daily reports ({1})",
 };

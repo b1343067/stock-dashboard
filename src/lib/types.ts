@@ -154,3 +154,23 @@ export interface AiReport {
   staleNote: LocalText | null;
   roles: Record<AiRoleKey, AiRoleReport>;
 }
+
+/**
+ * AI 週報（每週一的排程任務整理上週的每日報告；驗證：src/lib/aiWeekly.ts 的 validateWeekly）
+ * 範例：public/ai/sample-weekly.json；正式：public/ai/weekly/<週一日期>.json
+ */
+export interface AiWeekly {
+  version: 1;
+  sample: boolean;
+  /** 涵蓋的那一週的週一（YYYY-MM-DD，也是檔名） */
+  week: string;
+  /** 整理了哪幾天的每日報告 */
+  basedOn: string[];
+  generatedAt: string;
+  /** 一句話總結這一週 */
+  summary: LocalText;
+  /** 本週重點 3～6 點 */
+  points: ReportItem[];
+  /** 其他段落（例如本週市場、技術面變化、新聞主題、下週觀察），最多 4 段 */
+  sections: ReportSection[];
+}

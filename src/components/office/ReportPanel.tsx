@@ -15,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-function Items({ items, redUp, ordered = false }: { items: ReportItem[]; redUp: boolean; ordered?: boolean }) {
+export function Items({ items, redUp, ordered = false }: { items: ReportItem[]; redUp: boolean; ordered?: boolean }) {
   const lang = getLang();
   const List = ordered ? "ol" : "ul";
   return (

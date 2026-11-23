@@ -1416,6 +1416,14 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .hud-mood { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
 .hud-mood i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 .hud-mood:hover { color: var(--accent); }
+/* 週報卡片（主管重點下面） */
+.office-weekly {
+  width: min(100%, 720px); margin: 10px auto 0; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface);
+}
+.office-weekly-tag { font-size: 13px; font-weight: 800; color: var(--accent); }
+.office-weekly-text { flex: 1 1 260px; min-width: 0; font-size: 14px; }
+.office-weekly .office-brief-go { margin: 0 0 0 auto; }
 /* 人物偶爾說的話（officeTalk.ts）：在名牌上方，點了打開報告 */
 .office-bubble {
   position: absolute; z-index: 4; transform: translate(-50%, calc(-100% - 16px));

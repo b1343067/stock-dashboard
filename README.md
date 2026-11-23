@@ -114,6 +114,7 @@ flowchart LR
   3. AI 依素材寫五位角色的報告（中英文）
   4. `npm run ai:publish -- 報告.json` 檢查通過才寫入 `public/ai/`（`reports/日期.json`、`latest.json`、`index.json`，保留 30 天）
   5. `npm run check:report` 再檢查一次，推上 main → Vercel 自動部署；GitHub Actions「檢查 AI 報告」再驗一次
+- **週報**：每週一的排程任務把上週的每日報告整理成一份（本週重點、新聞主題、下週觀察），顯示在主管重點下面；格式檢查與每日報告相同（`src/lib/aiWeekly.ts`、`npm run ai:week-context`／`ai:publish-weekly`）
 - 報告格式定義在 `src/lib/types.ts`，`src/lib/aiReport.ts` 的 `validateReport()` 檢查格式、字數上限、只能提到觀察清單的股票，並擋下「買進／賣出／目標價」等字眼；讀取失敗時辦公室照常顯示
 - 規則：只用公開資料、不含任何持股、不給買賣建議或目標價；中英文各一份
 

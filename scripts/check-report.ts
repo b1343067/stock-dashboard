@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkDailyReport, HISTORY_DAYS, validateReport, validIndex, type AiIndex } from "../src/lib/aiReport";
+import { checkWeeklyReport, validateWeekly, validWeeklyIndex, WEEKLY_LIMITS, type WeeklyIndex } from "../src/lib/aiWeekly";
 import { AI, readJson, watchlistSymbols } from "./ai-lib";
 
 const symbols = watchlistSymbols();
@@ -44,6 +45,26 @@ if (!validIndex(index)) {
     else if (existsSync(newest) && readFileSync(latest, "utf8") !== readFileSync(newest, "utf8")) errors.push(`latest.json 和最新的 reports/${index.dates[0]}.json 內容不同`);
   }
   console.log(`檢查了範例報告與 ${index.dates.length} 份每日報告。`);
+}
+
+// ---- 週報：範例、索引、每一份（還沒有任何正式週報時沒有 weekly 資料夾，不算錯）----
+for (const e of validateWeekly(readJson(join(AI, "sample-weekly.json")), symbols).errors) errors.push(`sample-weekly.json：${e}`);
+const wdir = join(AI, "weekly");
+if (existsSync(wdir)) {
+  const widx = readJson<WeeklyIndex>(join(wdir, "index.json"));
+  if (!validWeeklyIndex(widx)) errors.push("weekly/index.json 不存在或格式錯誤（應該是 { \"weeks\": [...] }）");
+  else {
+    if (JSON.stringify([...widx.weeks].sort().reverse()) !== JSON.stringify(widx.weeks)) errors.push("weekly/index.json 要由新到舊排序");
+    if (widx.weeks.length > WEEKLY_LIMITS.keep) errors.push(`weekly/index.json 超過 ${WEEKLY_LIMITS.keep} 份`);
+    for (const w of widx.weeks) {
+      const raw = readJson<{ week?: string }>(join(wdir, `${w}.json`));
+      if (!raw) errors.push(`weekly/${w}.json 不存在`);
+      else if (raw.week !== w) errors.push(`weekly/${w}.json 裡的 week 和檔名不同`);
+      else for (const e of checkWeeklyReport(raw, symbols)) errors.push(`weekly/${w}.json：${e}`);
+    }
+    for (const f of readdirSync(wdir)) if (f !== "index.json" && !widx.weeks.includes(f.replace(/\.json$/, ""))) errors.push(`weekly/${f} 不在 weekly/index.json 裡（應該刪掉）`);
+    console.log(`檢查了範例週報與 ${widx.weeks.length} 份週報。`);
+  }
 }
 
 if (errors.length) {

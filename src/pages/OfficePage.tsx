@@ -7,13 +7,15 @@
 import { useCallback, useEffect, useState } from "react";
 import OfficeScene from "../components/office/OfficeScene";
 import ReportPanel from "../components/office/ReportPanel";
-import { loadAiIndex, loadAiReport, loadMlVol } from "../lib/data";
+import WeeklyPanel from "../components/office/WeeklyPanel";
+import { loadAiIndex, loadAiReport, loadAiWeekly, loadMlVol } from "../lib/data";
+import { weekRange } from "../lib/aiWeekly";
 import { REGIME_COLOR } from "../lib/ml";
 import { officeMood, type MoodInfo } from "../lib/officeMood";
 import { LAB_HREF } from "../lib/route";
 import { doneCount, pick, reportStale, ROLE_ORDER } from "../lib/aiReport";
 import { getLang, t } from "../lib/i18n";
-import type { AiReport, AiRoleKey } from "../lib/types";
+import type { AiReport, AiRoleKey, AiWeekly } from "../lib/types";
 
 interface Props {
   redUp: boolean;
@@ -29,6 +31,20 @@ export default function OfficePage({ redUp, chartHref }: Props) {
   // 歷史報告：index.json 的日期清單；picked = 使用者選的日期（null = 最新）
   const [dates, setDates] = useState<string[]>([]);
   const [picked, setPicked] = useState<string | null>(null);
+
+  // 週報（最新一份；還沒有正式週報時是範例）；讀不到就不顯示卡片
+  const [weekly, setWeekly] = useState<AiWeekly | null>(null);
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const closeWeekly = useCallback(() => setWeeklyOpen(false), []);
+  useEffect(() => {
+    let cancelled = false;
+    void loadAiWeekly().then((w) => {
+      if (!cancelled) setWeekly(w);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 今日氣氛：ML 市場狀態（ml-vol.json 是小檔案）；讀不到就維持平常的樣子
   const [mood, setMood] = useState<MoodInfo | null>(null);
@@ -179,11 +195,24 @@ export default function OfficePage({ redUp, chartHref }: Props) {
         </section>
       )}
 
+      {/* 週報：每週一整理上週的每日報告 */}
+      {weekly && (
+        <section className="office-weekly" aria-label={t("週報")}>
+          <span className="office-weekly-tag">📅 {t("週報 {0}", [weekRange(weekly.week)])}</span>
+          {weekly.sample && <span className="hud-chip hud-sample">{t("範例週報")}</span>}
+          <span className="office-weekly-text">{pick(weekly.summary, lang)}</span>
+          <button type="button" className="office-brief-go" onClick={() => setWeeklyOpen(true)}>
+            {t("看週報")} ›
+          </button>
+        </section>
+      )}
+
       <p className="office-disclaimer muted small">
         {t("AI 報告僅供學習參考，非投資建議。")}
         {t("報告只使用公開資料，不含任何個人持股，也不提供買賣建議或目標價。")}
       </p>
 
+      {weeklyOpen && weekly && <WeeklyPanel weekly={weekly} redUp={redUp} onClose={closeWeekly} />}
       {open && (
         <ReportPanel
           role={open}

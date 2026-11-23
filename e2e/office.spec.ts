@@ -142,3 +142,37 @@ test("今日氣氛：ml-vol.json 讀不到 → 不顯示標籤，辦公室照常
   await expect(page.locator(".office-tag")).toHaveCount(5);
   await expect(page.locator(".hud-mood")).toHaveCount(0);
 });
+
+test("週報：還沒有正式週報時顯示範例、點了打開週報", async ({ page }) => {
+  const errs = trackErrors(page);
+  await page.route("**/ai/weekly/index.json", (r) => r.fulfill({ json: { weeks: [] } }));
+  await page.goto("/");
+  const card = page.locator(".office-weekly");
+  await expect(card).toContainText("範例週報");
+  await card.getByRole("button", { name: /看週報/ }).click();
+  const dialog = page.getByRole("dialog", { name: /週報/ });
+  await expect(dialog).toContainText("本週重點");
+  await expect(dialog.locator(".report-items li").first()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await errs.expectNoErrors();
+});
+
+test("週報：正式週報（沒有範例標示）", async ({ page }) => {
+  const sample = (await (await page.request.get("/ai/sample-weekly.json")).json()) as Record<string, unknown> & { summary: { zh: string } };
+  await page.route("**/ai/weekly/index.json", (r) => r.fulfill({ json: { weeks: ["2026-11-16"] } }));
+  await page.route("**/ai/weekly/2026-11-16.json", (r) => r.fulfill({ json: { ...sample, sample: false, week: "2026-11-16", summary: { zh: "正式週報摘要", en: "Real weekly" } } }));
+  await page.goto("/");
+  const card = page.locator(".office-weekly");
+  await expect(card).toContainText("正式週報摘要");
+  await expect(card).toContainText("11/16–11/20");
+  await expect(card).not.toContainText("範例週報");
+});
+
+test("週報：檔案壞掉 → 不顯示卡片，辦公室照常", async ({ page }) => {
+  await page.route("**/ai/weekly/index.json", (r) => r.fulfill({ status: 404, body: "" }));
+  await page.route("**/ai/sample-weekly.json", (r) => r.fulfill({ body: "{壞掉" }));
+  await page.goto("/");
+  await expect(page.locator(".office-tag")).toHaveCount(5);
+  await expect(page.locator(".office-weekly")).toHaveCount(0);
+});
