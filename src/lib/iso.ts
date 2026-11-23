@@ -99,6 +99,12 @@ export const SEATS: Record<AiRoleKey, { x: number; y: number; facing: Facing; ac
 export const SIT_Z = 13;
 export const HEAD_TOP = 40;
 
+/** 走動中（站著）的名牌位置：hipZ = 屁股離地高度；人物身高（屁股到頭頂）= HEAD_TOP - SIT_Z */
+export function tagPositionAt(x: number, y: number, hipZ: number): { left: number; top: number } {
+  const [sx, sy] = project(x, y);
+  return { left: (sx / SCENE_W) * 100, top: ((sy - hipZ - (HEAD_TOP - SIT_Z) - 3) / SCENE_H) * 100 };
+}
+
 /** 名牌位置（畫布寬高的百分比）：頭頂上方 */
 export function tagPosition(role: AiRoleKey): { left: number; top: number } {
   const s = SEATS[role];

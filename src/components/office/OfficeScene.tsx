@@ -6,8 +6,9 @@
 // 可以用鍵盤與螢幕報讀器操作；辦公室頁不顯示底部導覽列，改由這些物件切換頁面。
 
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { isDarkColor, NAV_SPOTS, project, ROOM, SCENE_H, SCENE_W, SEATS, shade, SIT_Z, spans, spotPosition, tagPosition, WALL_H, type Pt } from "../../lib/iso";
+import { isDarkColor, NAV_SPOTS, project, ROOM, SCENE_H, SCENE_W, SEATS, shade, SIT_Z, spans, spotPosition, tagPosition, tagPositionAt, WALL_H, type Pt } from "../../lib/iso";
 import { ROLE_NAME, ROLE_ORDER } from "../../lib/aiReport";
+import { walkPose, type WalkPose } from "../../lib/officeWalk";
 import { t } from "../../lib/i18n";
 import { MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, TODAY_HREF, type Page } from "../../lib/route";
 import { useThemeColors } from "../../lib/theme";
@@ -491,7 +492,11 @@ function outlineSprite(sctx: Ctx, color: [number, number, number]) {
   sctx.putImageData(img, 0, 0);
 }
 
-function person(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) {
+/** 站著時腿的長度（屁股離地高度）；名牌位置也用它算 */
+const LEG = 9;
+
+/** 畫一個人：pose 沒給或 seated → 坐在座位上；否則站在 pose 的位置（走路中或停下來看東西） */
+function person(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, pose?: WalkPose) {
   if (!sprite) {
     sprite = document.createElement("canvas");
     sprite.width = SPR_W;
@@ -500,14 +505,23 @@ function person(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) {
   const sctx = sprite.getContext("2d", { willReadFrequently: true });
   if (!sctx) return;
   sctx.clearRect(0, 0, SPR_W, SPR_H);
-  drawPersonSprite(sctx, c, role, frame);
-  outlineSprite(sctx, [22, 20, 34]);
   const s = SEATS[role];
-  const [sx, sy] = P(s.x, s.y);
-  ctx.drawImage(sprite, Math.round(sx) - SPR_X, Math.round(sy) - SPR_Y);
+  const standing = !!pose && !pose.seated;
+  drawPersonSprite(sctx, c, role, frame, standing ? pose!.front : s.facing === "front", standing, standing && pose!.walking);
+  outlineSprite(sctx, [22, 20, 34]);
+  const [sx, sy] = standing ? P(pose!.x, pose!.y) : P(s.x, s.y);
+  const top = Math.round(sy) - SPR_Y;
+  if (standing && pose!.flip) {
+    // 往另一個方向走：左右鏡像（精靈圖只畫了一個方向，鏡像後腳的位置要對齊同一個地板點）
+    const mirrored = Math.round(sx) - (SPR_W - SPR_X);
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(sprite, -(mirrored + SPR_W), top);
+    ctx.restore();
+  } else ctx.drawImage(sprite, Math.round(sx) - SPR_X, top);
 }
 
-function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) {
+function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, front: boolean, standing = false, walking = false) {
   const s = SEATS[role];
   const shirt = c[s.shirt];
   const shirtD = shade(shirt, -0.22);
@@ -519,13 +533,24 @@ function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) 
   const ink = c["--office-ink"];
   const bob = s.action === "idle" && Math.floor(frame / 6) % 2 ? 1 : 0;
   const x = SPR_X;
-  const hip = SPR_Y - SIT_Z + bob;
+  // 站著時屁股在腿上面（不上下晃）；坐著時屁股在椅子高度
+  const hip = standing ? SPR_Y - LEG : SPR_Y - SIT_Z + bob;
   const top = hip - 13;
   const headY = top - 11;
-  const front = s.facing === "front";
 
-  // 腿：背對畫面時，從椅子兩側露出膝蓋與鞋子
-  if (!front) {
+  // 站著：兩條腿；走路時左右腳輪流抬起 1 格
+  if (standing) {
+    const step = walking ? Math.floor(frame / 2) % 2 : -1;
+    const pants = role === "lead" ? shade(shirt, -0.5) : "#2b2f3a";
+    for (const [i, dx] of [[0, -5], [1, 1]] as const) {
+      const lift = step === i ? 1 : 0;
+      px(ctx, x + dx, hip, 4, LEG - lift, pants);
+      px(ctx, x + dx, SPR_Y - 2 - lift, 4, 2, "#15171d");
+    }
+  }
+
+  // 腿：坐著背對畫面時，從椅子兩側露出膝蓋與鞋子
+  if (!standing && !front) {
     px(ctx, x - 7, hip - 1, 4, 6, "#2b2f3a");
     px(ctx, x + 3, hip - 1, 4, 6, "#2b2f3a");
     px(ctx, x - 8, hip + 4, 5, 2, "#15171d");
@@ -596,6 +621,17 @@ function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) 
       px(ctx, x - 6, headY + 2, 4, 1, hair); // 旁分
       px(ctx, x - 6, headY + 3, 1, 2, hair);
       px(ctx, x + 5, headY + 2, 1, 3, hair);
+    } else if (s.style === "bun") {
+      // 坐著時只看得到背面；站起來轉向畫面時也要畫正面的髮髻
+      px(ctx, x - 3, headY - 7, 6, 5, hair);
+      px(ctx, x - 2, headY - 6, 2, 2, hairL);
+      px(ctx, x - 5, headY + 2, 2, 3, hair);
+      px(ctx, x + 3, headY + 2, 2, 3, hair);
+    } else if (s.style === "curly") {
+      for (const [dx, dy] of [[-7, -2], [5, -2], [-7, 2], [5, 2], [-4, -4], [0, -4], [3, -4]]) {
+        px(ctx, x + dx, headY + dy, 3, 3, hair);
+        px(ctx, x + dx, headY + dy, 1, 1, hairL);
+      }
     }
     // 眉毛、眼睛（眨眼）、眼鏡、腮紅、嘴巴
     const blink = (frame + role.length * 7) % 44 === 0;
@@ -647,7 +683,16 @@ function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) 
   const armL = typing && flip ? 1 : 0;
   const armR = typing && !flip ? 1 : 0;
   const sleeve = role === "lead" ? shade(shirt, -0.42) : shirtD;
-  if (front) {
+  if (standing) {
+    // 走路時手前後擺動（左右手相反）
+    const sw = walking ? (Math.floor(frame / 2) % 2 ? 1 : -1) : 0;
+    px(ctx, x - 10, top + 1 + sw, 3, 10, sleeve);
+    px(ctx, x + 7, top + 1 - sw, 3, 10, sleeve);
+    if (front) {
+      px(ctx, x - 10, top + 11 + sw, 3, 2, skin);
+      px(ctx, x + 7, top + 11 - sw, 3, 2, skin);
+    }
+  } else if (front) {
     px(ctx, x - 10, top + 2 - armL, 3, 9, sleeve);
     px(ctx, x + 7, top + 2 - armR, 3, 9, sleeve);
     if (role === "news") {
@@ -664,7 +709,7 @@ function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) 
   }
 
   // ---- 喝咖啡：每 3 秒舉杯一次，杯子冒熱氣 ----
-  if (s.action === "coffee") {
+  if (s.action === "coffee" && !standing) {
     const sip = frame % 24 >= 18;
     const mx = x + 8;
     const my = sip ? headY + 6 : top + 6;
@@ -682,7 +727,7 @@ function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) 
   }
 
   // ---- 辯論中：頭上輪流冒出「漲」「跌」箭頭（顏色跟著紅漲綠跌設定）----
-  if (s.action === "idle") {
+  if (s.action === "idle" && !standing) {
     const phase = Math.floor(frame / 10) % 3;
     if (phase < 2) {
       // 對話框放在頭的右邊（頭上方是名牌，放上面會被擋住）
@@ -715,7 +760,15 @@ function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number) 
 // ---------------------------------------------------------------------------
 // 整個場景（依前後順序：後面的先畫，前面的蓋上去）
 // ---------------------------------------------------------------------------
-function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<AiRoleKey, boolean>, frame: number) {
+function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<AiRoleKey, boolean>, frame: number, poses: Partial<Record<AiRoleKey, WalkPose>> = {}) {
+  // 走動中的人要插在正確的前後順序：長桌後面（y < 4）在後排椅子之前畫，長桌前面在前排之後畫
+  const walkers = ROLE_ORDER.filter((r) => present[r] && poses[r] && !poses[r]!.seated);
+  const drawWalkers = (behind: boolean) =>
+    walkers
+      .filter((r) => poses[r]!.y < 4 === behind)
+      .sort((a, b) => poses[a]!.x + poses[a]!.y - (poses[b]!.x + poses[b]!.y))
+      .forEach((r) => person(ctx, c, r, frame, poses[r]));
+  const seated = (r: AiRoleKey) => present[r] && (!poses[r] || poses[r]!.seated);
   ctx.clearRect(0, 0, SCENE_W, SCENE_H);
   ctx.drawImage(bg, 0, 0);
   drawWallScreens(ctx, c, frame);
@@ -744,11 +797,13 @@ function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<
   box(ctx, 0.1, 5.55, 16, 0.6, 0.6, 7, c["--iso-board"]);
   box(ctx, 0.2, 5.65, 23, 0.35, 0.4, 1, "#ffffff", false);
 
+  drawWalkers(true);
+
   // ---- 後排兩位（面向畫面）：椅背 → 人（桌子會蓋住下半身）----
   for (const r of ["tech", "news"] as AiRoleKey[]) {
     const s = SEATS[r];
     chairBack(ctx, c, s.x, s.y, "front");
-    if (on[r]) person(ctx, c, r, frame);
+    if (seated(r)) person(ctx, c, r, frame);
   }
 
   // ---- 長桌 ----
@@ -793,7 +848,7 @@ function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<
   for (const r of ["fundamental", "debate"] as AiRoleKey[]) {
     const s = SEATS[r];
     chairSeat(ctx, c, s.x, s.y);
-    if (on[r]) person(ctx, c, r, frame);
+    if (seated(r)) person(ctx, c, r, frame);
     chairBack(ctx, c, s.x, s.y, "back");
   }
 
@@ -819,13 +874,14 @@ function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<
       line(ctx, P(0.08, by + 0.14, z + 2), P(0.46, by + 0.14, z + 2), shade(col, -0.25));
     });
   }
-  plant(ctx, c, 1.4, 7.1, 2);
+  drawWalkers(false); // 書櫃右邊、盆栽後面
+  plant(ctx, c, 2.7, 7.2, 2); // 不要擋到在書櫃前找書的人
 
   // ---- 主管：植物 → 椅背 → 人 → 桌子（桌子在人前面）----
   plant(ctx, c, 7.35, 3.9, 2);
   const L = SEATS.lead;
   chairBack(ctx, c, L.x, L.y, "front");
-  if (on.lead) person(ctx, c, "lead", frame);
+  if (seated("lead")) person(ctx, c, "lead", frame);
   const dx0 = 5.9;
   const dy0 = 5.55;
   shadow(ctx, dx0 - 0.1, dy0, 2.1, 1.3);
@@ -946,6 +1002,9 @@ const SPOT_HREF: Record<string, string> = { today: TODAY_HREF, market: MARKET_HR
 
 export default function OfficeScene({ present, loading, redUp, chartHref, onOpen, children }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // 名牌與點擊範圍跟著走動的人移動：直接改 style，避免每秒 8 次重新 render
+  const tagRefs = useRef<Partial<Record<AiRoleKey, HTMLElement | null>>>({});
+  const hitRefs = useRef<Partial<Record<AiRoleKey, HTMLElement | null>>>({});
   const theme = useThemeColors(); // 只當作「主題變了」的訊號，顏色另外讀
   const key = ROLE_ORDER.map((r) => (present[r] ? 1 : 0)).join("");
 
@@ -973,8 +1032,22 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
     if (!bctx || !lctx) return;
     drawRoom(bctx, c);
 
-    const render = (frame: number) => {
-      drawFrame(lctx, bg, c, present, frame);
+    // 每一格算每個人現在在哪裡（officeWalk.ts 的純函式，依經過秒數決定），名牌直接改 DOM 位置跟著走（不重新 render React）
+    const t0 = performance.now();
+    const render = (frame: number, now: number) => {
+      const poses: Partial<Record<AiRoleKey, WalkPose>> = {};
+      for (const r of ROLE_ORDER) {
+        if (!present[r]) continue;
+        const p = walkPose(r, (now - t0) / 1000, [SEATS[r].x, SEATS[r].y]);
+        poses[r] = p;
+        const pos = p.seated ? tagPosition(r) : tagPositionAt(p.x, p.y, LEG);
+        for (const el of [tagRefs.current[r], hitRefs.current[r]]) {
+          if (!el) continue;
+          el.style.left = `${pos.left}%`;
+          el.style.top = `${pos.top}%`;
+        }
+      }
+      drawFrame(lctx, bg, c, present, frame, poses);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawGroundShadow(ctx, S);
       ctx.imageSmoothingEnabled = false;
@@ -989,11 +1062,11 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
       const frame = Math.floor(now / 125); // 每秒 8 格
       if (frame !== last) {
         last = frame;
-        render(frame);
+        render(frame, now);
       }
       raf = requestAnimationFrame(tick);
     };
-    if (still) render(1);
+    if (still) render(1, t0); // 減少動態：只畫一張，大家都坐著
     else raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf);
@@ -1021,7 +1094,12 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
         />
       ))}
       {tags.map(({ r, left, top }) => (
-        <span key={`hit-${r}`} className="office-hit" style={{ left: `${left}%`, top: `${top}%` }} onClick={() => onOpen(r)} aria-hidden="true" />
+        <span
+          key={`hit-${r}`}
+          ref={(el) => {
+            hitRefs.current[r] = el;
+          }}
+          className="office-hit" style={{ left: `${left}%`, top: `${top}%` }} onClick={() => onOpen(r)} aria-hidden="true" />
       ))}
       <nav aria-label={t("頁面")}>
         {NAV_SPOTS.map((s) => {
@@ -1035,7 +1113,13 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
         })}
       </nav>
       {tags.map(({ r, left, top }) => (
-        <button key={r} type="button" className={`office-tag ${present[r] ? "is-done" : "is-off"}`} style={{ left: `${left}%`, top: `${top}%` }} onClick={() => onOpen(r)} aria-haspopup="dialog">
+        <button
+          key={r}
+          ref={(el) => {
+            tagRefs.current[r] = el;
+          }}
+          type="button"
+          className={`office-tag ${present[r] ? "is-done" : "is-off"}`} style={{ left: `${left}%`, top: `${top}%` }} onClick={() => onOpen(r)} aria-haspopup="dialog">
           <i aria-hidden="true" />
           {t(ROLE_NAME[r])}
           {!loading && <span className={present[r] ? "sr-only" : "office-tag-off"}>{present[r] ? t("已完成") : t("休假中")}</span>}

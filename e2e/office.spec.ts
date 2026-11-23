@@ -2,6 +2,9 @@
 import { expect, test } from "@playwright/test";
 import { expectNoHorizontalScroll, trackErrors, type Page } from "./helpers";
 
+// 人物會走動（名牌跟著移動），Playwright 點擊會一直等元素「穩定」而逾時 → 測試時關掉動畫（大家都坐著）
+test.use({ reducedMotion: "reduce" });
+
 /** 固定用範例報告（main 上已經有每天的正式報告，內容每天不同，測試不能依賴） */
 const useSample = (page: Page) => page.route("**/ai/index.json", (r) => r.fulfill({ json: { dates: [] } }));
 
