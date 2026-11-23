@@ -7,6 +7,8 @@ import { validMl, validMlVol, type MlData, type MlVolData } from "./ml";
 import { getLang, t } from "./i18n";
 import { validateReport, validIndex, type AiIndex } from "./aiReport";
 import type { AiReport } from "./types";
+// 只 import 型別：signalStats.ts 會帶進整個篩選器程式，首頁不需要
+import type { SignalStatsFile } from "./signalStats";
 
 const DATA_BASE = `${import.meta.env.BASE_URL}data`;
 
@@ -125,6 +127,21 @@ export function loadMlVol(): Promise<MlVolData | null> {
       .catch(() => null);
   }
   return mlVolPromise;
+}
+
+let signalStatsPromise: Promise<SignalStatsFile | null> | null = null;
+
+/** 訊號回測結果（篩選器頁展開「這些訊號過去準不準」時才載入）；沒有檔案或格式不對 → null */
+export function loadSignalStats(): Promise<SignalStatsFile | null> {
+  if (!signalStatsPromise) {
+    signalStatsPromise = fetchJson<unknown>(`${DATA_BASE}/signal-stats.json`)
+      .then((d) => {
+        const o = d as SignalStatsFile;
+        return o && Array.isArray(o.rules) && o.baseline?.h20 && Array.isArray(o.skipped) ? o : null;
+      })
+      .catch(() => null);
+  }
+  return signalStatsPromise;
 }
 
 // ---- AI 投研辦公室（首頁）----

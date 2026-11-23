@@ -69,6 +69,7 @@
 - 價格提醒：`lib/alerts.ts`（條件、`evaluateAlert`、`alertState`、`acknowledge`）、`lib/alertsStore.ts`（`useSyncExternalStore` 共用狀態、`useAlertQuotes`：只有 RSI 提醒時才載入 screener.json）、`components/AlertsPanel.tsx`（lazy，桌機右側／手機底部滑出）、`components/AlertBanner.tsx`；App 統一計算 triggered
 - 篩選器：`lib/screener.ts`（條件型別、`evaluateCondition`、`runScreen`、`sanitizeConditions`、內建範例組合；均線交叉 `maCrossUp/Down` 用 `ma`＋`ma2`、成交量 `volSpike` 用 screener.json 的 `volume`，平均不含最新一根）、`pages/ScreenerPage.tsx`、`components/screener/`
 - 每日 Discord 通知：`config/notify.json`（公開檔案，只放關注清單與條件、不放持股：`benchmarks`、`exclude`（使用者不想看 0050）、`topMovers`、`watch`、`bigMovePct`、`near52wPct`、`priceAlerts`（穿越才通知）、`danger`／`rules` 規則＝篩選器條件格式）→ `scripts/notify.ts`（Actions 用 `npx vite-node` 執行）＋`lib/notify.ts` 純函式（`sanitizeNotifyConfig`、`evaluateSignals` 依股票合併並和昨天比較標 🆕、`findAlerts` 特別注意、`stockLine` 用 signals.ts 的狀態、`buildMessages` 產生 Discord embed：第 1 則 🚨 特別注意（有大事才有）、第 2 則 📊 市場 → 📰 重大財經新聞 → 👀 關注 → 🔎 關注股票新聞 → 📅 財報 → ⚠️ 危險 → ✅ 偏多（0 檔不列），超過 6000 字拆則）；新聞與財報 `buildNewsEmbeds()`（`NewsBundle` 每部分可為 null＝略過；去重；`safeTitle`／`safeUrl` 避免 Markdown 連結壞掉），`scripts/notify.ts` 的 `fetchNews()` 讀 GitHub Secret `FINNHUB_API_KEY`（兩個 workflow 都有帶），每部分各自 try/catch。使用者要的是「精簡卡片＋危險股票也要列出」。紀錄存 `public/data/notify-state.json`（用 `dataKeyOf()`＝各幣別的最新日期判斷同一份資料只通知一次，不能只看單一最新日期：台股盤中資料曾讓隔天通知被誤判成已送；`NOTIFY_FORCE=1` 強制，手動執行「更新股價資料」時自動帶入；`NOTIFY_STRICT=1` 失敗時結束碼 1）；`.github/workflows/notify-test.yml`「測試 Discord 通知」只下載 data 分支＋強制送出；Webhook 在 GitHub Secret `DISCORD_WEBHOOK_URL`（已設定）；範例資料不通知。篩選器新增事件型條件 `priceCrossUpMa`／`priceCrossDownMa`、`rsiDrop`
+- 訊號回測：`lib/signalStats.ts`（`windowAt` 每天只給 `evaluateCondition` 最近 30 根＝和 screener.json 相同、`signalDays` 只算第一天出現、`forwardReturn` 從**隔天收盤**算 5／20 天、基準＝同一批股票每一天、`statVerdict` 20 天平均差 > 1 個百分點才算有差、< 30 次「樣本太少」；只回測日線，週月線與基本面規則列在 `skipped`）→ `scripts/signal-stats.ts`（update-data.yml 在通知前執行，約 2 秒，略過 notify.json 的 exclude；規則＝notify 的 danger／rules＋`BUILTIN_PRESETS`（同名以通知為準））寫 `signal-stats.json`。前端 `components/screener/SignalStatsCard.tsx`（篩選器頁最下方 `<details>`，展開才 `loadSignalStats`；`data.ts` 只 import 型別，避免把篩選器程式帶進首頁）；Discord `notify.ts` 的 `statLines` 附在危險／偏多卡片最後；AI 素材 `tech.ruleHistory`。2026-11 結果：危險訊號之後 20 天大多和平常差不多，死亡交叉、跌破布林下軌反而比平常好（均值回歸）；超賣反彈比平常好
 - 投資組合：`lib/portfolio.ts`（`computePortfolio`、`toUsd`、`stopStatus`、`sanitizeHoldings`、`parseImport`／`buildExport`、`sampleHoldings`）、`lib/portfolioStore.ts`（讀 localStorage，分析頁共用）、`pages/PortfolioPage.tsx`、`components/portfolio/`
 - 多語系（加碼 C-2）：`lib/i18n.ts`（`t(中文原文, [參數])` 依 `{0}{1}` 代入、`getLang`／`setLang`／`useLang`、`locale()` 給數字與圖表日期格式）、`lib/i18n-en.ts` 英文對照表（key = 中文原文，查不到就顯示中文）。**模組最上層的常數不能呼叫 t()**（載入時就決定了），要在顯示的地方 `t(常數)`；`i18n.test.ts` 會檢查所有 `t("…")`、條件名稱、分類名稱都有英文。App 用 `key={lang}` 讓切換語言時整個畫面重建；`data.ts` 的 `localizeName` 在英文模式把 `name` 換成設定檔的 `nameEn`。E2E 固定 `locale: "zh-TW"`，英文版在 `e2e/i18n.spec.ts`（用英文瀏覽器打開每一頁、確認沒有中文殘留）。少數依語言不同的格式直接判斷 `getLang()`：市值單位（兆億／T B）、K 線週期按鈕（日週月／D W M）、漲跌色按鈕（漲跌／▲▼）
 - 交易紀錄（加碼 C）：`lib/transactions.ts`（`buildLedger` 移動平均成本法、`positionsToHoldings`、`xirr` 牛頓＋二分、`positionStats`、`totals` 台股每筆依當天 `fxAt` 匯率換美元、`sanitizeTransactions`、`sampleTransactions`）、`components/portfolio/TransactionsPanel.tsx`／`TransactionForm.tsx`；`portfolioStore.loadHoldings()` 依 `portfolio:mode` 回傳交易計算出的持股（分析頁共用），交易模式下 `portfolio:holdings` 只當「類型／停利停損」設定用（HoldingForm `metaOnly`）
@@ -88,6 +89,7 @@
 - `public/data/index.json`：`{generatedAt,sample,fx:{USDTWD},riskFree,categories:[...],tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,sample,spark:[最近 30 天收盤]}]}`（riskFree 為年化小數，抓不到沿用上次）
 - `public/data/screener.json`：`{generatedAt,bars:30,tickers:[{symbol,name,currency,category,lastDate,lastClose,changePct,daily,weekly,monthly,fundamentals?:{pe,forwardPe,pb,dividendYield,high52w,low52w},liveBase?:{close,sum10,sum20,sum50,sum200,sumSq20,avgGain,avgLoss,ema12,ema26,signal}}]}`（liveBase 由 `indicators.live_base()` 用完整歷史算、6 位小數，盤中預估用），每週期只有 time/close/volume/ma*/rsi/macd/signal/hist/bb* 的最近 30 筆
 - `public/data/ml.json`／`ml-vol.json`：ML 實驗室結果（見 `lib/ml.ts` 的 `MlData`／`MlVolData`）
+- `public/data/signal-stats.json`：`SignalStatsFile`（`lib/signalStats.ts`）：`{generatedAt,from,to,tickers,baseline:{h5,h20},rules:[{name,group:danger|bullish|preset,events,symbols,h5,h20,lastDate}],skipped}`，`h5`／`h20` = `{n,avg,win}`（%）
 - `public/data/fx.json`：`{USDTWD:{time,close}}`；沒有時分析頁用最新匯率近似並提示
 
 ### localStorage key（都有 `stockdash:` 前綴）
@@ -136,6 +138,7 @@
 - [x] ML 實驗室 ③ 市場狀態分群
 - [x] 資料品質：自動修正小問題＋status.json；資料搬到 data 分支（main 不再每天變大）
 - [x] AI 投研辦公室 第一階段（像素辦公室＋範例報告）、第二階段（每日報告的素材、發布、檢查工具與任務說明；排程由使用者在 Claude Code 建立）
+- [x] README 辦公室動圖＋架構圖、辦公室氣氛跟著市場狀態、訊號回測（篩選器／Discord／AI 報告）
 - [x] 組合分析自我檢查（VOO 對自己 = 1）、資料品質防護；觀察清單擴充到 49 檔＋分類＋搜尋＋篩選器分類範圍
 
 ### 已知事實（不要當成 bug 重查）

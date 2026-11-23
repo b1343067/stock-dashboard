@@ -13,6 +13,7 @@ import { breadth, topMovers } from "./market";
 import type { MlVolData } from "./ml";
 import { runScreen, sanitizeConditions, type CombineMode, type Condition, type ScreenerData, type ScreenerTicker } from "./screener";
 import { macdStatus, maStatus, rsiStatus } from "./signals";
+import type { SignalStatsFile } from "./signalStats";
 import type { TickerSummary } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -378,6 +379,23 @@ export function buildNewsEmbeds(news: NewsBundle | null, cfg: NotifyConfig, nowS
  *   第 1 則（有大事才有）：🚨 特別注意 —— 手機通知預覽會先看到這則
  *   第 2 則：📊 每日摘要 —— 市場、我關注的股票、⚠️ 危險訊號、✅ 偏多訊號（0 檔的不列）
  */
+/**
+ * 今天出現的規則，過去 5 年出現後 20 天的平均報酬／上漲機率（和平常比較），讓人知道這條規則值不值得在意。
+ * 沒有回測資料、或今天的規則都沒有統計 → 空陣列（不附）。
+ */
+export function statLines(hits: SignalHit[], stats: SignalStatsFile | null): string[] {
+  if (!stats || stats.baseline.h20.avg === null) return [];
+  const names = [...new Set(hits.flatMap((h) => h.rules))];
+  const pct = (v: number | null) => (v === null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)}%`);
+  const rows = names
+    .map((n) => stats.rules.find((r) => r.name === n))
+    .filter((r): r is NonNullable<typeof r> => !!r && r.h20.avg !== null)
+    .map((r) => `・${r.name} ${pct(r.h20.avg)}／上漲 ${Math.round(r.h20.win ?? 0)}%${r.h20.n < 30 ? "（樣本少）" : ""}`);
+  if (rows.length === 0) return [];
+  const b = stats.baseline.h20;
+  return [`📈 過去 5 年出現後 20 天（平常 ${pct(b.avg)}／上漲 ${Math.round(b.win ?? 0)}%）`, ...rows];
+}
+
 export function buildMessages(
   allData: ScreenerData,
   cfg: NotifyConfig,
@@ -387,6 +405,8 @@ export function buildMessages(
   nowSec: number = Math.floor(Date.now() / 1000),
   /** 市場狀態（ML 實驗室 ③，public/data/ml-vol.json）；沒有就不列 */
   regime: MlVolData["regime"] | null = null,
+  /** 訊號回測（public/data/signal-stats.json）；有的話在危險／偏多卡片下面附上規則過去的表現 */
+  stats: SignalStatsFile | null = null,
 ): DiscordMessage[] {
   const data = withoutExcluded(allData, cfg);
   const messages: DiscordMessage[] = [];
@@ -455,8 +475,14 @@ export function buildMessages(
 
   const signalLines = (hits: SignalHit[]) =>
     hits.map((h) => `${h.isNew ? "🆕 " : ""}**${link(cfg, h.ticker)}** ${fmtPct(h.ticker.changePct)}　${h.rules.join("・")}`);
-  if (danger.length > 0) embeds.push({ title: `⚠️ 危險訊號（${danger.length} 檔）`, color: COLOR.danger, description: fitLines(signalLines(danger), LIMITS.description) });
-  if (bull.length > 0) embeds.push({ title: `✅ 偏多訊號（${bull.length} 檔）`, color: COLOR.bull, description: fitLines(signalLines(bull), LIMITS.description) });
+  // 卡片最後附上「這些規則過去的表現」：先留好它的字數，再把股票清單塞進剩下的空間
+  const withStats = (hits: SignalHit[]) => {
+    const extra = statLines(hits, stats);
+    const tail = extra.length ? "\n\n" + extra.join("\n") : "";
+    return fitLines(signalLines(hits), LIMITS.description - tail.length) + tail;
+  };
+  if (danger.length > 0) embeds.push({ title: `⚠️ 危險訊號（${danger.length} 檔）`, color: COLOR.danger, description: withStats(danger) });
+  if (bull.length > 0) embeds.push({ title: `✅ 偏多訊號（${bull.length} 檔）`, color: COLOR.bull, description: withStats(bull) });
   embeds[embeds.length - 1].footer = footer;
 
   // 一則訊息的卡片合計超過 6000 字就拆成兩則

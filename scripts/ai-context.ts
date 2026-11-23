@@ -8,6 +8,7 @@ import { buildContext, type NewsFile } from "../src/lib/aiContext";
 import type { MlVolData } from "../src/lib/ml";
 import { sanitizeNotifyConfig } from "../src/lib/notify";
 import type { ScreenerData } from "../src/lib/screener";
+import type { SignalStatsFile } from "../src/lib/signalStats";
 import type { IndexData } from "../src/lib/types";
 import { DATA, readJson, ROOT, taipeiToday } from "./ai-lib";
 
@@ -28,5 +29,6 @@ const ctx = buildContext({
   news: readJson<NewsFile>(join(DATA, "news.json")),
   cfg: sanitizeNotifyConfig(readJson(join(ROOT, "config", "notify.json"))),
   today: process.env.REPORT_DATE ?? taipeiToday(),
+  stats: readJson<SignalStatsFile>(join(DATA, "signal-stats.json")),
 });
 console.log(JSON.stringify(ctx, null, 2));

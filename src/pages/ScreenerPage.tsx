@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import ConditionRow from "../components/screener/ConditionRow";
 import PresetBar from "../components/screener/PresetBar";
 import ResultsTable from "../components/screener/ResultsTable";
+import SignalStatsCard from "../components/screener/SignalStatsCard";
 import { loadScreener } from "../lib/data";
 import {
   describeCondition,
@@ -239,6 +240,9 @@ export default function ScreenerPage({ redUp }: { redUp: boolean }) {
           </>
         )}
       </div>
+
+      {/* 訊號回測：規則過去出現後的表現（展開才載入） */}
+      <SignalStatsCard redUp={redUp} />
     </div>
   );
 }

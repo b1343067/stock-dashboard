@@ -13,6 +13,7 @@ import {
   withoutExcluded,
   dataKeyOf,
   buildNewsEmbeds,
+  statLines,
 } from "./notify";
 import type { NewsItem } from "./finnhub";
 import { makeCondition, sanitizeConditions, type ScreenerData, type ScreenerSeries, type ScreenerTicker } from "./screener";
@@ -233,5 +234,32 @@ describe("市場狀態（ML 實驗室 ③）", () => {
     expect(market.description.split("\n")[0]).toBe("市場狀態：美股（VOO） **修正下跌**（第 12 天）");
     const without = buildMessages(data, cfg, "2026-01-03", null).flatMap((m) => m.embeds).find((e) => e.title.startsWith("📊"))!;
     expect(without.description).not.toContain("市場狀態");
+  });
+});
+
+describe("訊號回測附註（statLines）", () => {
+  const h = (n: number, avg: number | null, win: number | null) => ({ n, avg, win });
+  const stats = {
+    generatedAt: "x",
+    from: "2021-01-01",
+    to: "2026-01-01",
+    tickers: 10,
+    baseline: { h5: h(100, 0.4, 55), h20: h(100, 1.73, 58.4) },
+    rules: [
+      { name: "MACD 死亡交叉", group: "danger" as const, events: 100, symbols: 5, h5: h(100, 0.4, 56), h20: h(100, 1.49, 58.6), lastDate: null },
+      { name: "少", group: "danger" as const, events: 5, symbols: 2, h5: h(5, 1, 60), h20: h(5, -2, 40), lastDate: null },
+    ],
+    skipped: [],
+  };
+  const hit = (rules: string[]) => ({ ticker: {} as ScreenerTicker, rules, isNew: false });
+
+  it("只列今天出現的規則，附上平常的基準；樣本少要標示", () => {
+    const lines = statLines([hit(["MACD 死亡交叉"]), hit(["MACD 死亡交叉", "少", "沒統計"])], stats);
+    expect(lines[0]).toBe("📈 過去 5 年出現後 20 天（平常 +1.7%／上漲 58%）");
+    expect(lines.slice(1)).toEqual(["・MACD 死亡交叉 +1.5%／上漲 59%", "・少 -2.0%／上漲 40%（樣本少）"]);
+  });
+  it("沒有回測資料或沒有對應的規則 → 不附", () => {
+    expect(statLines([hit(["MACD 死亡交叉"])], null)).toEqual([]);
+    expect(statLines([hit(["沒統計"])], stats)).toEqual([]);
   });
 });

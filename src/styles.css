@@ -641,6 +641,18 @@ select:focus, .text-input:focus, .num-input:focus { outline: 2px solid var(--acc
 .cond-actions { display: flex; gap: 14px; align-items: center; margin-top: 10px; }
 .cond-summary { margin: 10px 0 0; font-size: 13px; color: var(--text-2); line-height: 1.7; }
 .cond-summary .joiner { color: var(--accent); }
+/* 訊號回測（篩選器頁最下方，可收合） */
+.sst-summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; list-style-position: outside; }
+.sst-summary .section-title { margin: 0; }
+.sst[open] .sst-summary { margin-bottom: 10px; }
+.sst-group-title { margin: 14px 0 4px; font-size: 13px; color: var(--text-2); }
+.sst-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 110px; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+.sst-base { background: var(--surface-2, transparent); border-top: none; }
+.sst-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sst-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.sst-verdict { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.sst-better, .sst-worse { color: var(--accent); }
+.sst-few { color: var(--muted, var(--text-2)); font-weight: 400; }
 
 .count-badge {
   display: inline-block;
@@ -1435,6 +1447,7 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
   .office-hud { top: 1%; }
   .office-hud-left { left: 14px; }
   .office-hud-bottom { top: auto; left: 14px; }
+  .sst-row { grid-template-columns: minmax(0, 1fr) 84px 84px; gap: 8px; }
   .office-hud-right { right: 14px; }
   .office-tag i { width: 5px; height: 5px; }
 }

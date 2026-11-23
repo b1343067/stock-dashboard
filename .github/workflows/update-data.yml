@@ -126,6 +126,13 @@ jobs:
         if: steps.fresh.outputs.skip != 'true'
         run: npm ci --no-audit --no-fund
 
+      # 訊號回測：危險／偏多規則過去 5 年出現後的表現（寫 signal-stats.json，篩選器頁、Discord、AI 報告用）
+      # 和篩選器同一套程式（src/lib/signalStats.ts），約 2 秒；失敗時保留上一次的檔案
+      - name: 訊號回測（signal-stats.json）
+        if: steps.fresh.outputs.skip != 'true'
+        continue-on-error: true
+        run: npx vite-node scripts/signal-stats.ts
+
       # AI 投研辦公室的每日報告（Claude Code 排程任務）沒有 Finnhub 金鑰，所以在這裡把新聞存成 news.json，
       # 隨資料推到 data 分支；通知也直接用這份，不重複抓。抓不到就保留舊檔。
       - name: 存今天的新聞（news.json）

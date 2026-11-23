@@ -1,6 +1,6 @@
 // 指標篩選器（第二階段）
 import { expect, test } from "@playwright/test";
-import { trackErrors } from "./helpers";
+import { expectNoHorizontalScroll, trackErrors } from "./helpers";
 
 test("篩選器：載入範例組合、切換 AND/OR、點結果看圖再切回來", async ({ page }) => {
   const t = trackErrors(page);
@@ -74,4 +74,43 @@ test("篩選器：均線交叉、成交量條件；複製成通知規則", async
   expect(json.conditions[0].ma2).toBe(200);
   expect(json.conditions[0].id).toBeUndefined();
   await t.expectNoErrors();
+});
+
+test("篩選器：訊號回測卡片展開才載入、顯示規則與結論", async ({ page }) => {
+  const errs = trackErrors(page);
+  const h = (n: number, avg: number, win: number) => ({ n, avg, win });
+  let requested = 0;
+  await page.route(/signal-stats\.json/, (r) => {
+    requested++;
+    return r.fulfill({
+      json: {
+        generatedAt: "2026-11-20T00:00:00Z",
+        from: "2021-11-01",
+        to: "2026-11-19",
+        tickers: 48,
+        baseline: { h5: h(50000, 0.4, 55), h20: h(50000, 1.7, 58) },
+        rules: [
+          { name: "MACD 死亡交叉", group: "danger", events: 2400, symbols: 48, h5: h(2400, 0.4, 56), h20: h(2400, 1.5, 59), lastDate: "2026-11-18" },
+          { name: "50／200 日線死亡交叉", group: "danger", events: 160, symbols: 47, h5: h(160, 1, 58), h20: h(160, 2.9, 64), lastDate: "2026-11-10" },
+        ],
+        skipped: ["週線轉強"],
+      },
+    });
+  });
+  await page.goto("/#/screener");
+  await expect(page.locator(".results")).toBeVisible();
+  expect(requested).toBe(0); // 收起來時不下載
+  await page.getByText("📊 這些訊號過去準不準？").click();
+  await expect(page.locator(".sst-row")).toHaveCount(3); // 基準＋2 條規則
+  await expect(page.locator(".sst")).toContainText("之後反而比平常好（容易嚇出場）");
+  await expect(page.locator(".sst")).toContainText("週線轉強");
+  await expectNoHorizontalScroll(page);
+  await errs.expectNoErrors();
+});
+
+test("篩選器：訊號回測沒有檔案 → 顯示提示，不會壞", async ({ page }) => {
+  await page.route(/signal-stats\.json/, (r) => r.fulfill({ status: 404, body: "" }));
+  await page.goto("/#/screener");
+  await page.getByText("📊 這些訊號過去準不準？").click();
+  await expect(page.locator(".sst")).toContainText("目前沒有回測結果");
 });

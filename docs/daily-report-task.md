@@ -40,7 +40,7 @@ npm run ai:context > /tmp/ai-context.json
 | `stale` | 過期的市場（`"us"`、`"tw"`），空陣列＝正常 |
 | `allowedSymbols` | 可以放進 `refs` 的代號 |
 | `market` | 市場狀態（`regime`，ML 分群）、大盤指標、漲跌家數、漲跌幅前 3 名 |
-| `tech` | `danger` 危險訊號、`bullish` 偏多訊號（規則名稱同 Discord 通知）、`watch` 關注股票的 RSI／MACD／均線狀態 |
+| `tech` | `danger` 危險訊號、`bullish` 偏多訊號（規則名稱同 Discord 通知）、`watch` 關注股票的 RSI／MACD／均線狀態、`ruleHistory` 每條規則過去 5 年出現後 20 天的平均報酬與上漲機率（和 `baseline20d` 平常比，`verdict` 是程式算好的結論；可能是 `null`） |
 | `fundamental` | 本益比最高／最低、殖利率最高、接近 52 週高點／低點、關注股票的基本面（`fromHigh52w` = 距 52 週高點 %） |
 | `news` | 重大財經新聞標題、關注股票新聞、7 天內財報（`earnings7d`） |
 
@@ -52,7 +52,7 @@ npm run ai:context > /tmp/ai-context.json
 
 | 角色 | key | 素材 | 寫什麼 |
 |---|---|---|---|
-| 技術分析師 | `tech` | `tech` | 分「危險訊號」「偏多訊號」「關注股票」等段落；先寫關注股票（`watch: true`）與危險訊號 |
+| 技術分析師 | `tech` | `tech` | 分「危險訊號」「偏多訊號」「關注股票」等段落；先寫關注股票（`watch: true`）與危險訊號。可以引用 `ruleHistory` 說明今天出現的規則過去準不準（照抄 `verdict` 的意思，不要自己推論成買賣建議） |
 | 新聞分析師 | `news` | `news` | 「重大財經新聞」「關注股票新聞」「7 天內財報」；只摘要標題的意思，不轉載內文；`dataDate` 用 `dataDates.news` |
 | 基本面分析師 | `fundamental` | `fundamental` | 「本益比」「殖利率」「52 週高低點」；數字直接引用素材，不要自己算 |
 | 多空辯論 | `debate` | 全部 | `bull`（偏多的理由）、`bear`（偏空的理由）各 2～5 點，**兩邊都要有**，用同一份資料；`sections` 可以是空陣列 |

@@ -14,6 +14,7 @@
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadOrFetchNews } from "./news";
+import type { SignalStatsFile } from "../src/lib/signalStats";
 import { buildMessages, buildState, dataKeyOf, sanitizeNotifyConfig, type DiscordMessage, type NotifyState } from "../src/lib/notify";
 import type { ScreenerData } from "../src/lib/screener";
 
@@ -73,7 +74,9 @@ async function main(): Promise<void> {
   const news = await loadOrFetchNews(cfg, join(DATA, "news.json"));
   // 市場狀態（ML 實驗室 ③）：ML 步驟在通知之前執行；沒有檔案就不列
   const regime = readJson<{ regime?: Record<string, never> }>(join(DATA, "ml-vol.json"))?.regime ?? null;
-  const messages = buildMessages(data, cfg, dataDate, previous, news, Math.floor(Date.now() / 1000), regime);
+  // 訊號回測（scripts/signal-stats.ts 在前一步產生）；沒有就不附
+  const stats = readJson<SignalStatsFile>(join(DATA, "signal-stats.json"));
+  const messages = buildMessages(data, cfg, dataDate, previous, news, Math.floor(Date.now() / 1000), regime, stats);
   // 執行記錄（公開）只印出訊息內容；設定檔本來就是公開的，這裡沒有任何私人資料
   const preview = messages
     .map((m) => [m.content, ...m.embeds.map((e) => `【${e.title}】\n${e.description}`)].join("\n"))

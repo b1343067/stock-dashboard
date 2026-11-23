@@ -12,6 +12,7 @@ import { breadth, periodChange, topMovers } from "./market";
 import type { MlVolData } from "./ml";
 import { evaluateSignals, stockLine, withoutExcluded, type NewsBundle, type NotifyConfig } from "./notify";
 import type { ScreenerData, ScreenerTicker } from "./screener";
+import { statVerdict, verdictText, type SignalStatsFile } from "./signalStats";
 import type { IndexData } from "./types";
 
 /** public/data/news.json（scripts/save-news.ts 每天寫） */
@@ -27,6 +28,8 @@ export interface ContextInput {
   cfg: NotifyConfig;
   /** 報告日期（台灣時間的今天，YYYY-MM-DD） */
   today: string;
+  /** 訊號回測（signal-stats.json）；沒有就是 null */
+  stats?: SignalStatsFile | null;
 }
 
 const r2 = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) ? null : Math.round(v * 100) / 100);
@@ -76,7 +79,7 @@ const top = <T,>(arr: T[], key: (x: T) => number | null, n: number, desc = true)
 
 const headline = (n: NewsItem) => ({ headline: n.headline, source: n.source, time: new Date(n.datetime * 1000).toISOString().slice(0, 16) + "Z", symbol: n.symbol });
 
-export function buildContext({ index, screener, mlVol, news, cfg, today }: ContextInput) {
+export function buildContext({ index, screener, mlVol, news, cfg, today, stats = null }: ContextInput) {
   const dates = latestDates(index);
   const data = withoutExcluded(screener, cfg);
   const watchSet = new Set(cfg.watch);
@@ -117,6 +120,16 @@ export function buildContext({ index, screener, mlVol, news, cfg, today }: Conte
         .map((s) => bySymbol.get(s))
         .filter((t): t is ScreenerTicker => !!t)
         .map((t) => ({ symbol: t.symbol, name: t.name, date: t.lastDate, changePct: r2(t.changePct), status: stockLine(t) })),
+      // 每條規則過去 5 年出現後 20 天的表現（和平常比）：報告可以引用，說明今天的訊號值不值得在意
+      ruleHistory: stats
+        ? {
+            period: `${stats.from} ~ ${stats.to}`,
+            baseline20d: { avgPct: stats.baseline.h20.avg, upPct: stats.baseline.h20.win },
+            rules: stats.rules
+              .filter((r) => r.group !== "preset")
+              .map((r) => ({ name: r.name, group: r.group, events: r.events, avg20dPct: r.h20.avg, up20dPct: r.h20.win, verdict: verdictText(r, statVerdict(r, stats.baseline)) })),
+          }
+        : null,
     },
     fundamental: {
       highestPe: top(fund, (x) => x.pe, 5),
