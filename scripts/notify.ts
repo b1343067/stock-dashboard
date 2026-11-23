@@ -13,9 +13,10 @@
 
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { postDiscord } from "./discord";
 import { loadOrFetchNews } from "./news";
 import type { SignalStatsFile } from "../src/lib/signalStats";
-import { buildMessages, buildState, dataKeyOf, sanitizeNotifyConfig, type DiscordMessage, type NotifyState } from "../src/lib/notify";
+import { buildMessages, buildState, dataKeyOf, sanitizeNotifyConfig, type NotifyState } from "../src/lib/notify";
 import type { ScreenerData } from "../src/lib/screener";
 
 const ROOT = join(__dirname, "..");
@@ -37,19 +38,6 @@ function writeJsonAtomic(path: string, data: unknown): void {
   renameSync(tmp, path);
 }
 
-async function postDiscord(url: string, msg: DiscordMessage): Promise<void> {
-  // allowed_mentions 空白：訊息裡就算出現 @everyone 也不會真的標記所有人
-  const body = JSON.stringify({ username: "投資看盤", content: msg.content, embeds: msg.embeds, allowed_mentions: { parse: [] } });
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
-    if (res.ok) return;
-    // 429 = 送太快被限流，依 Discord 回應的時間等一下再送
-    const wait = res.status === 429 ? Number(res.headers.get("retry-after") ?? "2") * 1000 : 2000 * attempt;
-    console.log(`  Discord 回應 ${res.status}，${wait / 1000} 秒後重試（第 ${attempt} 次）`);
-    await new Promise((r) => setTimeout(r, wait));
-  }
-  throw new Error("Discord 送出失敗（已重試 3 次）");
-}
 
 async function main(): Promise<void> {
   const cfg = sanitizeNotifyConfig(readJson(join(ROOT, "config", "notify.json")));

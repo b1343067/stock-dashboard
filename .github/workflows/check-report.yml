@@ -1,5 +1,6 @@
 # AI 投研辦公室的每日報告推上 main 時，檢查報告有沒有問題（npm run check:report）
 # 為什麼另外一個 workflow？報告每天一份，只改 public/ai/，不需要每次都跑整套建置與瀏覽器測試（ci.yml 會略過這個資料夾）。
+# 檢查通過後把主管今日重點送到 Discord（scripts/notify-ai.ts）。
 # 檢查失敗時這裡會顯示紅色；網站那邊讀到格式錯誤的報告會自動不顯示（大家休假中），不會壞。
 name: 檢查 AI 報告
 
@@ -16,6 +17,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # 要讀上一個 commit 的 latest.json，判斷是不是新的一天
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -23,3 +26,12 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: 檢查 public/ai 底下的所有報告
         run: npm run check:report
+
+      # 檢查通過後，把主管今日重點送到 Discord（每天早上的篩選通知送出時，今天的 AI 報告還沒寫好）
+      # 同一天的報告只送一次；失敗不會讓這個檢查變紅
+      - name: 送 AI 主管今日重點到 Discord
+        if: github.event_name == 'push'
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: npx vite-node scripts/notify-ai.ts
