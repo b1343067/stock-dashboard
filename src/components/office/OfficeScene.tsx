@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { isDarkColor, NAV_SPOTS, project, ROOM, SCENE_H, SCENE_W, SEATS, shade, SIT_Z, spans, spotPosition, tagPosition, tagPositionAt, WALL_H, type Pt } from "../../lib/iso";
 import { ROLE_NAME, ROLE_ORDER } from "../../lib/aiReport";
+import { moodFace, moodSpeed, tvBars, type OfficeMood } from "../../lib/officeMood";
 import { walkPose, type WalkPose } from "../../lib/officeWalk";
 import { t } from "../../lib/i18n";
 import { MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, TODAY_HREF, type Page } from "../../lib/route";
@@ -22,6 +23,8 @@ interface Props {
   /** 看盤頁的連結（記得上次看的股票） */
   chartHref: string;
   onOpen: (role: AiRoleKey) => void;
+  /** 今日氣氛（lib/officeMood.ts，依市場狀態）；沒有 = 平常的樣子 */
+  mood?: OfficeMood;
   /** 疊在房間上的資訊（報告日期、範例標示等） */
   children?: ReactNode;
 }
@@ -288,20 +291,30 @@ function drawRoom(ctx: Ctx, c: Palette) {
 // ---------------------------------------------------------------------------
 // 會動的牆面：電視上的 K 線、時鐘指針
 // ---------------------------------------------------------------------------
-function drawWallScreens(ctx: Ctx, c: Palette, frame: number) {
+function drawWallScreens(ctx: Ctx, c: Palette, frame: number, mood?: OfficeMood) {
   wallR(ctx, 2.97, 4.53, 48, 80, c["--iso-screen"]);
   // 格線
   for (const z of [56, 64, 72]) wallR(ctx, 3.0, 4.5, z, z + 1, shade(c["--iso-screen"], 0.12));
-  // K 線：最後一根會慢慢長（像盤中在跳動）
-  const bars = [[54, 6, 1], [57, 5, 0], [55, 7, 1], [59, 6, 1], [62, 4, 0], [60, 8, 1], [64, 6, 1], [67, 5, 0], [65, 7, 1]];
+  // K 線：方向跟著今日氣氛（上漲一路墊高、下跌一路走低）；最後一根會慢慢長（像盤中在跳動）
+  const bars = tvBars(mood);
   bars.forEach(([z, h, up], i) => {
     const x = 3.07 + i * 0.15;
     const hh = i === bars.length - 1 ? 3 + (frame % 8) : h;
     wallR(ctx, x + 0.04, x + 0.06, z - 2, z + hh + 2, up ? c.up : c.down);
     wallR(ctx, x, x + 0.1, z, z + hh, up ? c.up : c.down);
   });
-  // 均線
-  for (let i = 0; i < 8; i++) line(ctx, P(3.1 + i * 0.15, 0, 58 + i * 1.3), P(3.25 + i * 0.15, 0, 58 + (i + 1) * 1.3), c["--s4"]);
+  // 均線：跟著 K 線的走向（取前後兩根的中間）
+  for (let i = 0; i < 8; i++) {
+    const mid = (k: number) => bars[k][0] + bars[k][1] / 2;
+    line(ctx, P(3.12 + i * 0.15, 0, Math.round(mid(i))), P(3.27 + i * 0.15, 0, Math.round(mid(i + 1))), c["--s4"]);
+  }
+  // 恐慌時電視上方的警示燈閃爍（用琥珀色：紅色在台灣是「漲」，不能拿來當警告）
+  if (mood === "panic") {
+    const on = frame % 6 < 3;
+    // 放在電視左上角（正中間上方是「看盤」標籤，會被擋住）
+    box(ctx, 3.0, 0.04, 82, 0.26, 0.18, 2, c["--iso-metal"]);
+    box(ctx, 3.04, 0.06, 84, 0.18, 0.12, 4, on ? "#ffb020" : "#8a5a14");
+  }
   // 時鐘：秒針每秒走一格（12 個位置）
   const [cx, cy] = P(5.2, 0, 84);
   px(ctx, cx, cy - 4, 1, 4, c["--office-ink"]);
@@ -496,7 +509,7 @@ function outlineSprite(sctx: Ctx, color: [number, number, number]) {
 const LEG = 9;
 
 /** 畫一個人：pose 沒給或 seated → 坐在座位上；否則站在 pose 的位置（走路中或停下來看東西） */
-function person(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, pose?: WalkPose) {
+function person(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, pose?: WalkPose, mood?: OfficeMood) {
   if (!sprite) {
     sprite = document.createElement("canvas");
     sprite.width = SPR_W;
@@ -507,7 +520,7 @@ function person(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, pose?: Wal
   sctx.clearRect(0, 0, SPR_W, SPR_H);
   const s = SEATS[role];
   const standing = !!pose && !pose.seated;
-  drawPersonSprite(sctx, c, role, frame, standing ? pose!.front : s.facing === "front", standing, standing && pose!.walking);
+  drawPersonSprite(sctx, c, role, frame, standing ? pose!.front : s.facing === "front", standing, standing && pose!.walking, mood);
   outlineSprite(sctx, [22, 20, 34]);
   const [sx, sy] = standing ? P(pose!.x, pose!.y) : P(s.x, s.y);
   const top = Math.round(sy) - SPR_Y;
@@ -521,7 +534,7 @@ function person(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, pose?: Wal
   } else ctx.drawImage(sprite, Math.round(sx) - SPR_X, top);
 }
 
-function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, front: boolean, standing = false, walking = false) {
+function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, front: boolean, standing = false, walking = false, mood?: OfficeMood) {
   const s = SEATS[role];
   const shirt = c[s.shirt];
   const shirtD = shade(shirt, -0.22);
@@ -657,7 +670,20 @@ function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, 
     }
     px(ctx, x - 5, headY + 8, 2, 1, shade(c["--red"], 0.55));
     px(ctx, x + 3, headY + 8, 2, 1, shade(c["--red"], 0.55));
-    px(ctx, x - 1, headY + 9, 3, 1, shade(skin, -0.35));
+    // 嘴巴：表情跟著今日氣氛（微笑＝嘴角往上、擔心＝嘴角往下）
+    const lip = shade(skin, -0.35);
+    const face = moodFace(mood);
+    if (face === "smile") {
+      px(ctx, x - 1, headY + 9, 3, 1, lip);
+      px(ctx, x - 2, headY + 8, 1, 1, lip);
+      px(ctx, x + 2, headY + 8, 1, 1, lip);
+    } else if (face === "worried") {
+      px(ctx, x - 1, headY + 8, 3, 1, lip);
+      px(ctx, x - 2, headY + 9, 1, 1, lip);
+      px(ctx, x + 2, headY + 9, 1, 1, lip);
+    } else px(ctx, x - 1, headY + 9, 3, 1, lip);
+    // 恐慌：額頭旁邊冒一滴汗（慢慢往下滑）
+    if (mood === "panic") px(ctx, x + 6, headY + 1 + (Math.floor(frame / 3) % 3), 1, 2, "#7cc8ff");
   } else {
     // 背面：頭髮蓋住後腦（有亮光一條），露出耳朵、脖子
     px(ctx, x - 6, headY - 2, 12, 12, hair);
@@ -760,18 +786,18 @@ function drawPersonSprite(ctx: Ctx, c: Palette, role: AiRoleKey, frame: number, 
 // ---------------------------------------------------------------------------
 // 整個場景（依前後順序：後面的先畫，前面的蓋上去）
 // ---------------------------------------------------------------------------
-function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<AiRoleKey, boolean>, frame: number, poses: Partial<Record<AiRoleKey, WalkPose>> = {}) {
+function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<AiRoleKey, boolean>, frame: number, poses: Partial<Record<AiRoleKey, WalkPose>> = {}, mood?: OfficeMood) {
   // 走動中的人要插在正確的前後順序：長桌後面（y < 4）在後排椅子之前畫，長桌前面在前排之後畫
   const walkers = ROLE_ORDER.filter((r) => present[r] && poses[r] && !poses[r]!.seated);
   const drawWalkers = (behind: boolean) =>
     walkers
       .filter((r) => poses[r]!.y < 4 === behind)
       .sort((a, b) => poses[a]!.x + poses[a]!.y - (poses[b]!.x + poses[b]!.y))
-      .forEach((r) => person(ctx, c, r, frame, poses[r]));
+      .forEach((r) => person(ctx, c, r, frame, poses[r], mood));
   const seated = (r: AiRoleKey) => present[r] && (!poses[r] || poses[r]!.seated);
   ctx.clearRect(0, 0, SCENE_W, SCENE_H);
   ctx.drawImage(bg, 0, 0);
-  drawWallScreens(ctx, c, frame);
+  drawWallScreens(ctx, c, frame, mood);
   const desk = c["--iso-desk"];
   const metal = c["--iso-metal"];
   const on = present;
@@ -803,7 +829,7 @@ function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<
   for (const r of ["tech", "news"] as AiRoleKey[]) {
     const s = SEATS[r];
     chairBack(ctx, c, s.x, s.y, "front");
-    if (seated(r)) person(ctx, c, r, frame);
+    if (seated(r)) person(ctx, c, r, frame, undefined, mood);
   }
 
   // ---- 長桌 ----
@@ -848,7 +874,7 @@ function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<
   for (const r of ["fundamental", "debate"] as AiRoleKey[]) {
     const s = SEATS[r];
     chairSeat(ctx, c, s.x, s.y);
-    if (seated(r)) person(ctx, c, r, frame);
+    if (seated(r)) person(ctx, c, r, frame, undefined, mood);
     chairBack(ctx, c, s.x, s.y, "back");
   }
 
@@ -881,7 +907,7 @@ function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<
   plant(ctx, c, 7.35, 3.9, 2);
   const L = SEATS.lead;
   chairBack(ctx, c, L.x, L.y, "front");
-  if (seated("lead")) person(ctx, c, "lead", frame);
+  if (seated("lead")) person(ctx, c, "lead", frame, undefined, mood);
   const dx0 = 5.9;
   const dy0 = 5.55;
   shadow(ctx, dx0 - 0.1, dy0, 2.1, 1.3);
@@ -907,6 +933,20 @@ function drawFrame(ctx: Ctx, bg: HTMLCanvasElement, c: Palette, present: Record<
     line(ctx, P(lx + 0.05, 3.4, 80), P(lx + 1.15, 3.4, 80), c["--iso-lit"]);
     line(ctx, P(lx + 1.2, 3.22, 80), P(lx + 1.2, 3.38, 80), c["--iso-lit"]);
     if (c.night) poly(ctx, [P(lx - 0.2, 3.0, 18), P(lx + 1.4, 3.0, 18), P(lx + 1.4, 3.7, 18), P(lx - 0.2, 3.7, 18)], "rgba(255,230,150,0.08)");
+  }
+
+  // ---- 上漲的日子：長桌上方慢慢飄下彩紙（類別色，不用紅綠，避免和漲跌色混淆）----
+  if (mood === "up") {
+    const colors = [c["--s1"], c["--s2"], c["--s3"], c["--s4"], c["--accent-strong"]];
+    for (let i = 0; i < 22; i++) {
+      // 每片的位置由編號決定（固定），高度隨時間往下掉、掉到桌面再從上面重來
+      const x = 1.3 + ((i * 37) % 54) / 10;
+      const y = 2.2 + ((i * 13) % 20) / 10;
+      const z = 100 - ((frame * 1.5 + i * 23) % 80);
+      const [sx, sy] = P(x, y, z);
+      const flat = (frame + i) % 4 < 2; // 一下橫一下直，像在翻轉
+      px(ctx, sx + ((frame + i * 3) % 6 < 3 ? 0 : 1), sy, flat ? 3 : 2, flat ? 2 : 3, colors[i % colors.length]);
+    }
   }
 }
 
@@ -955,7 +995,7 @@ function drawGroundShadow(ctx: Ctx, S: number) {
 }
 
 /** 燈光：只照在房間有畫東西的地方（source-atop），深色（夜晚）時比較明顯 */
-function drawLights(ctx: Ctx, S: number, c: Palette, present: Record<AiRoleKey, boolean>, frame: number) {
+function drawLights(ctx: Ctx, S: number, c: Palette, present: Record<AiRoleKey, boolean>, frame: number, mood?: OfficeMood) {
   const night = !!c.night;
   const k = night ? 1 : 0.45;
   const warm = "#ffd27a";
@@ -988,6 +1028,8 @@ function drawLights(ctx: Ctx, S: number, c: Palette, present: Record<AiRoleKey, 
   }
   // 電視光
   glow(ctx, S, { x: 3.75, y: 0.2, z: 62, r: 40, color: screen, a: 0.18 * k });
+  // 恐慌：警示燈亮的時候整面牆染上琥珀色光
+  if (mood === "panic" && frame % 6 < 3) glow(ctx, S, { x: 3.13, y: 0.1, z: 86, r: 70, color: "#ffb020", a: night ? 0.35 : 0.22 });
   // 窗戶的光：白天是暖暖的日光、晚上是月光
   for (const y of [1.2, 2.4, 3.6, 4.8]) {
     glow(ctx, S, { x: 0.6, y, z: 40, r: 50, color: night ? "#9fb4ff" : "#fff6dc", a: night ? 0.1 : 0.22 });
@@ -1000,7 +1042,7 @@ const SCALE = 4;
 
 const SPOT_HREF: Record<string, string> = { today: TODAY_HREF, market: MARKET_HREF, screener: SCREENER_HREF, portfolio: PORTFOLIO_HREF };
 
-export default function OfficeScene({ present, loading, redUp, chartHref, onOpen, children }: Props) {
+export default function OfficeScene({ present, loading, redUp, chartHref, onOpen, mood, children }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // 名牌與點擊範圍跟著走動的人移動：直接改 style，避免每秒 8 次重新 render
   const tagRefs = useRef<Partial<Record<AiRoleKey, HTMLElement | null>>>({});
@@ -1038,7 +1080,7 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
       const poses: Partial<Record<AiRoleKey, WalkPose>> = {};
       for (const r of ROLE_ORDER) {
         if (!present[r]) continue;
-        const p = walkPose(r, (now - t0) / 1000, [SEATS[r].x, SEATS[r].y]);
+        const p = walkPose(r, (now - t0) / 1000, [SEATS[r].x, SEATS[r].y], moodSpeed(mood));
         poses[r] = p;
         const pos = p.seated ? tagPosition(r) : tagPositionAt(p.x, p.y, LEG);
         for (const el of [tagRefs.current[r], hitRefs.current[r]]) {
@@ -1047,12 +1089,12 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
           el.style.top = `${pos.top}%`;
         }
       }
-      drawFrame(lctx, bg, c, present, frame, poses);
+      drawFrame(lctx, bg, c, present, frame, poses, mood);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawGroundShadow(ctx, S);
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(lo, 0, 0, SCENE_W * S, SCENE_H * S);
-      drawLights(ctx, S, c, present, frame);
+      drawLights(ctx, S, c, present, frame, mood);
     };
 
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1073,7 +1115,7 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
     };
     // present 用 key 判斷有沒有變（物件每次 render 都是新的）
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme, redUp, key]);
+  }, [theme, redUp, key, mood]);
 
   const tags = useMemo(() => ROLE_ORDER.map((r) => ({ r, ...tagPosition(r) })), []);
   const hrefOf = (p: Page) => (p === "chart" ? chartHref : SPOT_HREF[p]);

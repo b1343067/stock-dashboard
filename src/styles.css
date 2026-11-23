@@ -1391,10 +1391,14 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
 .office-hud { position: absolute; top: 2%; z-index: 5; display: flex; flex-wrap: wrap; gap: 6px; max-width: 48%; pointer-events: none; }
 .office-hud-left { left: 0; }
 .office-hud-right { right: 0; justify-content: flex-end; }
+.office-hud-bottom { top: auto; bottom: 2%; left: 0; max-width: 60%; }
 .hud-chip { pointer-events: auto; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); white-space: nowrap; }
 .hud-select { font-family: inherit; cursor: pointer; appearance: auto; }
 .hud-sample { background: var(--warn-bg); color: var(--warn-text); border-color: transparent; }
 .hud-warn { background: var(--warn-bg); color: var(--warn-text); border-color: transparent; white-space: normal; }
+.hud-mood { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+.hud-mood i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.hud-mood:hover { color: var(--accent); }
 /* 主管的一句話摘要 */
 /* 主管的今日重點卡片 */
 .office-brief {
@@ -1430,6 +1434,7 @@ a.btn-link-as-button { text-decoration: none; display: inline-flex; align-items:
   .office-scene { width: auto; min-width: 0; margin: 0 -14px; }
   .office-hud { top: 1%; }
   .office-hud-left { left: 14px; }
+  .office-hud-bottom { top: auto; left: 14px; }
   .office-hud-right { right: 14px; }
   .office-tag i { width: 5px; height: 5px; }
 }

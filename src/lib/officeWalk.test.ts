@@ -55,3 +55,15 @@ describe("走動", () => {
     expect(near.front).toBe(false);
   });
 });
+
+describe("走路速度", () => {
+  it("speed 加倍 → 比較早走到目的地，但一樣會回到座位", () => {
+    const seat: [number, number] = [2.4, 2.1];
+    const t = ROUTES.tech!.start + 1.5;
+    const slow = walkPose("tech", t, seat, 1);
+    const fast = walkPose("tech", t, seat, 2);
+    const dist = (p: { x: number; y: number }) => Math.hypot(p.x - seat[0], p.y - seat[1]);
+    expect(dist(fast)).toBeGreaterThan(dist(slow));
+    expect(walkPose("tech", ROUTES.tech!.start + ROUTES.tech!.cycle - 1, seat, 2).seated).toBe(true);
+  });
+});

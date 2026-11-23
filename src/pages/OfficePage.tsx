@@ -7,7 +7,10 @@
 import { useCallback, useEffect, useState } from "react";
 import OfficeScene from "../components/office/OfficeScene";
 import ReportPanel from "../components/office/ReportPanel";
-import { loadAiIndex, loadAiReport } from "../lib/data";
+import { loadAiIndex, loadAiReport, loadMlVol } from "../lib/data";
+import { REGIME_COLOR } from "../lib/ml";
+import { officeMood, type MoodInfo } from "../lib/officeMood";
+import { LAB_HREF } from "../lib/route";
 import { doneCount, pick, reportStale, ROLE_ORDER } from "../lib/aiReport";
 import { getLang, t } from "../lib/i18n";
 import type { AiReport, AiRoleKey } from "../lib/types";
@@ -26,6 +29,18 @@ export default function OfficePage({ redUp, chartHref }: Props) {
   // 歷史報告：index.json 的日期清單；picked = 使用者選的日期（null = 最新）
   const [dates, setDates] = useState<string[]>([]);
   const [picked, setPicked] = useState<string | null>(null);
+
+  // 今日氣氛：ML 市場狀態（ml-vol.json 是小檔案）；讀不到就維持平常的樣子
+  const [mood, setMood] = useState<MoodInfo | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void loadMlVol().then((d) => {
+      if (!cancelled) setMood(officeMood(d));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +85,7 @@ export default function OfficePage({ redUp, chartHref }: Props) {
         redUp={redUp}
         chartHref={chartHref}
         onOpen={setOpen}
+        mood={mood?.mood}
       >
         {/* 房間左上角：報告資訊；右上角：完成人數 */}
         <div className="office-hud office-hud-left" role="status">
@@ -124,6 +140,15 @@ export default function OfficePage({ redUp, chartHref }: Props) {
             <span className="hud-chip">
               {t("{0}／5 位完成", [doneCount(report)])}
             </span>
+          </div>
+        )}
+        {/* 左下角（房間外的空白處，不會擋到物件標籤）：今日氣氛的來源，點了到 ML 實驗室看說明 */}
+        {mood && (
+          <div className="office-hud office-hud-bottom">
+            <a className="hud-chip hud-mood" href={LAB_HREF} title={t("市場狀態（看說明）")}>
+              <i style={{ background: `var(${REGIME_COLOR[mood.key]})` }} aria-hidden="true" />
+              {t(mood.label)} {t(mood.name)}
+            </a>
           </div>
         )}
       </OfficeScene>

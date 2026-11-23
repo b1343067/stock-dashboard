@@ -119,3 +119,26 @@ test("正式報告：沒有範例標示、可以切換歷史日期", async ({ pa
   await expect(page.locator(".office-brief")).toContainText("今天的主管摘要");
   await errs.expectNoErrors();
 });
+
+test("今日氣氛：依市場狀態顯示小標籤、點了到 ML 實驗室；讀不到也不會壞", async ({ page }) => {
+  const errs = trackErrors(page);
+  const regime = (key: string, name: string, label: string) => ({ key, name, label, since: "2026-11-01", days: 3, date: "2026-11-20", ret20: 0, vol20: 10, dd: 0 });
+  await page.route(/ml-vol\.json/, (r) =>
+    r.fulfill({ json: { generatedAt: "2026-11-20", horizon: 5, models: [], tickers: {}, regime: { VOO: regime("calm", "平穩（低波動）", "美股（VOO）"), "0050.TW": regime("panic", "高波動（恐慌）", "台股（0050）") } } }),
+  );
+  await page.goto("/");
+  // 兩個市場取比較嚴重的（台股恐慌）
+  const chip = page.locator(".hud-mood");
+  await expect(chip).toContainText("高波動（恐慌）");
+  await expect(chip).toContainText("台股（0050）");
+  await chip.click();
+  await expect(page).toHaveURL(/#\/lab/);
+  await errs.expectNoErrors();
+});
+
+test("今日氣氛：ml-vol.json 讀不到 → 不顯示標籤，辦公室照常", async ({ page }) => {
+  await page.route(/ml-vol\.json/, (r) => r.fulfill({ status: 404, body: "" }));
+  await page.goto("/");
+  await expect(page.locator(".office-tag")).toHaveCount(5);
+  await expect(page.locator(".hud-mood")).toHaveCount(0);
+});

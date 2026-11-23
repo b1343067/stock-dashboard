@@ -68,16 +68,20 @@ function facing(dx: number, dy: number): { front: boolean; flip: boolean } {
   return { front: dx + dy > 0, flip: dx - dy < 0 };
 }
 
-/** t 秒時這個角色在哪裡、在做什麼。沒有路線（主管）或今天休假 → 一律坐著 */
-export function walkPose(role: AiRoleKey, t: number, seat: Pt): WalkPose {
+/**
+ * t 秒時這個角色在哪裡、在做什麼。沒有路線（主管）或今天休假 → 一律坐著。
+ * speed = 走路速度倍數（officeMood.ts：恐慌時走比較快）；只影響走路，停留時間不變。
+ */
+export function walkPose(role: AiRoleKey, t: number, seat: Pt, speed = 1): WalkPose {
   const r = ROUTES[role];
   const seated: WalkPose = { x: seat[0], y: seat[1], walking: false, seated: true, front: true, flip: false };
   if (!r || t < r.start) return seated;
   const len = length(r.route);
-  const d = len / WALK_SPEED;
+  const v = WALK_SPEED * speed;
+  const d = len / v;
   const tc = (t - r.start) % r.cycle;
   if (tc < d) {
-    const p = along(r.route, tc * WALK_SPEED);
+    const p = along(r.route, tc * v);
     return { x: p.x, y: p.y, walking: true, seated: false, ...facing(p.dx, p.dy) };
   }
   if (tc < d + PAUSE) {
@@ -86,7 +90,7 @@ export function walkPose(role: AiRoleKey, t: number, seat: Pt): WalkPose {
   }
   if (tc < 2 * d + PAUSE) {
     const back = [...r.route].reverse();
-    const p = along(back, (tc - d - PAUSE) * WALK_SPEED);
+    const p = along(back, (tc - d - PAUSE) * v);
     return { x: p.x, y: p.y, walking: true, seated: false, ...facing(p.dx, p.dy) };
   }
   return seated;
