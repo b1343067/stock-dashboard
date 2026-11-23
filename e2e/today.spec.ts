@@ -154,7 +154,8 @@ test("今日總覽：新聞很多時先顯示 12 則；資料載入後才查新�
   await page.route("**/api/quote**", (r) => r.fulfill({ status: 503, json: {} }));
   await page.route("**/api/news**", (r) => {
     calls.push("news");
-    return r.fulfill({ json: { items: Array.from({ length: 20 }, (_, i) => ({ id: String(i), symbol: "TSLA", headline: `Headline ${i}`, source: "CNBC", url: `https://example.com/${i}`, datetime: now() - i * 60 })) } });
+    // 代號用不在觀察清單的 TEST：真實資料裡 TSLA 某天大漲大跌超過 5% 時，它的新聞會被放進「異常波動」框，數量就不是 12 了
+    return r.fulfill({ json: { items: Array.from({ length: 20 }, (_, i) => ({ id: String(i), symbol: "TEST", headline: `Headline ${i}`, source: "CNBC", url: `https://example.com/${i}`, datetime: now() - i * 60 })) } });
   });
   await page.route("**/api/earnings**", (r) => {
     calls.push("earnings");
