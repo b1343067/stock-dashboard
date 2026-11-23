@@ -73,6 +73,10 @@ export default function OfficePage({ redUp, chartHref }: Props) {
   // 範例報告的日期是固定的、看歷史報告時本來就是舊的：這兩種不顯示「過期」提醒
   const stale = report && !report.sample && !picked && reportStale(report, today);
   const lead = report?.roles.lead;
+  // 偶爾說話用的一句話摘要（只有完成報告的人）
+  const summaries = Object.fromEntries(
+    ROLE_ORDER.filter((k) => report?.roles[k].status === "done").map((k) => [k, pick(report!.roles[k].summary, lang)]),
+  ) as Partial<Record<AiRoleKey, string>>;
 
   return (
     <div className="office-page">
@@ -86,6 +90,7 @@ export default function OfficePage({ redUp, chartHref }: Props) {
         chartHref={chartHref}
         onOpen={setOpen}
         mood={mood?.mood}
+        summaries={summaries}
       >
         {/* 房間左上角：報告資訊；右上角：完成人數 */}
         <div className="office-hud office-hud-left" role="status">
@@ -153,6 +158,7 @@ export default function OfficePage({ redUp, chartHref }: Props) {
         )}
       </OfficeScene>
 
+      {state === "loading" && !report && <div className="office-brief-skeleton" aria-hidden="true" />}
       {/* 主管的今日重點（摘要＋3～5 點；點「看完整報告」打開主管報告） */}
       {lead?.status === "done" && (
         <section className="office-brief" aria-label={t("今日重點")}>

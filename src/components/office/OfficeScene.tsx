@@ -5,10 +5,12 @@
 // 角色頭上的名牌、物件（門、窗、電視、看板、書櫃）上的標籤都是 HTML 連結／按鈕，
 // 可以用鍵盤與螢幕報讀器操作；辦公室頁不顯示底部導覽列，改由這些物件切換頁面。
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isDarkColor, NAV_SPOTS, project, ROOM, SCENE_H, SCENE_W, SEATS, shade, SIT_Z, spans, spotPosition, tagPosition, tagPositionAt, WALL_H, type Pt } from "../../lib/iso";
 import { ROLE_NAME, ROLE_ORDER } from "../../lib/aiReport";
 import { moodFace, moodSpeed, tvBars, type OfficeMood } from "../../lib/officeMood";
+import { talkAt, talkLine } from "../../lib/officeTalk";
+import { clockHands, dayPhase, isWeekend, PHASE_SKY, type DayPhase } from "../../lib/officeTime";
 import { walkPose, type WalkPose } from "../../lib/officeWalk";
 import { t } from "../../lib/i18n";
 import { MARKET_HREF, PORTFOLIO_HREF, SCREENER_HREF, TODAY_HREF, type Page } from "../../lib/route";
@@ -23,6 +25,8 @@ interface Props {
   /** 看盤頁的連結（記得上次看的股票） */
   chartHref: string;
   onOpen: (role: AiRoleKey) => void;
+  /** 每個人今天報告的一句話摘要（已依語言選好）：偶爾會說出來（officeTalk.ts） */
+  summaries?: Partial<Record<AiRoleKey, string>>;
   /** 今日氣氛（lib/officeMood.ts，依市場狀態）；沒有 = 平常的樣子 */
   mood?: OfficeMood;
   /** 疊在房間上的資訊（報告日期、範例標示等） */
@@ -39,11 +43,15 @@ const VARS = [
   "--s1", "--s2", "--s3", "--s4", "--accent-strong", "--red", "--green",
 ];
 
-function readPalette(redUp: boolean): Palette {
+function readPalette(redUp: boolean, phase: DayPhase = "day"): Palette {
   const cs = getComputedStyle(document.documentElement);
   const p: Record<string, string> = {};
   for (const v of VARS) p[v] = cs.getPropertyValue(v).trim() || "#888888";
-  return { ...p, night: isDarkColor(p["--iso-wall"]) ? "1" : "", up: redUp ? p["--red"] : p["--green"], down: redUp ? p["--green"] : p["--red"] };
+  const dark = isDarkColor(p["--iso-wall"]);
+  // 淺色主題跟著台灣時間：晚上畫夜景＋開燈（牆壁維持淺色），清晨、黃昏換天空顏色；深色主題一律夜景
+  if (!dark && PHASE_SKY[phase]) p["--iso-sky"] = PHASE_SKY[phase]!;
+  const night = dark || phase === "night";
+  return { ...p, night: night ? "1" : "", up: redUp ? p["--red"] : p["--green"], down: redUp ? p["--green"] : p["--red"] };
 }
 
 // ---------------------------------------------------------------------------
@@ -315,9 +323,13 @@ function drawWallScreens(ctx: Ctx, c: Palette, frame: number, mood?: OfficeMood)
     box(ctx, 3.0, 0.04, 82, 0.26, 0.18, 2, c["--iso-metal"]);
     box(ctx, 3.04, 0.06, 84, 0.18, 0.12, 4, on ? "#ffb020" : "#8a5a14");
   }
-  // 時鐘：秒針每秒走一格（12 個位置）
+  // 時鐘：時針、分針是真的台灣時間；紅點（秒針）每秒走一格（12 個位置）
   const [cx, cy] = P(5.2, 0, 84);
-  px(ctx, cx, cy - 4, 1, 4, c["--office-ink"]);
+  const hands = clockHands(new Date());
+  for (const [turn, len] of [[hands.hour, 2], [hands.minute, 3]] as const) {
+    const a = turn * Math.PI * 2;
+    for (let i = 0; i <= len; i++) px(ctx, cx + Math.round(Math.sin(a) * i), cy - Math.round(Math.cos(a) * i), 1, 1, c["--office-ink"]);
+  }
   const sec = Math.floor(frame / 8) % 12;
   const ang = (sec / 12) * Math.PI * 2;
   px(ctx, cx + Math.round(Math.sin(ang) * 3), cy - Math.round(Math.cos(ang) * 3), 1, 1, c["--red"]);
@@ -1037,28 +1049,47 @@ function drawLights(ctx: Ctx, S: number, c: Palette, present: Record<AiRoleKey, 
   ctx.restore();
 }
 
-/** 放大倍數：手機（3 倍螢幕、寬約 390px）與桌機（約 1000px）都夠清楚 */
+/** 最大放大倍數：桌機（約 1000px）夠清楚；實際用多少倍依畫面大小決定（見 useEffect） */
 const SCALE = 4;
 
 const SPOT_HREF: Record<string, string> = { today: TODAY_HREF, market: MARKET_HREF, screener: SCREENER_HREF, portfolio: PORTFOLIO_HREF };
 
-export default function OfficeScene({ present, loading, redUp, chartHref, onOpen, mood, children }: Props) {
+export default function OfficeScene({ present, loading, redUp, chartHref, onOpen, mood, summaries = {}, children }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // 名牌與點擊範圍跟著走動的人移動：直接改 style，避免每秒 8 次重新 render
   const tagRefs = useRef<Partial<Record<AiRoleKey, HTMLElement | null>>>({});
   const hitRefs = useRef<Partial<Record<AiRoleKey, HTMLElement | null>>>({});
   const theme = useThemeColors(); // 只當作「主題變了」的訊號，顏色另外讀
   const key = ROLE_ORDER.map((r) => (present[r] ? 1 : 0)).join("");
+  // 對話框：位置與文字在動畫迴圈裡直接改（和名牌一樣）；摘要用 ref，報告換了不用重啟動畫
+  const bubbleRef = useRef<HTMLButtonElement>(null);
+  const bubbleRole = useRef<AiRoleKey | null>(null);
+  const summariesRef = useRef(summaries);
+  summariesRef.current = summaries;
+  // 台灣時間的天色與週末：每分鐘檢查一次，變了才重畫背景
+  const [phase, setPhase] = useState(() => dayPhase(new Date()));
+  const [weekend, setWeekend] = useState(() => isWeekend(new Date()));
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setPhase(dayPhase(new Date()));
+      setWeekend(isWeekend(new Date()));
+    }, 60_000);
+    return () => {
+      window.clearInterval(id);
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return; // 沒有 canvas（極舊瀏覽器）：只顯示名牌、標籤與下方內容
-    const c = readPalette(redUp);
+    const c = readPalette(redUp, phase);
     // 為什麼要放大成整數倍？像素畫直接用 CSS 縮放到非整數倍（例如 0.97×、2.3×）時，
     // 有的像素變 2 格、有的變 3 格，看起來粗糙不平均。先在程式裡放大 S 倍（每個像素都是 S×S），
     // 再讓瀏覽器平滑縮到畫面大小，邊緣就會又清楚又整齊。
-    const S = SCALE;
+    // 放大倍數依實際顯示的像素數決定（2～4 倍）：手機畫面小，用 4 倍是多算 4 倍的像素，
+    // 每一格都要花更多時間（Lighthouse 量到手機上每格 100ms），2～3 倍就夠清楚
+    const S = Math.min(SCALE, Math.max(2, Math.ceil(((canvas.clientWidth || SCENE_W * SCALE) * (window.devicePixelRatio || 1)) / SCENE_W)));
     canvas.width = SCENE_W * S;
     canvas.height = SCENE_H * S;
     const mk = () => {
@@ -1074,6 +1105,7 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
     if (!bctx || !lctx) return;
     drawRoom(bctx, c);
 
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     // 每一格算每個人現在在哪裡（officeWalk.ts 的純函式，依經過秒數決定），名牌直接改 DOM 位置跟著走（不重新 render React）
     const t0 = performance.now();
     const render = (frame: number, now: number) => {
@@ -1089,6 +1121,29 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
           el.style.top = `${pos.top}%`;
         }
       }
+      // 偶爾有人說一句話（減少動態時不說）
+      const bubble = bubbleRef.current;
+      const talk = still ? null : talkAt((now - t0) / 1000, ROLE_ORDER.filter((r) => present[r]));
+      if (bubble) {
+        if (!talk) {
+          bubble.hidden = true;
+          bubbleRole.current = null;
+        } else {
+          const p = poses[talk.role]!;
+          const pos = p.seated ? tagPosition(talk.role) : tagPositionAt(p.x, p.y, LEG);
+          bubble.style.left = `${pos.left}%`;
+          bubble.style.top = `${pos.top}%`;
+          const tag = `${talk.role}:${talk.k}`;
+          if (bubble.dataset.key !== tag) {
+            const line = talkLine(talk.role, talk.k, { summaries: summariesRef.current, mood, phase, weekend });
+            bubble.dataset.key = tag;
+            bubble.textContent = line.kind === "report" ? line.text : t(line.text);
+            bubble.title = t("看{0}的報告", [t(ROLE_NAME[talk.role])]);
+          }
+          bubbleRole.current = talk.role;
+          bubble.hidden = false;
+        }
+      }
       drawFrame(lctx, bg, c, present, frame, poses, mood);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawGroundShadow(ctx, S);
@@ -1097,10 +1152,16 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
       drawLights(ctx, S, c, present, frame, mood);
     };
 
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
     let last = -1;
+    // 辦公室捲到畫面外（例如往下看主管重點）時停止動畫，手機比較省電；捲回來再繼續
+    // （分頁切到背景時瀏覽器本來就會暫停 requestAnimationFrame）
+    let visible = true;
     const tick = (now: number) => {
+      if (!visible) {
+        raf = 0;
+        return;
+      }
       const frame = Math.floor(now / 125); // 每秒 8 格
       if (frame !== last) {
         last = frame;
@@ -1108,14 +1169,25 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
       }
       raf = requestAnimationFrame(tick);
     };
+    let io: IntersectionObserver | null = null;
     if (still) render(1, t0); // 減少動態：只畫一張，大家都坐著
-    else raf = requestAnimationFrame(tick);
+    else {
+      raf = requestAnimationFrame(tick);
+      if (typeof IntersectionObserver !== "undefined") {
+        io = new IntersectionObserver(([e]) => {
+          visible = e.isIntersecting;
+          if (visible && !raf) raf = requestAnimationFrame(tick);
+        });
+        io.observe(canvas);
+      }
+    }
     return () => {
       cancelAnimationFrame(raf);
+      io?.disconnect();
     };
     // present 用 key 判斷有沒有變（物件每次 render 都是新的）
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme, redUp, key, mood]);
+  }, [theme, redUp, key, mood, phase, weekend]);
 
   const tags = useMemo(() => ROLE_ORDER.map((r) => ({ r, ...tagPosition(r) })), []);
   const hrefOf = (p: Page) => (p === "chart" ? chartHref : SPOT_HREF[p]);
@@ -1167,6 +1239,16 @@ export default function OfficeScene({ present, loading, redUp, chartHref, onOpen
           {!loading && <span className={present[r] ? "sr-only" : "office-tag-off"}>{present[r] ? t("已完成") : t("休假中")}</span>}
         </button>
       ))}
+      {/* 說話的對話框：點了打開那個人的報告 */}
+      <button
+        ref={bubbleRef}
+        type="button"
+        className="office-bubble"
+        hidden
+        onClick={() => {
+          if (bubbleRole.current) onOpen(bubbleRole.current);
+        }}
+      />
       {children}
     </div>
   );
