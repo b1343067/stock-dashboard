@@ -1,21 +1,21 @@
 {
   "version": 1,
   "sample": false,
-  "date": "2026-11-26",
-  "generatedAt": "2026-11-26T00:26:36Z",
+  "date": "2026-11-27",
+  "generatedAt": "2026-11-27T00:26:55Z",
   "dataDates": {
     "us": "2026-11-25",
-    "tw": "2026-11-25",
-    "news": "2026-11-25"
+    "tw": "2026-11-26",
+    "news": "2026-11-26"
   },
   "staleNote": null,
   "roles": {
     "tech": {
       "status": "done",
-      "dataDate": "2026-11-25",
+      "dataDate": "2026-11-26",
       "summary": {
-        "zh": "危險訊號 3 檔都是跌破 200 日線，偏多訊號 9 檔以超賣反彈為主",
-        "en": "All 3 warning signals are breaks below the 200-day MA; 9 bullish signals are mostly oversold rebounds"
+        "zh": "AMZN、TSLA 跌破 200 日線，偏多訊號 8 檔以超賣反彈為主",
+        "en": "AMZN and TSLA broke below the 200-day MA; 8 bullish signals, mostly oversold rebounds"
       },
       "sections": [
         {
@@ -26,8 +26,8 @@
           "items": [
             {
               "text": {
-                "zh": "COST 下跌 0.45%，RSI 70.2 進入超買區，MACD 偏空、均線仍多頭排列",
-                "en": "COST fell 0.45%; RSI 70.2 is in overbought territory, MACD bearish, MAs still in bullish alignment"
+                "zh": "COST 下跌 0.45%，RSI 70.2 超買，MACD 偏空、均線多頭排列",
+                "en": "COST fell 0.45%; RSI 70.2 is overbought, MACD bearish, MAs in bullish alignment"
               },
               "refs": [
                 {
@@ -38,8 +38,8 @@
             },
             {
               "text": {
-                "zh": "AMZN 下跌 3.12%、TSLA 下跌 1.18%，兩檔都跌破 200 日線，MACD 偏空、均線盤整",
-                "en": "AMZN fell 3.12% and TSLA 1.18%; both broke below the 200-day MA, with bearish MACD and range-bound MAs"
+                "zh": "AMZN 下跌 3.12%、TSLA 下跌 1.18%，MACD 偏空、均線盤整",
+                "en": "AMZN fell 3.12% and TSLA 1.18%; MACD bearish, MAs range-bound"
               },
               "refs": [
                 {
@@ -54,8 +54,8 @@
             },
             {
               "text": {
-                "zh": "LLY 下跌 1.09%，RSI 56.3、MACD 偏空，均線由多頭排列轉為盤整",
-                "en": "LLY fell 1.09%; RSI 56.3, MACD bearish, MAs now range-bound"
+                "zh": "LLY 下跌 1.09%，RSI 56.3、MACD 偏空、均線盤整",
+                "en": "LLY fell 1.09%; RSI 56.3, MACD bearish, MAs range-bound"
               },
               "refs": [
                 {
@@ -86,8 +86,8 @@
           "items": [
             {
               "text": {
-                "zh": "AMZN、TSLA、2330.TW 跌破 200 日線，2330.TW 同時也出現超賣反彈訊號",
-                "en": "AMZN, TSLA and 2330.TW broke below the 200-day MA; 2330.TW also shows an oversold-rebound signal"
+                "zh": "AMZN、TSLA 跌破 200 日線，兩檔都是關注股票",
+                "en": "AMZN and TSLA broke below the 200-day MA; both are on the watch list"
               },
               "refs": [
                 {
@@ -97,17 +97,13 @@
                 {
                   "symbol": "TSLA",
                   "changePct": -1.18
-                },
-                {
-                  "symbol": "2330.TW",
-                  "changePct": -3.59
                 }
               ]
             },
             {
               "text": {
-                "zh": "過去 5 年跌破 200 日線後 20 天平均 1.43%、上漲機率 56.74%，和平常差不多",
-                "en": "Over 5 years, 20 days after a 200-day MA break averaged 1.43% with a 56.74% up rate, similar to normal"
+                "zh": "過去 5 年跌破 200 日線後 20 天平均 1.44%、上漲機率 56.69%，和平常差不多",
+                "en": "Over 5 years, 20 days after a 200-day MA break averaged 1.44% with a 56.69% up rate, similar to normal"
               },
               "refs": []
             }
@@ -121,13 +117,13 @@
           "items": [
             {
               "text": {
-                "zh": "超賣反彈出現在 006208.TW、2330.TW、CAT、GOOGL、INTC、PLTR、TSM、VT",
-                "en": "Oversold rebound signals appeared in 006208.TW, 2330.TW, CAT, GOOGL, INTC, PLTR, TSM and VT"
+                "zh": "超賣反彈出現在 006208.TW、CAT、GOOGL、INTC、PLTR、TSM、VT",
+                "en": "Oversold rebound signals appeared in 006208.TW, CAT, GOOGL, INTC, PLTR, TSM and VT"
               },
               "refs": [
                 {
                   "symbol": "006208.TW",
-                  "changePct": 10
+                  "changePct": -5.56
                 },
                 {
                   "symbol": "GOOGL",
@@ -152,8 +148,8 @@
             },
             {
               "text": {
-                "zh": "BND 上漲 0.34% 並突破 200 日線；此規則過去表現和平常差不多",
-                "en": "BND rose 0.34% and broke above the 200-day MA; historically this rule performed similar to normal"
+                "zh": "BND 上漲 0.34% 並突破 200 日線，這條規則過去表現和平常差不多",
+                "en": "BND rose 0.34% and crossed above the 200-day MA; historically this rule performed similar to normal"
               },
               "refs": [
                 {
@@ -168,43 +164,43 @@
     },
     "news": {
       "status": "done",
-      "dataDate": "2026-11-25",
+      "dataDate": "2026-11-26",
       "summary": {
-        "zh": "財經新聞聚焦 SpaceX 衛星與股價波動、輝達執行長的消息，以及假期零售",
-        "en": "News focused on SpaceX satellites and share swings, Nvidia CEO headlines and holiday retail"
+        "zh": "中東衝突消息密集，美國第三季 GDP 大幅上修引發爭議",
+        "en": "Dense Middle East conflict headlines; a large upward revision to US Q3 GDP drew controversy"
       },
       "sections": [
         {
           "heading": {
             "zh": "重大財經新聞",
-            "en": "Major market news"
+            "en": "Market news"
           },
           "items": [
             {
               "text": {
-                "zh": "美國副總統 Vance 表示獲告知黃仁勳並未遭司法部調查",
-                "en": "Vance said he was assured Jensen Huang was not under DOJ investigation"
+                "zh": "沙烏地阿美 Jazan 煉油廠遭攻擊，一名員工死亡、部分作業停擺",
+                "en": "An attack on Saudi Aramco's Jazan refinery killed a worker and halted some operations"
               },
               "refs": []
             },
             {
               "text": {
-                "zh": "SpaceX 獲 FCC 核准部署 100 萬顆軌道資料中心衛星；另有報導其股價因算力需求疑慮重挫",
-                "en": "SpaceX won FCC approval for 1 million orbital data-center satellites; another report said its shares crashed on compute-demand concerns"
+                "zh": "科威特一處設施遇襲造成兩名義大利人死亡，伊朗否認涉入",
+                "en": "Two Italians were killed in an attack on a Kuwait site; Iran denied involvement"
               },
               "refs": []
             },
             {
               "text": {
-                "zh": "選擇權交易員押注 VIX 不會再升高；梅西百貨感恩節遊行因惡劣天氣延期",
-                "en": "Options traders bet against a higher VIX; Macy's postponed its Thanksgiving Day Parade due to severe weather"
+                "zh": "美國第三季 GDP 大幅上修，川普要求調查這項「創紀錄的錯誤」",
+                "en": "US Q3 GDP was revised sharply higher; Trump demanded a probe into the 'record setting error'"
               },
               "refs": []
             },
             {
               "text": {
-                "zh": "路透：Boehly 簽署美方支持的換股協議，收購 Lukoil 海外資產",
-                "en": "Reuters: Boehly signed a US-backed share swap deal to acquire Lukoil's global assets"
+                "zh": "伊拉克關閉庫德斯坦地區通往敘利亞與伊朗的兩個邊境口岸",
+                "en": "Iraq closed two border crossings in the Kurdistan region with Syria and Iran"
               },
               "refs": []
             }
@@ -213,37 +209,13 @@
         {
           "heading": {
             "zh": "關注股票新聞",
-            "en": "Watch-list news"
+            "en": "Watch list news"
           },
           "items": [
             {
               "text": {
-                "zh": "COST：報導指震盪市況下資金轉向穩定的零售股 Costco，但仍有考驗待觀察",
-                "en": "COST: reports say Wall Street gravitates to reliable retailer Costco in a rocky market, though a test looms"
-              },
-              "refs": [
-                {
-                  "symbol": "COST",
-                  "changePct": -0.45
-                }
-              ]
-            },
-            {
-              "text": {
-                "zh": "AMZN：聯邦法院在電商產品安全案中判 CPSC 勝訴；另有文章列它為避開 AI 回檔的科技股",
-                "en": "AMZN: a federal court ruled for the CPSC in an e-commerce product safety case; another piece lists it among tech stocks sidestepping the AI downturn"
-              },
-              "refs": [
-                {
-                  "symbol": "AMZN",
-                  "changePct": -3.12
-                }
-              ]
-            },
-            {
-              "text": {
-                "zh": "TSLA：報導 Altimeter 新建立約 6.8 億美元的 Tesla 部位",
-                "en": "TSLA: reports say Altimeter opened a roughly $680 million Tesla stake"
+                "zh": "TSLA：歐盟把自駕表決延到 12 月 15 日，股價下跌 1.18%",
+                "en": "TSLA: the EU delayed its self-driving vote to December 15; shares slipped 1.18%"
               },
               "refs": [
                 {
@@ -254,14 +226,46 @@
             },
             {
               "text": {
-                "zh": "LLY：醫療保健類股午後走弱；XLE：能源類股 11/24 午後走高",
-                "en": "LLY: healthcare stocks fell late in the afternoon; XLE: energy stocks advanced on the afternoon of 11/24"
+                "zh": "AMZN：黑色星期五前，高盛對 Amazon 發出正面看法的報導",
+                "en": "AMZN: a report says Goldman Sachs sent a strong signal on Amazon ahead of Black Friday"
+              },
+              "refs": [
+                {
+                  "symbol": "AMZN",
+                  "changePct": -3.12
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "LLY：報導指出 Eli Lilly 自 4 月以來上漲 64%，市值約為 Novo Nordisk 的 7 倍",
+                "en": "LLY: reports note Eli Lilly is up 64% since April and is worth about 7 times Novo Nordisk"
               },
               "refs": [
                 {
                   "symbol": "LLY",
                   "changePct": -1.09
-                },
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "COST：BJ's 跟進 Costco、Sam's Club 感恩節當天休息",
+                "en": "COST: BJ's joined Costco and Sam's Club in closing stores on Thanksgiving Day"
+              },
+              "refs": [
+                {
+                  "symbol": "COST",
+                  "changePct": -0.45
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "XLE：能源類股週三下午走高",
+                "en": "XLE: energy stocks advanced on Wednesday afternoon"
+              },
+              "refs": [
                 {
                   "symbol": "XLE",
                   "changePct": 0.74
@@ -278,8 +282,8 @@
           "items": [
             {
               "text": {
-                "zh": "觀察清單 7 天內沒有公布財報的股票",
-                "en": "No watch-list companies report earnings in the next 7 days"
+                "zh": "素材中未來 7 天沒有觀察清單股票的財報",
+                "en": "No watch-list earnings in the next 7 days in the materials"
               },
               "refs": []
             }
@@ -291,20 +295,20 @@
       "status": "done",
       "dataDate": "2026-11-25",
       "summary": {
-        "zh": "TSLA 本益比 417.74 居首，GS 11.52 最低；BND 殖利率 4.12% 最高",
-        "en": "TSLA has the highest P/E at 417.74, GS the lowest at 11.52; BND yields the most at 4.12%"
+        "zh": "TSLA 本益比 417.74 最高，GS 11.52 最低；GOOGL、GS 接近 52 週低點",
+        "en": "TSLA has the highest P/E at 417.74, GS the lowest at 11.52; GOOGL and GS sit near 52-week lows"
       },
       "sections": [
         {
           "heading": {
             "zh": "本益比",
-            "en": "P/E ratio"
+            "en": "P/E"
           },
           "items": [
             {
               "text": {
-                "zh": "本益比最高：TSLA 417.74、PLTR 115.2、AMD 86.76、2454.TW 58.6、COST 52.35",
-                "en": "Highest P/E: TSLA 417.74, PLTR 115.2, AMD 86.76, 2454.TW 58.6, COST 52.35"
+                "zh": "本益比最高：TSLA 417.74、PLTR 115.2、AMD 86.76",
+                "en": "Highest P/E: TSLA 417.74, PLTR 115.2, AMD 86.76"
               },
               "refs": [
                 {
@@ -317,21 +321,13 @@
                 },
                 {
                   "symbol": "AMD"
-                },
-                {
-                  "symbol": "2454.TW",
-                  "changePct": -10
-                },
-                {
-                  "symbol": "COST",
-                  "changePct": -0.45
                 }
               ]
             },
             {
               "text": {
-                "zh": "本益比最低：GS 11.52、2317.TW 12.58、JPM 13.29、GOOGL 14.26、VXUS 14.35",
-                "en": "Lowest P/E: GS 11.52, 2317.TW 12.58, JPM 13.29, GOOGL 14.26, VXUS 14.35"
+                "zh": "本益比最低：GS 11.52、2317.TW 13.19、JPM 13.29、GOOGL 14.26",
+                "en": "Lowest P/E: GS 11.52, 2317.TW 13.19, JPM 13.29, GOOGL 14.26"
               },
               "refs": [
                 {
@@ -339,7 +335,7 @@
                 },
                 {
                   "symbol": "2317.TW",
-                  "changePct": -8.83
+                  "changePct": 4.84
                 },
                 {
                   "symbol": "JPM"
@@ -347,9 +343,26 @@
                 {
                   "symbol": "GOOGL",
                   "changePct": -2.13
+                }
+              ]
+            },
+            {
+              "text": {
+                "zh": "關注股票中 COST 本益比 52.35、LLY 45.19，AMZN 為 19.76",
+                "en": "Among watch-list names, COST P/E is 52.35, LLY 45.19 and AMZN 19.76"
+              },
+              "refs": [
+                {
+                  "symbol": "COST",
+                  "changePct": -0.45
                 },
                 {
-                  "symbol": "VXUS"
+                  "symbol": "LLY",
+                  "changePct": -1.09
+                },
+                {
+                  "symbol": "AMZN",
+                  "changePct": -3.12
                 }
               ]
             }
@@ -363,27 +376,23 @@
           "items": [
             {
               "text": {
-                "zh": "殖利率最高：BND 4.12%、006208.TW 4.01%、SGOV 3.62%、VNQ 3.56%、2317.TW 3.47%",
-                "en": "Highest yields: BND 4.12%, 006208.TW 4.01%, SGOV 3.62%, VNQ 3.56%, 2317.TW 3.47%"
+                "zh": "殖利率最高：006208.TW 4.25%、BND 4.12%、SGOV 3.62%、VNQ 3.56%",
+                "en": "Highest yields: 006208.TW 4.25%, BND 4.12%, SGOV 3.62%, VNQ 3.56%"
               },
               "refs": [
                 {
-                  "symbol": "BND",
-                  "changePct": 0.34
+                  "symbol": "006208.TW",
+                  "changePct": -5.56
                 },
                 {
-                  "symbol": "006208.TW",
-                  "changePct": 10
+                  "symbol": "BND",
+                  "changePct": 0.34
                 },
                 {
                   "symbol": "SGOV"
                 },
                 {
                   "symbol": "VNQ"
-                },
-                {
-                  "symbol": "2317.TW",
-                  "changePct": -8.83
                 }
               ]
             }
@@ -392,13 +401,13 @@
         {
           "heading": {
             "zh": "52 週高低點",
-            "en": "52-week high/low"
+            "en": "52-week range"
           },
           "items": [
             {
               "text": {
-                "zh": "接近 52 週高點：SGOV、PG（-0.76%）、COST（-1.02%）、XLP（-1.26%）、AAPL（-1.45%）",
-                "en": "Near 52-week highs: SGOV, PG (-0.76%), COST (-1.02%), XLP (-1.26%), AAPL (-1.45%)"
+                "zh": "接近 52 週高點：SGOV、PG（-0.76%）、COST（-1.02%）、XLP、AAPL",
+                "en": "Near 52-week highs: SGOV, PG (-0.76%), COST (-1.02%), XLP, AAPL"
               },
               "refs": [
                 {
@@ -409,17 +418,14 @@
                   "changePct": -0.45
                 },
                 {
-                  "symbol": "XLP"
-                },
-                {
                   "symbol": "AAPL"
                 }
               ]
             },
             {
               "text": {
-                "zh": "接近 52 週低點：GS 距低點 3.66%、GOOGL 3.95%、GLD 4.3%，GLD 距高點 -35.76%",
-                "en": "Near 52-week lows: GS 3.66% above its low, GOOGL 3.95%, GLD 4.3%; GLD is 35.76% below its high"
+                "zh": "接近 52 週低點：GS 距低點 3.66%、GOOGL 3.95%、GLD 4.3%",
+                "en": "Near 52-week lows: GS is 3.66% above its low, GOOGL 3.95%, GLD 4.3%"
               },
               "refs": [
                 {
@@ -433,44 +439,18 @@
                   "symbol": "GLD"
                 }
               ]
-            }
-          ]
-        },
-        {
-          "heading": {
-            "zh": "關注股票",
-            "en": "Watch list"
-          },
-          "items": [
-            {
-              "text": {
-                "zh": "AMZN 本益比 19.76、距高點 -14.89%；LLY 本益比 45.19、距高點 -5.63%",
-                "en": "AMZN P/E 19.76, 14.89% below its high; LLY P/E 45.19, 5.63% below its high"
-              },
-              "refs": [
-                {
-                  "symbol": "AMZN",
-                  "changePct": -3.12
-                },
-                {
-                  "symbol": "LLY",
-                  "changePct": -1.09
-                }
-              ]
             },
             {
               "text": {
-                "zh": "XLE 本益比 15.21、殖利率 2.5%；TSLA 距 52 週高點 -23.79%",
-                "en": "XLE P/E 15.21 with 2.5% yield; TSLA is 23.79% below its 52-week high"
+                "zh": "GLD 距 52 週高點 -35.76%，AMD 距高點 -38.34%",
+                "en": "GLD is 35.76% below its 52-week high and AMD 38.34% below"
               },
               "refs": [
                 {
-                  "symbol": "XLE",
-                  "changePct": 0.74
+                  "symbol": "GLD"
                 },
                 {
-                  "symbol": "TSLA",
-                  "changePct": -1.18
+                  "symbol": "AMD"
                 }
               ]
             }
@@ -480,85 +460,48 @@
     },
     "debate": {
       "status": "done",
-      "dataDate": "2026-11-25",
+      "dataDate": "2026-11-26",
       "summary": {
-        "zh": "超賣反彈訊號增加且歷史表現較好，但美台兩地都處於高波動恐慌狀態",
-        "en": "Oversold-rebound signals are piling up with a good track record, but both US and Taiwan are in a high-volatility panic regime"
+        "zh": "兩地都在恐慌狀態，但超賣反彈訊號增加、歷史表現優於平常",
+        "en": "Both markets are in a panic regime, but oversold rebound signals are rising and have beaten normal historically"
       },
       "bull": [
         {
           "text": {
-            "zh": "偏多訊號 9 檔多於危險訊號 3 檔，超賣反彈過去 20 天平均 3.16%，優於平常 1.73%",
-            "en": "9 bullish vs 3 warning signals; oversold rebounds averaged 3.16% over 20 days vs 1.73% normally"
+            "zh": "超賣反彈出現在 7 檔，過去 5 年之後 20 天平均 3.16%，高於平常 1.73%",
+            "en": "Oversold rebounds appeared in 7 names; over 5 years they averaged 3.16% over 20 days vs 1.73% normally"
           },
           "refs": []
         },
         {
           "text": {
-            "zh": "跌破 200 日線的歷史表現和平常差不多，不一定代表後續走弱",
-            "en": "Breaks below the 200-day MA historically performed about the same as normal, not necessarily implying further weakness"
+            "zh": "跌破 200 日線的規則過去之後表現和平常差不多",
+            "en": "Historically, breaks below the 200-day MA were followed by roughly normal performance"
           },
           "refs": []
         },
         {
           "text": {
-            "zh": "META 上漲 3.4%、HD 上漲 2.14%，VT 只小跌 0.01%",
-            "en": "META rose 3.4%, HD 2.14%, and VT slipped only 0.01%"
+            "zh": "2317.TW 上漲 4.84%、META 上漲 3.4%，市場仍有強勢股",
+            "en": "2317.TW rose 4.84% and META 3.4%; there are still strong names"
           },
-          "refs": []
-        },
-        {
-          "text": {
-            "zh": "新聞提到選擇權交易員押注 VIX 不會再升高",
-            "en": "News says options traders are betting against a higher VIX"
-          },
-          "refs": []
+          "refs": [
+            {
+              "symbol": "2317.TW",
+              "changePct": 4.84
+            },
+            {
+              "symbol": "META",
+              "changePct": 3.4
+            }
+          ]
         }
       ],
       "bear": [
         {
           "text": {
-            "zh": "VOO 與 0050 都處於高波動（恐慌），VOO 波動 30.7%、0050 波動 63.6%",
-            "en": "VOO and 0050 are both in the high-volatility (panic) regime, with volatility of 30.7% and 63.6%"
-          },
-          "refs": []
-        },
-        {
-          "text": {
-            "zh": "上漲 20 家、下跌 28 家，下跌家數較多；QQQ 30 天跌 12.92%",
-            "en": "20 advancers vs 28 decliners; QQQ is down 12.92% over 30 days"
-          },
-          "refs": []
-        },
-        {
-          "text": {
-            "zh": "2454.TW 下跌 10%、2317.TW 下跌 8.83%，2330.TW 跌破 200 日線",
-            "en": "2454.TW fell 10%, 2317.TW 8.83%, and 2330.TW broke below the 200-day MA"
-          },
-          "refs": []
-        },
-        {
-          "text": {
-            "zh": "關注的 AMZN、TSLA 跌破 200 日線，五檔關注股 MACD 全部偏空",
-            "en": "Watched AMZN and TSLA broke below the 200-day MA; all five watched stocks show bearish MACD"
-          },
-          "refs": []
-        }
-      ],
-      "sections": []
-    },
-    "lead": {
-      "status": "done",
-      "dataDate": "2026-11-25",
-      "summary": {
-        "zh": "美台仍在高波動恐慌狀態，關注的 AMZN、TSLA 跌破 200 日線",
-        "en": "US and Taiwan remain in a high-volatility panic regime; watched AMZN and TSLA broke below the 200-day MA"
-      },
-      "points": [
-        {
-          "text": {
-            "zh": "美股 VOO 恐慌狀態第 4 天、20 天跌 7.2%，台股 0050 恐慌狀態已 12 天、20 天跌 10.2%",
-            "en": "VOO is on day 4 of the panic regime, down 7.2% over 20 days; 0050 has been in panic for 12 days, down 10.2%"
+            "zh": "VOO、0050 都處於高波動（恐慌）狀態，0050 已持續 13 天",
+            "en": "VOO and 0050 are both in a high-volatility (panic) regime; 0050 has lasted 13 days"
           },
           "refs": [
             {
@@ -572,8 +515,89 @@
         },
         {
           "text": {
-            "zh": "AMZN 下跌 3.12%、TSLA 下跌 1.18%，兩檔都跌破 200 日線（歷史上之後和平常差不多）",
-            "en": "AMZN fell 3.12% and TSLA 1.18%, both breaking below the 200-day MA (historically similar to normal afterwards)"
+            "zh": "QQQ 近 30 天下跌 12.92%，VOO 下跌 7.13%",
+            "en": "QQQ is down 12.92% over 30 days and VOO 7.13%"
+          },
+          "refs": [
+            {
+              "symbol": "QQQ",
+              "changePct": -0.65
+            },
+            {
+              "symbol": "VOO",
+              "changePct": -0.28
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "漲跌家數 21 比 27，上漲比例只有 43.75%",
+            "en": "Breadth was 21 up vs 27 down, only 43.75% advancing"
+          },
+          "refs": []
+        },
+        {
+          "text": {
+            "zh": "006208.TW 下跌 5.56%、ORCL 下跌 5.13%、NVDA 下跌 3.91%",
+            "en": "006208.TW fell 5.56%, ORCL 5.13% and NVDA 3.91%"
+          },
+          "refs": [
+            {
+              "symbol": "006208.TW",
+              "changePct": -5.56
+            },
+            {
+              "symbol": "ORCL",
+              "changePct": -5.13
+            },
+            {
+              "symbol": "NVDA",
+              "changePct": -3.91
+            }
+          ]
+        }
+      ],
+      "sections": []
+    },
+    "lead": {
+      "status": "done",
+      "dataDate": "2026-11-26",
+      "summary": {
+        "zh": "美台股仍在恐慌狀態，超賣反彈訊號增加，留意中東消息",
+        "en": "US and Taiwan stay in a panic regime; oversold rebounds are rising; watch Middle East news"
+      },
+      "points": [
+        {
+          "text": {
+            "zh": "美股、台股都在高波動（恐慌）狀態，0050 已 13 天、VOO 4 天",
+            "en": "US and Taiwan stocks are both in a high-volatility (panic) regime: 0050 for 13 days, VOO for 4"
+          },
+          "refs": [
+            {
+              "symbol": "VOO",
+              "changePct": -0.28
+            },
+            {
+              "symbol": "0050.TW"
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "美股最新收盤仍是 11/25，QQQ 近 30 天跌 12.92%；台股資料已更新到 11/26",
+            "en": "Latest US close is still 11/25, with QQQ down 12.92% over 30 days; Taiwan data is updated to 11/26"
+          },
+          "refs": [
+            {
+              "symbol": "QQQ",
+              "changePct": -0.65
+            }
+          ]
+        },
+        {
+          "text": {
+            "zh": "關注股 AMZN、TSLA 跌破 200 日線，這條規則過去之後表現和平常差不多",
+            "en": "Watch-list names AMZN and TSLA broke below the 200-day MA; historically this rule was followed by normal performance"
           },
           "refs": [
             {
@@ -588,42 +612,22 @@
         },
         {
           "text": {
-            "zh": "台股分歧大：006208.TW 上漲 10%，2454.TW 下跌 10%、2317.TW 下跌 8.83%",
-            "en": "Taiwan was split: 006208.TW rose 10% while 2454.TW fell 10% and 2317.TW 8.83%"
-          },
-          "refs": [
-            {
-              "symbol": "006208.TW",
-              "changePct": 10
-            },
-            {
-              "symbol": "2454.TW",
-              "changePct": -10
-            },
-            {
-              "symbol": "2317.TW",
-              "changePct": -8.83
-            }
-          ]
-        },
-        {
-          "text": {
-            "zh": "超賣反彈訊號出現在 8 檔，歷史上之後表現比平常好；COST RSI 70.2 短線過熱",
-            "en": "Oversold-rebound signals appeared in 8 names, historically better than normal; COST's RSI of 70.2 is short-term overheated"
-          },
-          "refs": [
-            {
-              "symbol": "COST",
-              "changePct": -0.45
-            }
-          ]
-        },
-        {
-          "text": {
-            "zh": "新聞聚焦 SpaceX 衛星核准與股價波動、黃仁勳相關消息；7 天內無關注股票財報",
-            "en": "News centered on SpaceX's satellite approval and share swings and Jensen Huang headlines; no watch-list earnings in 7 days"
+            "zh": "超賣反彈出現在 7 檔，過去之後 20 天平均 3.16%，高於平常",
+            "en": "Oversold rebounds appeared in 7 names, historically averaging 3.16% over 20 days, above normal"
           },
           "refs": []
+        },
+        {
+          "text": {
+            "zh": "中東多起攻擊事件，包括沙烏地阿美煉油廠遇襲，留意能源相關消息",
+            "en": "Several Middle East attacks, including on a Saudi Aramco refinery; keep an eye on energy-related news"
+          },
+          "refs": [
+            {
+              "symbol": "XLE",
+              "changePct": 0.74
+            }
+          ]
         }
       ],
       "sections": []
